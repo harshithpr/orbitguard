@@ -42,6 +42,20 @@ That sounds stronger than "I made a data analyzer" because it shows a real probl
 
 ## Run The App
 
+On macOS, the easiest option is to double-click:
+
+```text
+Run OrbitGuard.command
+```
+
+That opens the local website at:
+
+```text
+http://localhost:4173
+```
+
+Manual option:
+
 ```bash
 node server.mjs
 ```
