@@ -295,6 +295,26 @@ button:hover {
   grid-template-columns: 1fr;
 }
 
+.about-creator {
+  margin-top: 1rem;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.about-grid p {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid #303943;
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: #dde4da;
+  line-height: 1.55;
+}
+
 .panel {
   padding: 1rem;
 }
@@ -683,6 +703,7 @@ footer a {
   .chart-grid,
   .table-grid,
   .simulator-layout,
+  .about-grid,
   .report-layout {
     grid-template-columns: 1fr;
   }

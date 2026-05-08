@@ -3,6 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "description": "Space sustainability analyzer with a dashboard, launch impact simulator, and local API.",
+  "author": "Harshith Pranav Praveen",
   "type": "module",
   "scripts": {
     "start": "node server.mjs",

@@ -63,7 +63,7 @@ GitHub Pages is best for static sites. OrbitGuard has API endpoints, so GitHub P
 ## Good Review Post
 
 ```text
-I’m a high school student building OrbitGuard, a space sustainability analyzer that uses orbital object data to measure congestion, debris risk, and launch impact. I’m looking for feedback on the science, UI, and code structure.
+I’m Harshith Pranav Praveen, a high school student interested in aerospace engineering. I’m building OrbitGuard, a space sustainability analyzer that uses orbital object data to measure congestion, debris risk, and launch impact. I’m looking for feedback on the science, UI, and code structure.
 ```
 
 Ask:
@@ -73,4 +73,3 @@ Ask:
 - Does the dashboard explain orbital debris well?
 - What feature would make this more useful?
 - Is the API understandable?
-

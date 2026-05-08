@@ -2,6 +2,14 @@
 
 After OrbitGuard is on GitHub and Vercel, ask for targeted feedback.
 
+Creator: **Harshith Pranav Praveen**
+
+Short bio:
+
+```text
+I am Harshith Pranav Praveen, a student interested in aerospace engineering, hands-on engineering, design, manufacturing, mathematics, 3D modeling, and Python. I began formal engineering coursework at James Clemens High School in 2024 through PLTW classes, including Introduction to Engineering Design, and I am excited to keep exploring aerospace through projects like OrbitGuard.
+```
+
 ## Best Places
 
 - School STEM club
@@ -35,3 +43,10 @@ Add these to the README once people respond:
 - GitHub stars, issues, forks, or pull requests
 - A short project reflection
 
+## Certification Link
+
+Python credential:
+
+```text
+https://www.credly.com/badges/d74e2ecb-c57e-44fd-87ad-6acd2b58008c/public_url
+```

@@ -1,5 +1,19 @@
 const DATA_URL = "data/orbitguard-data.json";
 const THREE_URL = "https://unpkg.com/three@0.165.0/build/three.module.js";
+const CREATOR = {
+  name: "Harshith Pranav Praveen",
+  bio:
+    "Aerospace engineering student interested in hands-on engineering, design, manufacturing, mathematics, 3D modeling, Python, and future aerospace work with companies such as Boeing, Lockheed Martin, and other organizations building flight and space systems.",
+  school: "James Clemens High School",
+  engineeringStartYear: 2024,
+  certifications: [
+    {
+      name: "Python credential",
+      year: 2025,
+      url: "https://www.credly.com/badges/d74e2ecb-c57e-44fd-87ad-6acd2b58008c/public_url"
+    }
+  ]
+};
 const ACTIVE_STATUS_CODES = new Set(["+", "P", "B", "S", "X"]);
 const TYPE_COLORS = {
   PAY: "#58c7bd",
@@ -621,7 +635,7 @@ function renderReport() {
   elements.reportBody.innerHTML = `
     <section class="report-section">
       <h3>Project framing</h3>
-      <p>I built OrbitGuard, a space sustainability analyzer that uses public orbital catalog data to evaluate how satellite launches affect congestion, debris exposure, and long-term safety in Earth orbit.</p>
+      <p>OrbitGuard was built by ${CREATOR.name} as a space sustainability analyzer that uses public orbital catalog data to evaluate how satellite launches affect congestion, debris exposure, and long-term safety in Earth orbit.</p>
     </section>
     <section class="report-section">
       <h3>Current orbital environment</h3>
@@ -710,6 +724,7 @@ function buildReportPayload() {
   return {
     project: "OrbitGuard",
     mission: "Space Sustainability Analyzer",
+    creator: CREATOR,
     generatedAt: new Date().toISOString(),
     dataSource: state.metadata?.source || DATA_URL,
     catalog: {
@@ -1475,6 +1490,7 @@ function exportFilteredCsv() {
 function exportOrbitJson() {
   downloadJSON("orbitguard-current-orbit-data.json", {
     project: "OrbitGuard",
+    creator: CREATOR.name,
     generatedAt: new Date().toISOString(),
     filters: state.filters,
     metadata: state.metadata,
@@ -1488,6 +1504,7 @@ function exportSimulationJson() {
   const filename = `${slugify(impact.name) || "orbitguard"}-launch-simulation.json`;
   downloadJSON(filename, {
     project: "OrbitGuard",
+    creator: CREATOR.name,
     generatedAt: new Date().toISOString(),
     simulation: impact,
     methodology:
