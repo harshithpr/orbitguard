@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="OrbitGuard is a space sustainability analyzer for satellite catalog data, launch impact simulation, and orbital congestion risk.">
+    <meta name="theme-color" content="#0d1014">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>OrbitGuard | Space Sustainability Analyzer</title>
+    <link rel="icon" type="image/png" href="/public/favicon.png">
+    <link rel="apple-touch-icon" href="/public/favicon.png">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="/public/logo.svg" alt="OrbitGuard logo" class="logo">
+        <div>
+          <p class="eyebrow">Space Sustainability Analyzer</p>
+          <h1>OrbitGuard</h1>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <a class="top-link" href="https://github.com/new" target="_blank" rel="noreferrer">GitHub</a>
+        <a class="top-link" href="https://vercel.com/new" target="_blank" rel="noreferrer">Deploy</a>
+        <div class="source-pill" id="dataSource">Loading catalog...</div>
+      </div>
+    </header>
+
+    <main>
+      <nav class="mode-tabs" aria-label="Project modes">
+        <button class="mode-tab active" type="button" data-mode="dashboard">Current Orbit Dashboard</button>
+        <button class="mode-tab" type="button" data-mode="simulator">Launch Impact Simulator</button>
+        <button class="mode-tab" type="button" data-mode="report">Sustainability Report</button>
+      </nav>
+
+      <section class="mode-panel active" id="dashboardMode">
+        <section class="control-band" aria-label="Analyzer controls">
+          <label>
+            Orbit
+            <select id="orbitFilter">
+              <option value="all">All orbit bands</option>
+              <option value="LEO">LEO</option>
+              <option value="MEO">MEO</option>
+              <option value="GEO">GEO</option>
+              <option value="HEO">HEO</option>
+            </select>
+          </label>
+
+          <label>
+            Object type
+            <select id="typeFilter">
+              <option value="all">All objects</option>
+              <option value="PAY">Payloads</option>
+              <option value="DEB">Debris</option>
+              <option value="R/B">Rocket bodies</option>
+              <option value="other">Other hardware</option>
+            </select>
+          </label>
+
+          <label>
+            Status
+            <select id="statusFilter">
+              <option value="all">All statuses</option>
+              <option value="active">Active payloads</option>
+              <option value="nonfunctional">Nonfunctional objects</option>
+            </select>
+          </label>
+
+          <label>
+            Owner
+            <select id="ownerFilter">
+              <option value="all">All owners</option>
+            </select>
+          </label>
+
+          <label>
+            Minimum risk
+            <input id="riskFilter" type="range" min="0" max="95" value="0">
+            <span id="riskFilterValue">0</span>
+          </label>
+
+          <button id="resetFilters" type="button">Reset</button>
+          <button id="exportCsv" type="button">Download Data CSV</button>
+          <button id="downloadOrbitJson" type="button">Download Data JSON</button>
+        </section>
+
+        <section class="metrics-grid dashboard-metrics" aria-label="Catalog metrics">
+          <article class="metric">
+            <span>Tracked objects</span>
+            <strong id="metricObjects">-</strong>
+          </article>
+          <article class="metric">
+            <span>Active satellites</span>
+            <strong id="metricActive">-</strong>
+          </article>
+          <article class="metric">
+            <span>Debris objects</span>
+            <strong id="metricDebris">-</strong>
+          </article>
+          <article class="metric">
+            <span>Rocket bodies</span>
+            <strong id="metricRocketBodies">-</strong>
+          </article>
+          <article class="metric">
+            <span>Risk index</span>
+            <strong id="metricRisk">-</strong>
+          </article>
+        </section>
+
+        <section class="analysis-layout">
+          <article class="panel orbit-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Orbital environment</p>
+                <h2>3D Earth Orbit Visualizer</h2>
+              </div>
+              <div class="legend">
+                <span><i class="payload-dot"></i>Payload</span>
+                <span><i class="debris-dot"></i>Debris</span>
+                <span><i class="rocket-dot"></i>Rocket body</span>
+                <span><i class="launch-dot"></i>Simulated launch</span>
+              </div>
+            </div>
+            <div class="orbit-scene" id="orbitScene" aria-label="3D Earth orbit visualizer">
+              <canvas id="orbitCanvas" width="900" height="560" aria-label="Fallback orbital population visualization"></canvas>
+            </div>
+          </article>
+
+          <article class="panel scenario-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Mitigation model</p>
+                <h2>Scenario Lab</h2>
+              </div>
+            </div>
+
+            <label class="scenario-control">
+              Post-mission disposal compliance
+              <input id="deorbitSlider" type="range" min="0" max="95" value="65">
+              <span id="deorbitValue">65%</span>
+            </label>
+
+            <label class="scenario-control">
+              New LEO fragments
+              <input id="fragmentInput" type="number" min="0" max="2000" step="25" value="0">
+            </label>
+
+            <div class="scenario-result">
+              <span>Projected index</span>
+              <strong id="scenarioIndex">-</strong>
+              <small id="scenarioDelta">-</small>
+            </div>
+          </article>
+        </section>
+
+        <section class="chart-grid" aria-label="Catalog charts">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Distribution</p>
+                <h2>Orbit Bands</h2>
+              </div>
+            </div>
+            <div class="bar-list" id="orbitBars"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Composition</p>
+                <h2>Object Types</h2>
+              </div>
+            </div>
+            <div class="bar-list" id="typeBars"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Altitude</p>
+                <h2>LEO Histogram</h2>
+              </div>
+            </div>
+            <div class="histogram" id="altitudeHistogram"></div>
+          </article>
+        </section>
+
+        <section class="wide-grid" aria-label="Historical growth chart">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Timeline</p>
+                <h2>Growth Of Objects Still In Orbit</h2>
+              </div>
+              <span class="panel-stat" id="timelinePeak">-</span>
+            </div>
+            <div class="timeline-chart" id="timelineChart"></div>
+          </article>
+        </section>
+
+        <section class="table-grid" aria-label="Risk tables">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Hotspots</p>
+                <h2>Altitude Bands</h2>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Band</th>
+                    <th>Objects</th>
+                    <th>Debris/RB</th>
+                    <th>Inactive payloads</th>
+                    <th>Risk</th>
+                    <th>Top owner</th>
+                  </tr>
+                </thead>
+                <tbody id="hotspotRows"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Objects</p>
+                <h2>Highest Risk Records</h2>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Orbit</th>
+                    <th>Altitude</th>
+                    <th>Owner</th>
+                    <th>Risk</th>
+                  </tr>
+                </thead>
+                <tbody id="objectRows"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </section>
+
+      <section class="mode-panel" id="simulatorMode">
+        <section class="simulator-layout">
+          <article class="panel launch-form-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Mission inputs</p>
+                <h2>Launch Impact Simulator</h2>
+              </div>
+            </div>
+
+            <div class="launch-form">
+              <label>
+                Mission name
+                <input id="launchName" type="text" value="Example rideshare mission">
+              </label>
+
+              <label>
+                Satellites deployed
+                <input id="launchSatellites" type="text" inputmode="numeric" value="24">
+              </label>
+
+              <label>
+                Target altitude
+                <input id="launchAltitude" type="text" inputmode="numeric" value="550">
+              </label>
+
+              <label>
+                Inclination
+                <input id="launchInclination" type="text" inputmode="decimal" value="53">
+              </label>
+
+              <label>
+                Expected lifetime
+                <input id="launchLifetime" type="text" inputmode="numeric" value="5">
+              </label>
+
+              <label>
+                Deployment fragments
+                <input id="launchFragments" type="text" inputmode="numeric" value="0">
+              </label>
+
+              <label class="check-row">
+                <input id="rocketBodyRemains" type="checkbox" checked>
+                <span>Rocket body remains in orbit</span>
+              </label>
+
+              <label class="check-row">
+                <input id="deorbitPlan" type="checkbox" checked>
+                <span>Satellites include planned deorbit</span>
+              </label>
+            </div>
+          </article>
+
+          <article class="panel launch-impact-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Impact model</p>
+                <h2>Launch Results</h2>
+              </div>
+              <span class="risk-chip" id="launchRiskChip">-</span>
+            </div>
+
+            <div class="impact-summary" id="launchSummary">-</div>
+
+            <div class="impact-metrics">
+              <article class="metric compact">
+                <span>Objects added</span>
+                <strong id="launchObjectsAdded">-</strong>
+              </article>
+              <article class="metric compact">
+                <span>Altitude band</span>
+                <strong id="launchBand">-</strong>
+              </article>
+              <article class="metric compact">
+                <span>Band increase</span>
+                <strong id="launchBandIncrease">-</strong>
+              </article>
+              <article class="metric compact">
+                <span>Sustainability</span>
+                <strong id="launchRating">-</strong>
+              </article>
+            </div>
+
+            <div class="score-compare" id="scoreCompare"></div>
+
+            <div class="download-actions">
+              <button id="downloadSimulationJson" type="button">Download Launch Simulation</button>
+              <button id="downloadSimulationCsv" type="button">Download Simulation CSV</button>
+            </div>
+          </article>
+        </section>
+      </section>
+
+      <section class="mode-panel" id="reportMode">
+        <section class="report-layout">
+          <article class="panel report-card">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Generated analysis</p>
+                <h2>Sustainability Report</h2>
+              </div>
+              <span class="risk-chip" id="reportGrade">-</span>
+            </div>
+
+            <div id="reportBody" class="report-body"></div>
+
+            <div class="download-actions">
+              <button id="downloadReport" type="button">Download Sustainability Report</button>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Mitigation checklist</p>
+                <h2>Design Changes</h2>
+              </div>
+            </div>
+            <div class="recommendation-list" id="recommendations"></div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      <span>Data: CelesTrak SATCAT. Risk scores are an educational screening model, not operational conjunction analysis.</span>
+      <span class="footer-links">
+        <a href="docs/API.md">API docs</a>
+        <a href="docs/DEPLOYMENT.md">Deployment guide</a>
+        <a href="docs/TESTING.md">Testing checklist</a>
+      </span>
+    </footer>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
