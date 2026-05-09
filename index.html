@@ -257,9 +257,19 @@
             <div class="panel-heading">
               <div>
                 <p class="eyebrow">Orbital environment</p>
-                <h2>3D Earth Orbit Visualizer</h2>
+                <h2 id="orbitViewerTitle">3D Earth Orbit Visualizer</h2>
               </div>
               <div class="viewer-actions">
+                <label class="environment-selector" for="environmentSelect">
+                  Environment
+                  <select id="environmentSelect">
+                    <option value="earth">Earth Orbit</option>
+                    <option value="moon">Moon Orbit</option>
+                    <option value="mars">Mars Orbit</option>
+                    <option value="sun">Solar Weather</option>
+                    <option value="overview">Solar System View</option>
+                  </select>
+                </label>
                 <div class="legend orbit-legend">
                   <span><i class="payload-dot"></i>Payload</span>
                   <span><i class="debris-dot"></i>Debris</span>
@@ -276,6 +286,7 @@
             <div class="orbit-scene" id="orbitScene" aria-label="3D Earth orbit visualizer">
               <canvas id="orbitCanvas" width="900" height="560" aria-label="Fallback orbital population visualization"></canvas>
             </div>
+            <div class="solar-system-panel" id="solarSystemPanel" aria-live="polite"></div>
           </article>
 
           <article class="panel scenario-panel">

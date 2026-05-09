@@ -18,6 +18,8 @@ OrbitGuard also includes a customizable visual theme system that lets users swit
    - LEO, MEO, GEO, and HEO orbit bands
    - Most crowded altitude bands
    - 3D Earth orbit visualizer with a textured Earth, cloud layer, orbit rings, density points, and representative object models
+   - OrbitGuard Solar System Mode with Earth, Moon, Mars, Solar Weather, and Solar System Overview environments
+   - Mission-environment cards for lunar relay coverage, Mars communication delay, solar-weather drag effects, and interplanetary sustainability planning
    - Timeline of objects still in orbit by launch year
    - Softer display settings with theme, contrast, motion, chart color, and 3D object color controls
 

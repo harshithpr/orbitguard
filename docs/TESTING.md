@@ -38,6 +38,7 @@ The app should:
 - Load the OrbitGuard logo and favicon
 - Show current CelesTrak object counts
 - Render the 3D orbit visualizer with colored Earth land/ocean, cloud layer, orbit rings, density points, and 3D object models
+- Switch the 3D visualizer environment between Earth Orbit, Moon Orbit, Mars Orbit, Solar Weather, and Solar System View
 - Switch between Soft Blue, Deep Space, Light, High Contrast, and Custom themes
 - Save display settings after refresh
 - Keep controls readable on phone width
@@ -57,6 +58,19 @@ Expected:
 - 3D object color inputs change payload, debris, rocket-body, simulated, and other object dots
 - `Reduce motion`, `Larger text`, and `High contrast` apply immediately and remain after refresh
 - Close button hides the drawer
+
+## Solar System Mode Test
+
+Open the dashboard and use the `Environment` selector above the 3D viewer.
+
+Expected:
+
+- `Earth Orbit` shows the live catalog points, debris, rocket bodies, and Earth orbit rings
+- `Moon Orbit` shows the Moon, Earth in the distance, lunar orbit rings, relay satellites, a Gateway-style marker, and lunar sustainability cards
+- `Mars Orbit` shows Mars, Phobos, Deimos, relay satellites, a transfer arc, and one-way communication delay
+- `Solar Weather` shows the Sun, solar wind particles, Earth/magnetosphere marker, and Kp/F10.7-related sustainability messaging
+- `Solar System View` shows a lightweight solar system overview with planets, labels, orbit rings, and mission arcs
+- Switching back to `Earth Orbit` restores the live CelesTrak object visualization
 
 ## Encyclopedia Test
 

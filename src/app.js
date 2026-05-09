@@ -104,6 +104,53 @@ const LAUNCH_SEQUENCE_PHASES = [
   { name: "Mission complete", start: 34, end: 36, stage: "Complete", telemetry: "Deployment complete and launch impact model updated." }
 ];
 const LAUNCH_SEQUENCE_DURATION = LAUNCH_SEQUENCE_PHASES[LAUNCH_SEQUENCE_PHASES.length - 1].end;
+const SOLAR_ENVIRONMENTS = {
+  earth: {
+    label: "Earth Orbit",
+    title: "3D Earth Orbit Visualizer",
+    body: "Earth",
+    challenge: "Orbital congestion and debris risk",
+    risk: "Medium",
+    concern: "LEO crowding, rocket bodies, fragments, and long-lived debris.",
+    recommendation: "Use deorbit planning, passivation, shared tracking data, and avoid already crowded altitude bands."
+  },
+  moon: {
+    label: "Moon Orbit",
+    title: "OrbitGuard Lunar Environment",
+    body: "Moon",
+    challenge: "Reliable far-side communication",
+    risk: "Emerging",
+    concern: "Future lunar relay networks could clutter stable lunar orbital regions without disposal plans.",
+    recommendation: "Use small relay constellations, disposal burns, and shared cislunar traffic coordination."
+  },
+  mars: {
+    label: "Mars Orbit",
+    title: "OrbitGuard Mars Relay Planner",
+    body: "Mars",
+    challenge: "Communication delay and autonomous operations",
+    risk: "Moderate",
+    concern: "Long-lived orbiters and relay satellites need end-of-mission planning before Mars traffic grows.",
+    recommendation: "Design relay networks with autonomy, fuel margins, and disposal or aerobraking plans."
+  },
+  sun: {
+    label: "Solar Weather",
+    title: "OrbitGuard Solar Weather Mode",
+    body: "Sun",
+    challenge: "Space weather effects on satellites",
+    risk: "Variable",
+    concern: "Geomagnetic storms raise LEO drag, shorten lifetimes, disrupt radio links, and increase operations risk.",
+    recommendation: "Monitor Kp, F10.7, solar wind, and keep extra maneuver margin for LEO spacecraft."
+  },
+  overview: {
+    label: "Solar System View",
+    title: "Interplanetary Sustainability Planner",
+    body: "Solar System",
+    challenge: "Responsible expansion beyond Earth orbit",
+    risk: "Future-facing",
+    concern: "Human missions can repeat Earth-orbit debris mistakes around the Moon, Mars, and other destinations.",
+    recommendation: "Compare mission environments early and design disposal, autonomy, and governance into each architecture."
+  }
+};
 
 const state = {
   mode: "dashboard",
@@ -120,6 +167,9 @@ const state = {
   scenario: {
     deorbitCompliance: 65,
     fragments: 0
+  },
+  solarSystem: {
+    environment: "earth"
   },
   launch: {
     name: "Example rideshare mission",
@@ -170,11 +220,14 @@ const state = {
     camera: null,
     controls: null,
     root: null,
+    earthSystem: null,
     earth: null,
+    atmosphere: null,
     clouds: null,
     objectPoints: null,
     launchPoints: null,
     modelGroup: null,
+    environmentGroup: null,
     animationId: null,
     ready: false,
     fallback: false
@@ -244,6 +297,9 @@ const elements = {
   exportCsv: document.querySelector("#exportCsv"),
   downloadOrbitJson: document.querySelector("#downloadOrbitJson"),
   downloadGoogleEarthKml: document.querySelector("#downloadGoogleEarthKml"),
+  environmentSelect: document.querySelector("#environmentSelect"),
+  orbitViewerTitle: document.querySelector("#orbitViewerTitle"),
+  solarSystemPanel: document.querySelector("#solarSystemPanel"),
   metricObjects: document.querySelector("#metricObjects"),
   metricActive: document.querySelector("#metricActive"),
   metricDebris: document.querySelector("#metricDebris"),
@@ -2688,6 +2744,10 @@ function sceneLaunchObjects() {
   return state.mode === "time" ? [] : simulatedLaunchObjects();
 }
 
+function isEarthEnvironment() {
+  return state.mode !== "dashboard" || state.solarSystem.environment === "earth";
+}
+
 function syncRendererTarget() {
   if (!state.three.renderer) {
     return;
@@ -3020,6 +3080,9 @@ async function initOrbitScene() {
     light.position.set(3, 4, 5);
     scene.add(light);
 
+    const earthSystem = new THREE.Group();
+    root.add(earthSystem);
+
     const earthTexture = createEarthTexture(THREE);
     const cloudTexture = createCloudTexture(THREE);
     const earth = new THREE.Mesh(
@@ -3032,13 +3095,13 @@ async function initOrbitScene() {
         metalness: 0.05
       })
     );
-    root.add(earth);
+    earthSystem.add(earth);
 
     const atmosphere = new THREE.Mesh(
       new THREE.SphereGeometry(0.79, 64, 64),
       new THREE.MeshBasicMaterial({ color: hexToNumber(readCssVar("--accent", "#60a5fa")), transparent: true, opacity: 0.13 })
     );
-    root.add(atmosphere);
+    earthSystem.add(atmosphere);
 
     const clouds = new THREE.Mesh(
       new THREE.SphereGeometry(0.742, 96, 96),
@@ -3049,11 +3112,11 @@ async function initOrbitScene() {
         depthWrite: false
       })
     );
-    root.add(clouds);
+    earthSystem.add(clouds);
 
-    addThreeRing(THREE, root, altitudeToSceneRadius(2000), hexToNumber(readCssVar("--chart-leo", "#60a5fa")));
-    addThreeRing(THREE, root, altitudeToSceneRadius(20200), hexToNumber(readCssVar("--chart-meo", "#86efac")));
-    addThreeRing(THREE, root, altitudeToSceneRadius(35786), hexToNumber(readCssVar("--chart-geo", "#facc15")));
+    addThreeRing(THREE, earthSystem, altitudeToSceneRadius(2000), hexToNumber(readCssVar("--chart-leo", "#60a5fa")));
+    addThreeRing(THREE, earthSystem, altitudeToSceneRadius(20200), hexToNumber(readCssVar("--chart-meo", "#86efac")));
+    addThreeRing(THREE, earthSystem, altitudeToSceneRadius(35786), hexToNumber(readCssVar("--chart-geo", "#facc15")));
 
     const starGeometry = new THREE.BufferGeometry();
     const starPositions = new Float32Array(360 * 3);
@@ -3083,7 +3146,9 @@ async function initOrbitScene() {
       camera,
       controls,
       root,
+      earthSystem,
       earth,
+      atmosphere,
       clouds,
       ready: true
     };
@@ -3109,7 +3174,9 @@ function addThreeRing(THREE, root, radius, color) {
 
   const geometry = new THREE.BufferGeometry().setFromPoints(points);
   const material = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.44 });
-  root.add(new THREE.LineLoop(geometry, material));
+  const ring = new THREE.LineLoop(geometry, material);
+  root.add(ring);
+  return ring;
 }
 
 function animateOrbitScene() {
@@ -3118,8 +3185,21 @@ function animateOrbitScene() {
   }
 
   if (!state.display.reduceMotion) {
-    state.three.earth.rotation.y += 0.00055;
-    state.three.clouds.rotation.y += 0.0009;
+    if (state.three.earth?.visible !== false) {
+      state.three.earth.rotation.y += 0.00055;
+    }
+
+    if (state.three.clouds?.visible !== false) {
+      state.three.clouds.rotation.y += 0.0009;
+    }
+
+    if (state.three.environmentGroup) {
+      state.three.environmentGroup.traverse((child) => {
+        if (child.userData?.rotateSpeed) {
+          child.rotation.y += child.userData.rotateSpeed;
+        }
+      });
+    }
   }
 
   state.three.controls.update();
@@ -3203,6 +3283,30 @@ function renderOrbitScene() {
     disposeObject3D(state.three.modelGroup);
   }
 
+  state.three.objectPoints = null;
+  state.three.launchPoints = null;
+  state.three.modelGroup = null;
+
+  if (state.three.environmentGroup) {
+    state.three.root.remove(state.three.environmentGroup);
+    disposeObject3D(state.three.environmentGroup);
+    state.three.environmentGroup = null;
+  }
+
+  if (state.mode === "dashboard" && state.solarSystem.environment !== "earth") {
+    if (state.three.earthSystem) {
+      state.three.earthSystem.visible = false;
+    }
+
+    renderSolarEnvironmentScene(THREE);
+    renderSolarSystemPanel();
+    return;
+  }
+
+  if (state.three.earthSystem) {
+    state.three.earthSystem.visible = true;
+  }
+
   const catalogObjects = sceneCatalogObjects();
   const launchObjects = sceneLaunchObjects();
 
@@ -3216,6 +3320,450 @@ function renderOrbitScene() {
   }
 
   state.three.root.add(state.three.modelGroup);
+  renderSolarSystemPanel();
+}
+
+function renderSolarSystemPanel() {
+  if (!elements.solarSystemPanel) {
+    return;
+  }
+
+  const environment = state.mode === "dashboard" ? state.solarSystem.environment : "earth";
+  const config = SOLAR_ENVIRONMENTS[environment] || SOLAR_ENVIRONMENTS.earth;
+  const space = state.weather.space;
+  const marsDelay = simulatedMarsDelayMinutes();
+  const lunarScore = lunarNetworkScore();
+
+  elements.orbitViewerTitle.textContent = config.title;
+  elements.solarSystemPanel.innerHTML = `
+    <article class="environment-card primary">
+      <span>Selected body</span>
+      <strong>${config.body}</strong>
+      <p>${config.challenge}</p>
+    </article>
+    <article class="environment-card">
+      <span>Mission risk</span>
+      <strong>${config.risk}</strong>
+      <p>${config.concern}</p>
+    </article>
+    <article class="environment-card">
+      <span>Recommended design</span>
+      <strong>${environment === "earth" ? `${numberFormat(state.objects.length)} tracked objects` : environment === "moon" ? `${lunarScore.coverage}% lunar relay coverage` : environment === "mars" ? `${marsDelay} min one-way delay` : environment === "sun" ? `${space?.kp?.value?.toFixed?.(1) || "Live"} Kp index` : "Plan disposal early"}</strong>
+      <p>${config.recommendation}</p>
+    </article>
+  `;
+}
+
+function lunarNetworkScore() {
+  const satellites = clamp(Math.round(state.launch.satellites || 6), 1, 24);
+  const altitude = clamp(state.launch.altitude || 550, 100, 8000);
+  const coverage = clamp(42 + satellites * 7 + Math.log10(altitude + 100) * 9, 45, 96);
+  const sustainability = clamp(92 - satellites * 1.9 - (altitude > 3000 ? 10 : 0) + (state.launch.deorbitPlan ? 8 : -12), 35, 95);
+  return { coverage: Math.round(coverage), sustainability: Math.round(sustainability) };
+}
+
+function simulatedMarsDelayMinutes() {
+  const dayOfYear = Math.floor((Date.now() / 86400000) % 687);
+  const cycle = (Math.sin((dayOfYear / 687) * Math.PI * 2) + 1) / 2;
+  return decimal(4.3 + cycle * 19.7, 1);
+}
+
+function renderSolarEnvironmentScene(THREE) {
+  const environment = state.solarSystem.environment;
+  const group = new THREE.Group();
+  group.rotation.x = -0.18;
+  group.rotation.y = 0.18;
+  state.three.environmentGroup = group;
+  state.three.root.add(group);
+
+  if (environment === "moon") {
+    buildMoonEnvironment(THREE, group);
+  } else if (environment === "mars") {
+    buildMarsEnvironment(THREE, group);
+  } else if (environment === "sun") {
+    buildSolarWeatherEnvironment(THREE, group);
+  } else {
+    buildSolarSystemOverview(THREE, group);
+  }
+
+  state.three.camera.position.set(0, 1.1, environment === "overview" ? 8.8 : 6.5);
+  state.three.controls.target.set(0, 0, 0);
+  state.three.controls.minDistance = 2.6;
+  state.three.controls.maxDistance = environment === "overview" ? 16 : 10;
+  state.three.camera.lookAt(0, 0, 0);
+  state.three.camera.updateProjectionMatrix();
+}
+
+function buildMoonEnvironment(THREE, group) {
+  const moon = new THREE.Mesh(
+    new THREE.SphereGeometry(0.82, 80, 80),
+    new THREE.MeshStandardMaterial({
+      map: createMoonTexture(THREE),
+      roughness: 0.95,
+      metalness: 0.02
+    })
+  );
+  moon.userData.rotateSpeed = 0.00028;
+  group.add(moon);
+
+  const earth = new THREE.Mesh(
+    new THREE.SphereGeometry(0.22, 48, 48),
+    new THREE.MeshStandardMaterial({ map: createEarthTexture(THREE), roughness: 0.78 })
+  );
+  earth.position.set(-2.65, 1.18, -1.05);
+  earth.userData.rotateSpeed = 0.00065;
+  group.add(earth, createBodyLabel(THREE, "Earth in distance", -2.65, 1.55, -1.05));
+
+  addThreeRing(THREE, group, 1.35, 0xcbd5e1).rotation.x = Math.PI / 2.9;
+  addThreeRing(THREE, group, 1.85, hexToNumber(readCssVar("--simulated-color", "#a78bfa"))).rotation.x = Math.PI / 2.9;
+  addMissionArc(THREE, group, 0x93c5fd, 2.4, -0.9, 0.7);
+  addLunarGateway(THREE, group, 1.35, 0.42);
+
+  for (let index = 0; index < 8; index += 1) {
+    const angle = (index / 8) * Math.PI * 2;
+    const sat = createMiniRelaySatellite(THREE, 0xcbd5e1);
+    sat.position.set(Math.cos(angle) * 1.55, Math.sin(angle) * 0.2, Math.sin(angle) * 1.1);
+    sat.lookAt(0, 0, 0);
+    group.add(sat);
+  }
+}
+
+function buildMarsEnvironment(THREE, group) {
+  const mars = new THREE.Mesh(
+    new THREE.SphereGeometry(0.86, 80, 80),
+    new THREE.MeshStandardMaterial({
+      map: createMarsTexture(THREE),
+      roughness: 0.92,
+      metalness: 0.02
+    })
+  );
+  mars.userData.rotateSpeed = 0.00042;
+  group.add(mars);
+
+  addThreeRing(THREE, group, 1.32, 0xf97316).rotation.x = Math.PI / 2.7;
+  addThreeRing(THREE, group, 1.78, 0xfca5a5).rotation.x = Math.PI / 2.7;
+  addMissionArc(THREE, group, 0x60a5fa, 2.7, -1.2, 0.95);
+
+  const phobos = createRockMoon(THREE, 0.065);
+  phobos.position.set(1.18, 0.18, 0.32);
+  const deimos = createRockMoon(THREE, 0.045);
+  deimos.position.set(-1.72, -0.1, -0.4);
+  group.add(phobos, deimos, createBodyLabel(THREE, "Phobos", 1.28, 0.32, 0.36), createBodyLabel(THREE, "Deimos", -1.82, 0.06, -0.4));
+
+  for (let index = 0; index < 7; index += 1) {
+    const angle = (index / 7) * Math.PI * 2;
+    const sat = createMiniRelaySatellite(THREE, 0xf97316);
+    sat.position.set(Math.cos(angle) * 1.62, Math.sin(angle) * 0.22, Math.sin(angle) * 1.0);
+    sat.lookAt(0, 0, 0);
+    group.add(sat);
+  }
+
+  group.add(createBodyLabel(THREE, `${simulatedMarsDelayMinutes()} min one-way delay`, 0, 1.32, 0));
+}
+
+function buildSolarWeatherEnvironment(THREE, group) {
+  const sun = new THREE.Mesh(
+    new THREE.SphereGeometry(0.9, 96, 96),
+    new THREE.MeshBasicMaterial({
+      map: createSunTexture(THREE),
+      color: 0xffd166
+    })
+  );
+  sun.userData.rotateSpeed = 0.0009;
+  group.add(sun);
+
+  const corona = new THREE.Mesh(
+    new THREE.SphereGeometry(1.12, 80, 80),
+    new THREE.MeshBasicMaterial({
+      color: 0xfacc15,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    })
+  );
+  group.add(corona);
+
+  addSolarWindParticles(THREE, group);
+  addMissionArc(THREE, group, 0xfacc15, 2.9, -0.2, 0.42);
+
+  const earth = new THREE.Mesh(
+    new THREE.SphereGeometry(0.24, 48, 48),
+    new THREE.MeshStandardMaterial({ map: createEarthTexture(THREE), roughness: 0.78 })
+  );
+  earth.position.set(2.45, -0.25, -0.4);
+  group.add(earth, createMagnetosphere(THREE, 2.45, -0.25, -0.4), createBodyLabel(THREE, "LEO drag affected", 2.45, 0.2, -0.4));
+}
+
+function buildSolarSystemOverview(THREE, group) {
+  const planets = [
+    ["Sun", 0, 0.44, 0xfacc15],
+    ["Mercury", 0.9, 0.07, 0xa3a3a3],
+    ["Venus", 1.35, 0.11, 0xfbbf24],
+    ["Earth", 1.9, 0.13, 0x60a5fa],
+    ["Moon", 2.12, 0.038, 0xcbd5e1],
+    ["Mars", 2.62, 0.1, 0xf97316],
+    ["Jupiter", 3.55, 0.28, 0xd6a35d],
+    ["Saturn", 4.45, 0.24, 0xe6c36a],
+    ["Uranus", 5.18, 0.17, 0x7dd3fc],
+    ["Neptune", 5.86, 0.16, 0x3b82f6]
+  ];
+
+  for (const [name, x, radius, color] of planets) {
+    const material = name === "Sun"
+      ? new THREE.MeshBasicMaterial({ color })
+      : new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.04 });
+    const planet = new THREE.Mesh(new THREE.SphereGeometry(radius, 48, 48), material);
+    planet.position.x = x - 2.8;
+    planet.userData.rotateSpeed = 0.00025 + radius * 0.001;
+    group.add(planet, createBodyLabel(THREE, name, x - 2.8, radius + 0.2, 0));
+
+    if (name !== "Sun") {
+      const orbit = addThreeRing(THREE, group, Math.abs(x - 2.8), color);
+      orbit.material.opacity = 0.18;
+      orbit.scale.z = 0.35;
+    }
+
+    if (name === "Saturn") {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(radius * 1.65, 0.01, 8, 64),
+        new THREE.MeshBasicMaterial({ color: 0xfde68a, transparent: true, opacity: 0.72 })
+      );
+      ring.position.copy(planet.position);
+      ring.rotation.x = Math.PI / 2.6;
+      group.add(ring);
+    }
+  }
+
+  addMissionArc(THREE, group, 0x60a5fa, 2.35, -2.15, 0.55);
+  addMissionArc(THREE, group, 0xa78bfa, 3.05, -1.85, 0.85);
+}
+
+function createMoonTexture(THREE) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, "#d8dee8");
+  gradient.addColorStop(0.5, "#9ca3af");
+  gradient.addColorStop(1, "#e5e7eb");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let index = 0; index < 92; index += 1) {
+    const x = seededUnit(index + 4) * canvas.width;
+    const y = seededUnit(index + 8) * canvas.height;
+    const radius = 4 + seededUnit(index + 12) * 22;
+    ctx.strokeStyle = `rgb(15 23 42 / ${0.12 + seededUnit(index) * 0.22})`;
+    ctx.fillStyle = `rgb(15 23 42 / ${0.04 + seededUnit(index + 2) * 0.08})`;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
+function createMarsTexture(THREE) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, "#7c2d12");
+  gradient.addColorStop(0.48, "#c2410c");
+  gradient.addColorStop(1, "#f97316");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let index = 0; index < 58; index += 1) {
+    ctx.fillStyle = index % 4 === 0 ? "rgb(254 215 170 / 0.25)" : "rgb(69 26 3 / 0.2)";
+    ctx.beginPath();
+    ctx.ellipse(
+      seededUnit(index + 7) * canvas.width,
+      seededUnit(index + 11) * canvas.height,
+      12 + seededUnit(index + 13) * 52,
+      3 + seededUnit(index + 17) * 14,
+      seededUnit(index + 19) * Math.PI,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  ctx.fillStyle = "rgb(255 247 237 / 0.72)";
+  ctx.beginPath();
+  ctx.ellipse(canvas.width * 0.5, 18, 82, 13, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
+function createSunTexture(THREE) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createRadialGradient(256, 128, 0, 256, 128, 280);
+  gradient.addColorStop(0, "#fff7ad");
+  gradient.addColorStop(0.48, "#facc15");
+  gradient.addColorStop(1, "#ea580c");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let index = 0; index < 90; index += 1) {
+    ctx.strokeStyle = `rgb(255 255 255 / ${0.1 + seededUnit(index) * 0.16})`;
+    ctx.lineWidth = 1 + seededUnit(index + 2) * 3;
+    ctx.beginPath();
+    const y = seededUnit(index + 9) * canvas.height;
+    ctx.moveTo(0, y);
+    ctx.bezierCurveTo(130, y - 30, 260, y + 34, canvas.width, y - 6);
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
+function createBodyLabel(THREE, text, x, y, z) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 384;
+  canvas.height = 96;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "rgb(15 23 42 / 0.72)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "rgb(147 197 253 / 0.6)";
+  ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+  ctx.fillStyle = "#f8fafc";
+  ctx.font = "700 30px Inter, Arial, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.92 }));
+  sprite.position.set(x, y, z);
+  sprite.scale.set(0.78, 0.2, 1);
+  return sprite;
+}
+
+function addMissionArc(THREE, group, color, width, offsetX, height) {
+  const points = [];
+  for (let index = 0; index <= 72; index += 1) {
+    const t = index / 72;
+    points.push(new THREE.Vector3(offsetX + t * width, Math.sin(t * Math.PI) * height - 0.12, (t - 0.5) * 0.9));
+  }
+
+  const arc = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(points),
+    new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.72 })
+  );
+  group.add(arc);
+  return arc;
+}
+
+function createMiniRelaySatellite(THREE, color) {
+  const group = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.065, 0.045, 0.045),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.46 })
+  );
+  const panelA = createSolarPanelGroup(THREE, 0.11, 0.045, 0x1d4ed8);
+  const panelB = createSolarPanelGroup(THREE, 0.11, 0.045, 0x1d4ed8);
+  panelA.position.x = -0.095;
+  panelB.position.x = 0.095;
+  const dish = createDishAntenna(THREE, 0.016);
+  dish.position.y = 0.055;
+  group.add(body, panelA, panelB, dish);
+  return group;
+}
+
+function addLunarGateway(THREE, group, radius, angle) {
+  const gateway = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.34, metalness: 0.68 });
+  const moduleA = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.18, 18), metal);
+  moduleA.rotation.z = Math.PI / 2;
+  const moduleB = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.14, 18), metal);
+  moduleB.position.y = 0.06;
+  const truss = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.012, 0.012), metal);
+  const panelA = createSolarPanelGroup(THREE, 0.15, 0.052, 0x1d4ed8);
+  const panelB = createSolarPanelGroup(THREE, 0.15, 0.052, 0x1d4ed8);
+  panelA.position.x = -0.22;
+  panelB.position.x = 0.22;
+  gateway.add(moduleA, moduleB, truss, panelA, panelB);
+  gateway.position.set(Math.cos(angle) * radius, 0.18, Math.sin(angle) * radius * 0.72);
+  gateway.lookAt(0, 0, 0);
+  group.add(gateway, createBodyLabel(THREE, "Gateway relay", gateway.position.x, gateway.position.y + 0.25, gateway.position.z));
+}
+
+function createRockMoon(THREE, radius) {
+  const mesh = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(radius, 1),
+    new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.95, metalness: 0.03, flatShading: true })
+  );
+  mesh.userData.rotateSpeed = 0.0007;
+  return mesh;
+}
+
+function addSolarWindParticles(THREE, group) {
+  const count = 420;
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * 3;
+    const radius = 1.1 + seededUnit(index + 2) * 3.7;
+    const angle = seededUnit(index + 7) * Math.PI * 2;
+    positions[offset] = Math.cos(angle) * radius;
+    positions[offset + 1] = (seededUnit(index + 11) - 0.5) * 2.8;
+    positions[offset + 2] = Math.sin(angle) * radius * 0.42;
+    colors[offset] = 1;
+    colors[offset + 1] = 0.72 + seededUnit(index + 13) * 0.28;
+    colors[offset + 2] = 0.18;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  const particles = new THREE.Points(
+    geometry,
+    new THREE.PointsMaterial({
+      size: 0.035,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.78,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    })
+  );
+  particles.userData.rotateSpeed = 0.0009;
+  group.add(particles);
+}
+
+function createMagnetosphere(THREE, x, y, z) {
+  const shield = new THREE.Mesh(
+    new THREE.SphereGeometry(0.42, 48, 48),
+    new THREE.MeshBasicMaterial({
+      color: 0x60a5fa,
+      transparent: true,
+      opacity: 0.16,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    })
+  );
+  shield.position.set(x, y, z);
+  shield.scale.set(1.45, 0.92, 0.92);
+  return shield;
 }
 
 function renderLaunchPhaseList() {
@@ -3950,6 +4498,11 @@ function disposeObject3D(object) {
     if (child.material) {
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       for (const material of materials) {
+        for (const key of ["map", "alphaMap", "emissiveMap", "roughnessMap", "metalnessMap"]) {
+          if (material[key]) {
+            material[key].dispose();
+          }
+        }
         material.dispose();
       }
     }
@@ -4740,6 +5293,12 @@ function wireControls() {
     state.filters.minRisk = Number(elements.riskFilter.value);
     elements.riskFilterValue.textContent = elements.riskFilter.value;
     updateAll();
+  });
+
+  elements.environmentSelect.addEventListener("change", () => {
+    state.solarSystem.environment = elements.environmentSelect.value;
+    renderOrbitScene();
+    resizeOrbitScene();
   });
 
   elements.deorbitSlider.addEventListener("input", () => {
