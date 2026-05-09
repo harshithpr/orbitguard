@@ -558,6 +558,25 @@ button:hover {
   font-weight: 680;
 }
 
+.viewer-actions {
+  display: grid;
+  justify-items: end;
+  gap: 0.65rem;
+}
+
+.viewer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 0.55rem;
+}
+
+.viewer-links button,
+.viewer-links .top-link {
+  min-height: 2.15rem;
+  font-size: 0.78rem;
+}
+
 .legend span {
   display: inline-flex;
   align-items: center;
@@ -1110,6 +1129,14 @@ footer a {
   }
 
   .legend {
+    justify-content: start;
+  }
+
+  .viewer-actions {
+    justify-items: start;
+  }
+
+  .viewer-links {
     justify-content: start;
   }
 

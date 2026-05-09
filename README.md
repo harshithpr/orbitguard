@@ -40,6 +40,7 @@ Users can download:
 
 - Current orbit data as CSV
 - Current orbit data as JSON
+- Google Earth KML exports for the dashboard and Time Machine views
 - Time Machine comparison report as JSON
 - Launch simulation output as JSON
 - Launch simulation output as CSV

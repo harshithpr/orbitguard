@@ -171,6 +171,7 @@ const elements = {
   resetFilters: document.querySelector("#resetFilters"),
   exportCsv: document.querySelector("#exportCsv"),
   downloadOrbitJson: document.querySelector("#downloadOrbitJson"),
+  downloadGoogleEarthKml: document.querySelector("#downloadGoogleEarthKml"),
   metricObjects: document.querySelector("#metricObjects"),
   metricActive: document.querySelector("#metricActive"),
   metricDebris: document.querySelector("#metricDebris"),
@@ -198,6 +199,7 @@ const elements = {
   pastColumnTitle: document.querySelector("#pastColumnTitle"),
   comparisonBody: document.querySelector("#comparisonBody"),
   downloadTimeMachineJson: document.querySelector("#downloadTimeMachineJson"),
+  downloadTimeGoogleEarthKml: document.querySelector("#downloadTimeGoogleEarthKml"),
   deorbitSlider: document.querySelector("#deorbitSlider"),
   deorbitValue: document.querySelector("#deorbitValue"),
   fragmentInput: document.querySelector("#fragmentInput"),
@@ -272,6 +274,16 @@ function downloadCSV(filename, rows) {
     ...rows.map((row) => headers.map((header) => JSON.stringify(row[header] ?? "")).join(","))
   ].join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadText(filename, text, type) {
+  const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -835,6 +847,129 @@ function buildTimeMachinePayload() {
     limitation:
       "Educational reconstruction based on launch-year data from the current catalog. It does not remove decayed objects by historical date and is not a replacement for archived TLE snapshots."
   };
+}
+
+function escapeXml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function hexToKmlColor(hex, alpha = "ff") {
+  const normalized = hex.replace("#", "").padStart(6, "0");
+  const red = normalized.slice(0, 2);
+  const green = normalized.slice(2, 4);
+  const blue = normalized.slice(4, 6);
+  return `${alpha}${blue}${green}${red}`;
+}
+
+function objectLonLat(object) {
+  const seed = object.norad || Math.round(object.altitude * 10);
+  const lon = seededUnit(seed + 211) * 360 - 180;
+  const maxLatitude = clamp(Math.abs(object.inclination || 0), 8, 82);
+  const lat = (seededUnit(seed + 419) * 2 - 1) * maxLatitude;
+  return { lon, lat };
+}
+
+function circleCoordinates(altitudeKm, segments = 144) {
+  const coordinates = [];
+  const altitudeMeters = Math.round(altitudeKm * 1000);
+
+  for (let index = 0; index <= segments; index += 1) {
+    const lon = -180 + (index / segments) * 360;
+    coordinates.push(`${decimal(lon, 3)},0,${altitudeMeters}`);
+  }
+
+  return coordinates.join(" ");
+}
+
+function kmlStyleDefinitions() {
+  return `
+    <Style id="payload"><IconStyle><color>${hexToKmlColor(TYPE_COLORS.PAY)}</color><scale>0.8</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle></Style>
+    <Style id="debris"><IconStyle><color>${hexToKmlColor(TYPE_COLORS.DEB)}</color><scale>0.72</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle></Style>
+    <Style id="rocket"><IconStyle><color>${hexToKmlColor(TYPE_COLORS["R/B"])}</color><scale>0.84</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle></Style>
+    <Style id="simulated"><IconStyle><color>${hexToKmlColor(TYPE_COLORS.launch)}</color><scale>0.95</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/target.png</href></Icon></IconStyle></Style>
+    <Style id="other"><IconStyle><color>${hexToKmlColor(TYPE_COLORS.other)}</color><scale>0.68</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle></Style>
+    <Style id="orbitRingLeo"><LineStyle><color>${hexToKmlColor(readCssVar("--chart-leo", "#60a5fa"), "99")}</color><width>2</width></LineStyle></Style>
+    <Style id="orbitRingMeo"><LineStyle><color>${hexToKmlColor(readCssVar("--chart-meo", "#86efac"), "99")}</color><width>2</width></LineStyle></Style>
+    <Style id="orbitRingGeo"><LineStyle><color>${hexToKmlColor(readCssVar("--chart-geo", "#facc15"), "99")}</color><width>2</width></LineStyle></Style>
+  `;
+}
+
+function kmlStyleForObject(object) {
+  if (object.simulated || object.type === "launch") return "simulated";
+  if (object.type === "PAY") return "payload";
+  if (object.type === "DEB") return "debris";
+  if (object.type === "R/B") return "rocket";
+  return "other";
+}
+
+function objectKmlPlacemark(object, index) {
+  const { lon, lat } = objectLonLat(object);
+  const altitudeMeters = Math.round(clamp(object.altitude, 160, 42000) * 1000);
+  const name = object.name || `${object.simulated ? "Simulated" : "Catalog"} object ${index + 1}`;
+  const description = [
+    `Type: ${typeLabel(object.type)}`,
+    `Orbit: ${object.orbitClass || "Simulated"}`,
+    `Altitude: ${numberFormat(object.altitude)} km`,
+    `Inclination: ${decimal(object.inclination || 0)} degrees`,
+    `Risk score: ${Math.round(object.riskScore || 0)}`,
+    object.simulated ? "Simulated launch object from OrbitGuard." : "Catalog object from OrbitGuard reconstruction."
+  ].join("\n");
+
+  return `
+      <Placemark>
+        <name>${escapeXml(name)}</name>
+        <description>${escapeXml(description)}</description>
+        <styleUrl>#${kmlStyleForObject(object)}</styleUrl>
+        <Point>
+          <altitudeMode>absolute</altitudeMode>
+          <extrude>1</extrude>
+          <coordinates>${decimal(lon, 5)},${decimal(lat, 5)},${altitudeMeters}</coordinates>
+        </Point>
+      </Placemark>`;
+}
+
+function orbitRingPlacemark(name, altitudeKm, styleId) {
+  return `
+      <Placemark>
+        <name>${escapeXml(name)}</name>
+        <styleUrl>#${styleId}</styleUrl>
+        <LineString>
+          <altitudeMode>absolute</altitudeMode>
+          <tessellate>0</tessellate>
+          <coordinates>${circleCoordinates(altitudeKm)}</coordinates>
+        </LineString>
+      </Placemark>`;
+}
+
+function buildGoogleEarthKml({ title, objects, includeLaunchObjects }) {
+  const launchObjects = includeLaunchObjects ? simulatedLaunchObjects() : [];
+  const exportObjects = representativeObjects(objects, launchObjects, 420);
+  const generatedAt = new Date().toISOString();
+  const placemarks = exportObjects.map(objectKmlPlacemark).join("");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>${escapeXml(title)}</name>
+    <description>${escapeXml(`OrbitGuard Google Earth export generated ${generatedAt}. Object positions are educational reconstructions, not operational ephemerides.`)}</description>
+    ${kmlStyleDefinitions()}
+    <Folder>
+      <name>Reference orbit bands</name>
+      ${orbitRingPlacemark("LEO reference shell - 2,000 km", 2000, "orbitRingLeo")}
+      ${orbitRingPlacemark("MEO reference shell - 20,200 km", 20200, "orbitRingMeo")}
+      ${orbitRingPlacemark("GEO reference shell - 35,786 km", 35786, "orbitRingGeo")}
+    </Folder>
+    <Folder>
+      <name>OrbitGuard objects</name>
+      ${placemarks}
+    </Folder>
+  </Document>
+</kml>`;
 }
 
 function renderTimeMachine() {
@@ -2492,6 +2627,8 @@ function wireControls() {
 
   elements.exportCsv.addEventListener("click", exportFilteredCsv);
   elements.downloadOrbitJson.addEventListener("click", exportOrbitJson);
+  elements.downloadGoogleEarthKml.addEventListener("click", () => exportGoogleEarthKml("dashboard"));
+  elements.downloadTimeGoogleEarthKml.addEventListener("click", () => exportGoogleEarthKml("time"));
   elements.downloadSimulationJson.addEventListener("click", exportSimulationJson);
   elements.downloadSimulationCsv.addEventListener("click", exportSimulationCsv);
   elements.downloadReport.addEventListener("click", exportReportJson);
@@ -2518,6 +2655,21 @@ function exportOrbitJson() {
     count: state.filtered.length,
     objects: currentOrbitRows()
   });
+}
+
+function exportGoogleEarthKml(mode = state.mode) {
+  const isTimeMode = mode === "time";
+  const year = state.timeMachine.selectedYear;
+  const objects = isTimeMode ? timeMachineSceneObjects() : state.filtered;
+  const title = isTimeMode ? `OrbitGuard Time Machine ${year}` : "OrbitGuard Current Orbit Dashboard";
+  const filename = isTimeMode ? `orbitguard-time-machine-${year}-google-earth.kml` : "orbitguard-current-orbit-google-earth.kml";
+  const kml = buildGoogleEarthKml({
+    title,
+    objects,
+    includeLaunchObjects: !isTimeMode
+  });
+
+  downloadText(filename, kml, "application/vnd.google-earth.kml+xml");
 }
 
 function exportSimulationJson() {

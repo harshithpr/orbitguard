@@ -126,6 +126,8 @@ Click:
 
 - Download Data CSV
 - Download Data JSON
+- Download Google Earth KML from the dashboard
+- Download Google Earth KML from Time Machine
 - Download Comparison
 - Download Launch Simulation
 - Download Simulation CSV
@@ -136,6 +138,7 @@ Expected:
 - Files download in the browser
 - JSON files open cleanly
 - CSV files open in Numbers, Excel, or Google Sheets
+- KML files import into Google Earth as altitude-aware educational orbit markers
 
 ## API Checks
 
