@@ -924,6 +924,62 @@
             </div>
           </article>
         </section>
+
+        <section class="panel launch-sequence-panel">
+          <div class="panel-heading launch-sequence-heading">
+            <div>
+              <p class="eyebrow">Procedural mission visualization</p>
+              <h2>Immersive Launch Sequence</h2>
+              <p class="panel-note">A lightweight 3D launch simulation built from procedural geometry, glowing exhaust particles, staged vehicle motion, and satellite deployment timing.</p>
+            </div>
+            <div class="launch-sequence-actions">
+              <button id="launchPlayPause" type="button">Pause</button>
+              <button id="launchRestart" type="button">Restart</button>
+            </div>
+          </div>
+
+          <div class="launch-sequence-grid">
+            <div class="launch-viewport" id="launchSequenceViewport">
+              <canvas id="launchSequenceCanvas" aria-label="Procedural 3D rocket launch sequence"></canvas>
+              <div class="launch-hud" aria-live="polite">
+                <span id="launchPhaseLabel">Ignition buildup</span>
+                <strong id="launchClock">T+00:00</strong>
+                <small id="launchTelemetry">Engines chilling down and plume pressure building.</small>
+              </div>
+            </div>
+
+            <aside class="launch-sequence-sidebar" aria-label="Launch sequence telemetry">
+              <div class="launch-phase-list" id="launchPhaseList"></div>
+
+              <label class="scenario-control launch-scrubber">
+                Mission time
+                <input id="launchScrubber" type="range" min="0" max="1000" value="0">
+                <span id="launchScrubberLabel">T+00:00</span>
+              </label>
+
+              <div class="launch-telemetry-grid">
+                <article class="metric compact">
+                  <span>Altitude</span>
+                  <strong id="launchVizAltitude">0 km</strong>
+                </article>
+                <article class="metric compact">
+                  <span>Velocity</span>
+                  <strong id="launchVizVelocity">0.0 km/s</strong>
+                </article>
+                <article class="metric compact">
+                  <span>Satellites</span>
+                  <strong id="launchVizSatellites">0 / 24</strong>
+                </article>
+                <article class="metric compact">
+                  <span>Vehicle stage</span>
+                  <strong id="launchVizStage">Stage 1</strong>
+                </article>
+              </div>
+            </aside>
+          </div>
+
+          <p class="time-note">Performance note: the vehicle, exhaust, stars, orbital ring, and satellites are generated in code. There are no heavy model downloads, so the scene stays responsive on laptops and phones.</p>
+        </section>
       </section>
 
       <section class="mode-panel" id="reportMode">

@@ -90,6 +90,20 @@ const TYPE_COLORS = {
   other: "#cbd5e1",
   launch: "#a78bfa"
 };
+const LAUNCH_SEQUENCE_PHASES = [
+  { name: "Ignition buildup", start: 0, end: 3, stage: "Stage 1", telemetry: "Engines chilling down and plume pressure building." },
+  { name: "Liftoff", start: 3, end: 7, stage: "Stage 1", telemetry: "Vehicle clears the tower with full exhaust plume." },
+  { name: "Max-Q", start: 7, end: 10, stage: "Stage 1", telemetry: "Peak aerodynamic pressure adds visible camera shake." },
+  { name: "Stage separation", start: 10, end: 13, stage: "Stage 2", telemetry: "First stage drops away and begins a controlled tumble." },
+  { name: "Stage 2 burn", start: 13, end: 18, stage: "Stage 2", telemetry: "Upper stage continues accelerating toward orbital velocity." },
+  { name: "Fairing jettison", start: 18, end: 21, stage: "Stage 2", telemetry: "Fairing halves split apart after atmospheric ascent." },
+  { name: "Coast to insertion", start: 21, end: 24, stage: "Coast", telemetry: "Vehicle coasts while the horizon comes into view." },
+  { name: "Orbit insertion", start: 24, end: 27, stage: "Insertion", telemetry: "Target orbit ring fades in around Earth." },
+  { name: "Payload deploy", start: 27, end: 31, stage: "Payload", telemetry: "Satellites deploy one by one into the target shell." },
+  { name: "Constellation spread", start: 31, end: 34, stage: "Payload", telemetry: "Payloads begin spacing along the orbital ring." },
+  { name: "Mission complete", start: 34, end: 36, stage: "Complete", telemetry: "Deployment complete and launch impact model updated." }
+];
+const LAUNCH_SEQUENCE_DURATION = LAUNCH_SEQUENCE_PHASES[LAUNCH_SEQUENCE_PHASES.length - 1].end;
 
 const state = {
   mode: "dashboard",
@@ -164,6 +178,37 @@ const state = {
     animationId: null,
     ready: false,
     fallback: false
+  },
+  launchSequence: {
+    THREE: null,
+    renderer: null,
+    scene: null,
+    camera: null,
+    root: null,
+    rocket: null,
+    stageOne: null,
+    stageTwo: null,
+    fairingGroup: null,
+    fairingHalves: [],
+    satelliteGroup: null,
+    satellites: [],
+    plume: null,
+    plumePositions: null,
+    plumeVelocities: null,
+    plumeLife: null,
+    plumeColors: null,
+    earth: null,
+    atmosphere: null,
+    orbitRing: null,
+    horizon: null,
+    clock: 0,
+    lastFrame: 0,
+    phaseIndex: 0,
+    playing: true,
+    initializing: false,
+    ready: false,
+    fallback: false,
+    animationId: null
   }
 };
 
@@ -336,6 +381,20 @@ const elements = {
   launchBandIncrease: document.querySelector("#launchBandIncrease"),
   launchRating: document.querySelector("#launchRating"),
   scoreCompare: document.querySelector("#scoreCompare"),
+  launchSequenceViewport: document.querySelector("#launchSequenceViewport"),
+  launchSequenceCanvas: document.querySelector("#launchSequenceCanvas"),
+  launchPlayPause: document.querySelector("#launchPlayPause"),
+  launchRestart: document.querySelector("#launchRestart"),
+  launchPhaseList: document.querySelector("#launchPhaseList"),
+  launchPhaseLabel: document.querySelector("#launchPhaseLabel"),
+  launchClock: document.querySelector("#launchClock"),
+  launchTelemetry: document.querySelector("#launchTelemetry"),
+  launchScrubber: document.querySelector("#launchScrubber"),
+  launchScrubberLabel: document.querySelector("#launchScrubberLabel"),
+  launchVizAltitude: document.querySelector("#launchVizAltitude"),
+  launchVizVelocity: document.querySelector("#launchVizVelocity"),
+  launchVizSatellites: document.querySelector("#launchVizSatellites"),
+  launchVizStage: document.querySelector("#launchVizStage"),
   downloadSimulationJson: document.querySelector("#downloadSimulationJson"),
   downloadSimulationCsv: document.querySelector("#downloadSimulationCsv"),
   reportGrade: document.querySelector("#reportGrade"),
@@ -407,6 +466,37 @@ function percent(value) {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function lerp(start, end, amount) {
+  return start + (end - start) * amount;
+}
+
+function easeInOut(amount) {
+  const t = clamp(amount, 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+function phaseProgress(time, phaseName) {
+  const phase = LAUNCH_SEQUENCE_PHASES.find((item) => item.name === phaseName);
+
+  if (!phase) {
+    return 0;
+  }
+
+  return clamp((time - phase.start) / (phase.end - phase.start), 0, 1);
+}
+
+function currentLaunchPhase(time) {
+  const clampedTime = clamp(time, 0, LAUNCH_SEQUENCE_DURATION);
+  return LAUNCH_SEQUENCE_PHASES.find((phase) => clampedTime >= phase.start && clampedTime < phase.end) || LAUNCH_SEQUENCE_PHASES[LAUNCH_SEQUENCE_PHASES.length - 1];
+}
+
+function formatMissionClock(seconds) {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  return `T+${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
 function readCssVar(name, fallback = "") {
@@ -743,6 +833,15 @@ function applyDisplaySettings({ persist = true, rerender = true } = {}) {
     renderLaunchImpact();
     renderTimeMachine();
     renderFallbackOrbitCanvas();
+    if (state.launchSequence.fallback) {
+      renderLaunchFallbackCanvas();
+    }
+
+    if (state.launchSequence.ready) {
+      state.launchSequence.orbitRing.material.color.set(hexToNumber(readCssVar("--simulated-color", "#a78bfa")));
+      state.launchSequence.atmosphere.material.color.set(hexToNumber(readCssVar("--accent", "#60a5fa")));
+      setLaunchSequenceTime(state.launchSequence.clock || 0, 0);
+    }
   }
 }
 
@@ -2112,7 +2211,16 @@ function renderLaunchImpact() {
 
   renderScoreCompare(impact);
   renderReport();
-  renderOrbitScene();
+  refreshLaunchSatellites();
+
+  if (state.mode === "dashboard" || state.mode === "time") {
+    renderOrbitScene();
+  }
+
+  if (state.mode === "simulator") {
+    initLaunchSequence();
+    setLaunchSequenceTime(state.launchSequence.clock || 0, 0);
+  }
 }
 
 function renderScoreCompare(impact) {
@@ -2968,6 +3076,667 @@ function renderOrbitScene() {
   state.three.root.add(state.three.modelGroup);
 }
 
+function renderLaunchPhaseList() {
+  if (!elements.launchPhaseList) {
+    return;
+  }
+
+  elements.launchPhaseList.innerHTML = LAUNCH_SEQUENCE_PHASES.map(
+    (phase, index) => `
+      <div class="launch-phase-step" data-launch-phase="${index}">
+        <span>${index + 1}</span>
+        <div>
+          <strong>${phase.name}</strong>
+          <small>${formatMissionClock(phase.start)} - ${formatMissionClock(phase.end)}</small>
+        </div>
+      </div>
+    `
+  ).join("");
+}
+
+async function initLaunchSequence() {
+  if (state.launchSequence.ready || state.launchSequence.initializing || state.launchSequence.fallback || !elements.launchSequenceViewport) {
+    return;
+  }
+
+  state.launchSequence.initializing = true;
+
+  try {
+    const THREE = await import(THREE_URL);
+    const renderer = new THREE.WebGLRenderer({
+      canvas: elements.launchSequenceCanvas,
+      antialias: true,
+      alpha: true,
+      powerPreference: "high-performance"
+    });
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1200);
+    const root = new THREE.Group();
+
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    camera.position.set(0, 0.8, 8.3);
+    camera.lookAt(0, 0, 0);
+
+    scene.add(root);
+    scene.add(new THREE.AmbientLight(0x91b7ff, 0.68));
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.65);
+    keyLight.position.set(3.5, 4.2, 4.5);
+    scene.add(keyLight);
+
+    const rimLight = new THREE.PointLight(0x60a5fa, 2.7, 16);
+    rimLight.position.set(-3.4, 1.8, 3.6);
+    scene.add(rimLight);
+
+    const rocket = createLaunchRocket(THREE);
+    const plume = createLaunchPlume(THREE);
+    rocket.add(plume);
+    root.add(rocket);
+
+    const starField = createLaunchStarField(THREE);
+    scene.add(starField);
+
+    const earthTexture = createEarthTexture(THREE);
+    const earth = new THREE.Mesh(
+      new THREE.SphereGeometry(5.6, 96, 96),
+      new THREE.MeshStandardMaterial({
+        map: earthTexture,
+        roughness: 0.8,
+        metalness: 0.03,
+        emissive: 0x0b1738,
+        emissiveIntensity: 0.22,
+        transparent: true,
+        opacity: 0
+      })
+    );
+    earth.position.set(0, -6.8, -2.3);
+    root.add(earth);
+
+    const atmosphere = new THREE.Mesh(
+      new THREE.SphereGeometry(5.85, 96, 96),
+      new THREE.MeshBasicMaterial({
+        color: hexToNumber(readCssVar("--accent", "#60a5fa")),
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      })
+    );
+    atmosphere.position.copy(earth.position);
+    root.add(atmosphere);
+
+    const orbitRing = createLaunchOrbitRing(THREE);
+    root.add(orbitRing);
+
+    const satelliteGroup = new THREE.Group();
+    root.add(satelliteGroup);
+
+    state.launchSequence = {
+      ...state.launchSequence,
+      THREE,
+      renderer,
+      scene,
+      camera,
+      root,
+      rocket,
+      stageOne: rocket.userData.stageOne,
+      stageTwo: rocket.userData.stageTwo,
+      fairingGroup: rocket.userData.fairingGroup,
+      fairingHalves: rocket.userData.fairingHalves,
+      satelliteGroup,
+      plume,
+      plumePositions: plume.geometry.getAttribute("position").array,
+      plumeVelocities: plume.userData.velocities,
+      plumeLife: plume.userData.life,
+      plumeColors: plume.geometry.getAttribute("color").array,
+      earth,
+      atmosphere,
+      orbitRing,
+      ready: true,
+      fallback: false,
+      initializing: false,
+      playing: true,
+      lastFrame: performance.now()
+    };
+
+    renderLaunchPhaseList();
+    refreshLaunchSatellites();
+    resizeLaunchSequence();
+    setLaunchSequenceTime(state.launchSequence.clock || 0, 0);
+    animateLaunchSequence();
+  } catch (error) {
+    console.warn("OrbitGuard launch renderer unavailable; using canvas fallback.", error);
+    state.launchSequence.initializing = false;
+    state.launchSequence.fallback = true;
+    renderLaunchPhaseList();
+    renderLaunchFallbackCanvas();
+  }
+}
+
+function createLaunchRocket(THREE) {
+  const rocket = new THREE.Group();
+  const white = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.36, metalness: 0.26 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.42, metalness: 0.32 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.3, metalness: 0.68 });
+  const accent = new THREE.MeshStandardMaterial({
+    color: hexToNumber(readCssVar("--accent", "#60a5fa")),
+    emissive: hexToNumber(readCssVar("--accent", "#60a5fa")),
+    emissiveIntensity: 0.18,
+    roughness: 0.32,
+    metalness: 0.22
+  });
+  const fairing = new THREE.MeshStandardMaterial({
+    color: 0xdbeafe,
+    roughness: 0.34,
+    metalness: 0.24,
+    side: THREE.DoubleSide
+  });
+
+  const stageOne = new THREE.Group();
+  const stageTwo = new THREE.Group();
+  const fairingGroup = new THREE.Group();
+
+  const booster = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 2.15, 36), white);
+  booster.position.y = -0.78;
+  stageOne.add(booster);
+
+  const lowerBand = new THREE.Mesh(new THREE.CylinderGeometry(0.305, 0.305, 0.12, 36), black);
+  lowerBand.position.y = -1.77;
+  const upperBand = new THREE.Mesh(new THREE.CylinderGeometry(0.268, 0.268, 0.08, 36), black);
+  upperBand.position.y = 0.24;
+  stageOne.add(lowerBand, upperBand);
+
+  for (let index = 0; index < 4; index += 1) {
+    const angle = (index / 4) * Math.PI * 2;
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.36, 0.16), accent);
+    fin.position.set(Math.cos(angle) * 0.31, -1.62, Math.sin(angle) * 0.31);
+    fin.rotation.y = -angle;
+    stageOne.add(fin);
+
+    const engine = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.18, 20), metal);
+    engine.position.set(Math.cos(angle + Math.PI / 4) * 0.1, -1.98, Math.sin(angle + Math.PI / 4) * 0.1);
+    engine.rotation.x = Math.PI;
+    stageOne.add(engine);
+  }
+
+  const upperStage = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 1.12, 36), white);
+  upperStage.position.y = 0.82;
+  const upperStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.205, 0.08, 36), black);
+  upperStripe.position.y = 1.17;
+  const vacuumEngine = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.22, 28), metal);
+  vacuumEngine.position.y = 0.2;
+  vacuumEngine.rotation.x = Math.PI;
+  stageTwo.add(upperStage, upperStripe, vacuumEngine);
+
+  const leftFairing = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.78, 36, 1, false, 0, Math.PI), fairing);
+  const rightFairing = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.78, 36, 1, false, Math.PI, Math.PI), fairing.clone());
+  leftFairing.position.y = 1.74;
+  rightFairing.position.y = 1.74;
+  fairingGroup.add(leftFairing, rightFairing);
+
+  rocket.add(stageOne, stageTwo, fairingGroup);
+  rocket.userData = {
+    stageOne,
+    stageTwo,
+    fairingGroup,
+    fairingHalves: [leftFairing, rightFairing]
+  };
+  rocket.scale.setScalar(1.03);
+  return rocket;
+}
+
+function createLaunchPlume(THREE) {
+  const count = 1700;
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const velocities = new Float32Array(count * 3);
+  const life = new Float32Array(count);
+  const geometry = new THREE.BufferGeometry();
+
+  for (let index = 0; index < count; index += 1) {
+    resetLaunchParticle(index, positions, velocities, life, colors, 0, 1);
+  }
+
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+  const plume = new THREE.Points(
+    geometry,
+    new THREE.PointsMaterial({
+      size: 0.055,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    })
+  );
+  plume.userData = { velocities, life };
+  return plume;
+}
+
+function resetLaunchParticle(index, positions, velocities, life, colors, baseY, intensity) {
+  const offset = index * 3;
+  const seed = index + performance.now() * 0.001;
+  const angle = seededUnit(seed + 1) * Math.PI * 2;
+  const spread = 0.02 + seededUnit(seed + 2) * (0.11 + intensity * 0.12);
+  const warm = seededUnit(seed + 3);
+
+  positions[offset] = Math.cos(angle) * spread;
+  positions[offset + 1] = baseY - seededUnit(seed + 4) * 0.12;
+  positions[offset + 2] = Math.sin(angle) * spread;
+  velocities[offset] = Math.cos(angle) * (0.012 + seededUnit(seed + 5) * 0.035) * (0.5 + intensity);
+  velocities[offset + 1] = -(0.045 + seededUnit(seed + 6) * 0.15) * (0.35 + intensity);
+  velocities[offset + 2] = Math.sin(angle) * (0.012 + seededUnit(seed + 7) * 0.035) * (0.5 + intensity);
+  life[index] = 0.35 + seededUnit(seed + 8) * 0.65;
+
+  colors[offset] = warm > 0.72 ? 0.48 : 1;
+  colors[offset + 1] = warm > 0.72 ? 0.72 : 0.55 + seededUnit(seed + 9) * 0.35;
+  colors[offset + 2] = warm > 0.72 ? 1 : 0.12;
+}
+
+function createLaunchStarField(THREE) {
+  const count = 700;
+  const positions = new Float32Array(count * 3);
+
+  for (let index = 0; index < count; index += 1) {
+    positions[index * 3] = (seededUnit(index + 3) - 0.5) * 20;
+    positions[index * 3 + 1] = (seededUnit(index + 13) - 0.5) * 13;
+    positions[index * 3 + 2] = -4 - seededUnit(index + 23) * 13;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  return new THREE.Points(
+    geometry,
+    new THREE.PointsMaterial({
+      color: 0xf8fafc,
+      size: 0.018,
+      transparent: true,
+      opacity: 0.56,
+      depthWrite: false
+    })
+  );
+}
+
+function createLaunchOrbitRing(THREE) {
+  const points = [];
+  const radius = 3.35;
+  const segments = 256;
+
+  for (let index = 0; index <= segments; index += 1) {
+    const angle = (index / segments) * Math.PI * 2;
+    points.push(new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius * 0.38));
+  }
+
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const ring = new THREE.LineLoop(
+    geometry,
+    new THREE.LineBasicMaterial({
+      color: hexToNumber(readCssVar("--simulated-color", "#a78bfa")),
+      transparent: true,
+      opacity: 0
+    })
+  );
+  ring.position.set(0, 0.65, -1.25);
+  return ring;
+}
+
+function createLaunchSatelliteModel(THREE) {
+  const group = new THREE.Group();
+  const bodyMaterial = new THREE.MeshStandardMaterial({
+    color: hexToNumber(readCssVar("--simulated-color", "#a78bfa")),
+    emissive: hexToNumber(readCssVar("--simulated-color", "#a78bfa")),
+    emissiveIntensity: 0.24,
+    roughness: 0.38,
+    metalness: 0.42
+  });
+  const panelMaterial = new THREE.MeshStandardMaterial({
+    color: 0x1d4ed8,
+    emissive: 0x172554,
+    emissiveIntensity: 0.34,
+    roughness: 0.32,
+    metalness: 0.24
+  });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.09, 0.09), bodyMaterial);
+  const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.012, 0.08), panelMaterial);
+  const rightPanel = leftPanel.clone();
+  leftPanel.position.x = -0.18;
+  rightPanel.position.x = 0.18;
+  group.add(body, leftPanel, rightPanel);
+  group.visible = false;
+  return group;
+}
+
+function refreshLaunchSatellites() {
+  const viz = state.launchSequence;
+
+  if (!viz.ready || !viz.satelliteGroup) {
+    return;
+  }
+
+  const THREE = viz.THREE;
+  const visualCount = clamp(Math.round(state.launch.satellites || 0), 1, 36);
+
+  while (viz.satelliteGroup.children.length) {
+    const child = viz.satelliteGroup.children[0];
+    viz.satelliteGroup.remove(child);
+    disposeObject3D(child);
+  }
+
+  viz.satellites = [];
+  for (let index = 0; index < visualCount; index += 1) {
+    const satellite = createLaunchSatelliteModel(THREE);
+    viz.satelliteGroup.add(satellite);
+    viz.satellites.push(satellite);
+  }
+}
+
+function setLaunchSequenceTime(time, deltaSeconds = 0.016) {
+  const viz = state.launchSequence;
+
+  if (!viz.ready) {
+    if (viz.fallback) {
+      renderLaunchFallbackCanvas(time);
+    }
+    return;
+  }
+
+  const clampedTime = clamp(time, 0, LAUNCH_SEQUENCE_DURATION);
+  const phase = currentLaunchPhase(clampedTime);
+  const liftoff = easeInOut(clamp((clampedTime - 3) / 16, 0, 1));
+  const orbital = easeInOut(clamp((clampedTime - 20) / 10, 0, 1));
+  const launchComplete = easeInOut(clamp((clampedTime - 27) / 8, 0, 1));
+  const rocket = viz.rocket;
+  const maxQShake = phase.name === "Max-Q" && !state.display.reduceMotion ? Math.sin(clampedTime * 34) * 0.038 : 0;
+
+  rocket.position.set(lerp(0, -1.72, orbital), lerp(-2.1, 1.64, liftoff) + maxQShake, lerp(0, -0.85, orbital));
+  rocket.rotation.z = lerp(0, -Math.PI / 2.45, orbital);
+  rocket.rotation.x = lerp(0, 0.12, orbital);
+  rocket.scale.setScalar(lerp(1.03, 0.54, orbital));
+
+  viz.stageOne.visible = clampedTime < 21;
+  const separation = phaseProgress(clampedTime, "Stage separation");
+  if (clampedTime >= 10) {
+    viz.stageOne.position.y = -separation * 1.05 - clamp((clampedTime - 13) / 8, 0, 1) * 1.2;
+    viz.stageOne.position.x = -separation * 0.28 - clamp((clampedTime - 13) / 8, 0, 1) * 0.42;
+    viz.stageOne.rotation.z = separation * 1.25 + clamp((clampedTime - 13) / 8, 0, 1) * 4.4;
+    viz.stageOne.rotation.x = separation * 0.55;
+  } else {
+    viz.stageOne.position.set(0, 0, 0);
+    viz.stageOne.rotation.set(0, 0, 0);
+  }
+
+  const fairingProgress = phaseProgress(clampedTime, "Fairing jettison");
+  for (let index = 0; index < viz.fairingHalves.length; index += 1) {
+    const direction = index === 0 ? -1 : 1;
+    const half = viz.fairingHalves[index];
+    half.position.x = fairingProgress * direction * 0.48;
+    half.position.y = 1.74 + fairingProgress * 0.2;
+    half.rotation.z = fairingProgress * direction * 1.1;
+    half.rotation.x = fairingProgress * 0.55;
+    setObjectOpacity(half, 1 - clamp((clampedTime - 22) / 3, 0, 1));
+  }
+
+  const earthOpacity = clamp((clampedTime - 20) / 5, 0, 1);
+  viz.earth.material.opacity = earthOpacity;
+  viz.atmosphere.material.opacity = earthOpacity * 0.19;
+  viz.earth.rotation.y += state.display.reduceMotion ? 0 : 0.0006 + orbital * 0.001;
+  viz.orbitRing.material.opacity = clamp((clampedTime - 24) / 3, 0, 1) * 0.85;
+
+  const plumeIntensity = launchPlumeIntensity(clampedTime);
+  viz.plume.position.y = clampedTime < 10.2 ? -1.98 : 0.14;
+  viz.plume.material.opacity = plumeIntensity * (clampedTime > 22 ? 0.35 : 1);
+  updateLaunchParticles(clampedTime, deltaSeconds, plumeIntensity);
+
+  updateLaunchSatellites(clampedTime, launchComplete);
+  updateLaunchCamera(clampedTime, maxQShake);
+  updateLaunchSequenceUi(clampedTime, phase);
+  viz.renderer.render(viz.scene, viz.camera);
+}
+
+function launchPlumeIntensity(time) {
+  if (time < 3) {
+    return 0.2 + phaseProgress(time, "Ignition buildup") * 0.68;
+  }
+
+  if (time < 10.2) {
+    return 1;
+  }
+
+  if (time < 18) {
+    return 0.66;
+  }
+
+  if (time < 22) {
+    return 0.34;
+  }
+
+  return 0.04;
+}
+
+function updateLaunchParticles(time, deltaSeconds, intensity) {
+  const viz = state.launchSequence;
+  const positions = viz.plumePositions;
+  const velocities = viz.plumeVelocities;
+  const life = viz.plumeLife;
+  const colors = viz.plumeColors;
+  const baseY = time < 10.2 ? -1.98 : 0.14;
+  const count = life.length;
+
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * 3;
+    life[index] -= deltaSeconds * (0.55 + intensity * 0.92);
+
+    if (life[index] <= 0 || intensity <= 0.05) {
+      resetLaunchParticle(index, positions, velocities, life, colors, baseY, intensity);
+      if (intensity <= 0.05) {
+        life[index] *= 0.08;
+      }
+    } else {
+      positions[offset] += velocities[offset] * deltaSeconds * 22;
+      positions[offset + 1] += velocities[offset + 1] * deltaSeconds * 22;
+      positions[offset + 2] += velocities[offset + 2] * deltaSeconds * 22;
+      velocities[offset] *= 1.004;
+      velocities[offset + 2] *= 1.004;
+    }
+  }
+
+  viz.plume.geometry.getAttribute("position").needsUpdate = true;
+  viz.plume.geometry.getAttribute("color").needsUpdate = true;
+}
+
+function updateLaunchSatellites(time, spreadProgress) {
+  const viz = state.launchSequence;
+  const deployProgress = clamp((time - 27) / 4, 0, 1);
+  const visualCount = viz.satellites.length;
+  const deployedVisual = Math.floor(deployProgress * visualCount + 0.0001);
+  const ringRadius = 3.35;
+
+  for (let index = 0; index < visualCount; index += 1) {
+    const satellite = viz.satellites[index];
+    const isVisible = index < deployedVisual || time >= 31;
+    const localDeploy = clamp((deployProgress * visualCount - index) / 1.2, 0, 1);
+    const angle = -0.95 + (index / Math.max(1, visualCount)) * Math.PI * 2 * (0.35 + spreadProgress * 0.65);
+    const radius = lerp(0.18, ringRadius, easeInOut(localDeploy || spreadProgress));
+
+    satellite.visible = isVisible;
+    satellite.position.set(-1.72 + Math.cos(angle) * radius, 0.75 + Math.sin(angle) * radius * 0.38, -1.2 + Math.sin(angle) * radius * 0.11);
+    satellite.rotation.y += state.display.reduceMotion ? 0 : 0.018 + index * 0.0007;
+    satellite.rotation.z = angle + Math.PI / 2;
+    satellite.scale.setScalar(lerp(0.25, 1, localDeploy || spreadProgress));
+  }
+}
+
+function updateLaunchCamera(time, maxQShake) {
+  const viz = state.launchSequence;
+  const orbital = easeInOut(clamp((time - 20) / 10, 0, 1));
+  const camera = viz.camera;
+
+  camera.position.x = lerp(0.08, 0.45, orbital) + maxQShake * 0.75;
+  camera.position.y = lerp(0.72, 1.35, orbital) + maxQShake * 0.35;
+  camera.position.z = lerp(8.2, 7.4, orbital);
+  camera.lookAt(lerp(0, -0.7, orbital), lerp(-0.2, 0.55, orbital), lerp(0, -1.1, orbital));
+}
+
+function updateLaunchSequenceUi(time, phase) {
+  const viz = state.launchSequence;
+  const altitudeProgress = easeInOut(clamp((time - 3) / 25, 0, 1));
+  const velocityProgress = easeInOut(clamp((time - 3) / 26, 0, 1));
+  const altitude = Math.round(altitudeProgress * state.launch.altitude);
+  const velocity = (velocityProgress * 7.7).toFixed(1);
+  const deployed = Math.min(state.launch.satellites, Math.floor(clamp((time - 27) / 4, 0, 1) * state.launch.satellites));
+
+  viz.clock = time;
+  elements.launchPhaseLabel.textContent = phase.name;
+  elements.launchClock.textContent = formatMissionClock(time);
+  elements.launchTelemetry.textContent = phase.telemetry;
+  elements.launchVizAltitude.textContent = `${numberFormat(altitude)} km`;
+  elements.launchVizVelocity.textContent = `${velocity} km/s`;
+  elements.launchVizSatellites.textContent = `${numberFormat(deployed)} / ${numberFormat(state.launch.satellites)}`;
+  elements.launchVizStage.textContent = phase.stage;
+  elements.launchScrubber.value = Math.round((time / LAUNCH_SEQUENCE_DURATION) * 1000);
+  elements.launchScrubberLabel.textContent = formatMissionClock(time);
+  elements.launchPlayPause.textContent = viz.playing ? "Pause" : "Play";
+
+  const phaseSteps = elements.launchPhaseList?.querySelectorAll(".launch-phase-step") || [];
+  phaseSteps.forEach((step, index) => {
+    const item = LAUNCH_SEQUENCE_PHASES[index];
+    step.classList.toggle("active", item.name === phase.name);
+    step.classList.toggle("complete", time >= item.end);
+  });
+}
+
+function setObjectOpacity(object, opacity) {
+  object.traverse((child) => {
+    if (!child.material) {
+      return;
+    }
+
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    for (const material of materials) {
+      material.transparent = opacity < 1;
+      material.opacity = opacity;
+    }
+  });
+}
+
+function animateLaunchSequence(now = performance.now()) {
+  const viz = state.launchSequence;
+
+  if (!viz.ready) {
+    return;
+  }
+
+  const deltaSeconds = Math.min(0.05, (now - (viz.lastFrame || now)) / 1000);
+  viz.lastFrame = now;
+
+  if (viz.playing && !state.display.reduceMotion) {
+    viz.clock += deltaSeconds;
+
+    if (viz.clock > LAUNCH_SEQUENCE_DURATION) {
+      viz.clock = LAUNCH_SEQUENCE_DURATION;
+      viz.playing = false;
+    }
+  }
+
+  setLaunchSequenceTime(viz.clock, deltaSeconds);
+  viz.animationId = window.requestAnimationFrame(animateLaunchSequence);
+}
+
+function resizeLaunchSequence() {
+  const viz = state.launchSequence;
+  const container = elements.launchSequenceViewport;
+
+  if (!container) {
+    return;
+  }
+
+  const rect = container.getBoundingClientRect();
+
+  if (viz.ready) {
+    viz.camera.aspect = rect.width / Math.max(1, rect.height);
+    viz.camera.updateProjectionMatrix();
+    viz.renderer.setSize(rect.width, rect.height, false);
+    setLaunchSequenceTime(viz.clock || 0, 0);
+  } else if (viz.fallback) {
+    renderLaunchFallbackCanvas(viz.clock || 0);
+  }
+}
+
+function renderLaunchFallbackCanvas(time = state.launchSequence.clock || 0) {
+  const canvas = elements.launchSequenceCanvas;
+  const container = elements.launchSequenceViewport;
+
+  if (!canvas || !container || state.launchSequence.ready) {
+    return;
+  }
+
+  const rect = container.getBoundingClientRect();
+  const scale = window.devicePixelRatio || 1;
+  canvas.width = Math.max(640, Math.floor(rect.width * scale));
+  canvas.height = Math.max(420, Math.floor(rect.height * scale));
+  const ctx = canvas.getContext("2d");
+  const width = canvas.width;
+  const height = canvas.height;
+  const phase = currentLaunchPhase(time);
+  const progress = clamp(time / LAUNCH_SEQUENCE_DURATION, 0, 1);
+  const rocketX = width * lerp(0.5, 0.37, progress);
+  const rocketY = height * lerp(0.72, 0.28, easeInOut(clamp((time - 3) / 22, 0, 1)));
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = readCssVar("--bg-main", "#0b1120");
+  ctx.fillRect(0, 0, width, height);
+
+  for (let index = 0; index < 120; index += 1) {
+    ctx.fillStyle = hexToRgba(readCssVar("--text-main", "#f8fafc"), 0.12 + seededUnit(index) * 0.26);
+    ctx.beginPath();
+    ctx.arc(seededUnit(index + 2) * width, seededUnit(index + 8) * height, (0.6 + seededUnit(index + 4) * 1.3) * scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const earthY = height * 0.95;
+  const earthRadius = width * 0.46;
+  const gradient = ctx.createRadialGradient(width * 0.43, earthY - earthRadius * 0.36, 0, width * 0.5, earthY, earthRadius);
+  gradient.addColorStop(0, readCssVar("--success", "#86efac"));
+  gradient.addColorStop(0.45, readCssVar("--payload-color", "#93c5fd"));
+  gradient.addColorStop(1, readCssVar("--bg-card", "#172033"));
+  ctx.globalAlpha = clamp((time - 20) / 5, 0, 1);
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(width / 2, earthY, earthRadius, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.save();
+  ctx.translate(rocketX, rocketY);
+  ctx.rotate(lerp(0, -Math.PI / 2.8, easeInOut(clamp((time - 20) / 10, 0, 1))));
+  const plume = launchPlumeIntensity(time);
+  const plumeGradient = ctx.createRadialGradient(0, 58 * scale, 0, 0, 88 * scale, 70 * scale);
+  plumeGradient.addColorStop(0, hexToRgba(readCssVar("--warning", "#facc15"), 0.9 * plume));
+  plumeGradient.addColorStop(0.45, `rgb(249 115 22 / ${0.48 * plume})`);
+  plumeGradient.addColorStop(1, "rgb(96 165 250 / 0)");
+  ctx.fillStyle = plumeGradient;
+  ctx.beginPath();
+  ctx.ellipse(0, 88 * scale, 42 * scale, 96 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillRect(-18 * scale, -82 * scale, 36 * scale, 132 * scale);
+  ctx.fillStyle = readCssVar("--accent", "#60a5fa");
+  ctx.fillRect(-20 * scale, 36 * scale, 40 * scale, 12 * scale);
+  ctx.fillStyle = "#dbeafe";
+  ctx.beginPath();
+  ctx.moveTo(-18 * scale, -82 * scale);
+  ctx.lineTo(0, -122 * scale);
+  ctx.lineTo(18 * scale, -82 * scale);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  updateLaunchSequenceUi(time, phase);
+}
+
 function disposeObject3D(object) {
   object.traverse((child) => {
     if (child.geometry) {
@@ -3377,6 +4146,10 @@ function setActiveMode(mode) {
     renderWeather();
   } else if (mode === "encyclopedia") {
     renderEncyclopedia();
+  } else if (mode === "simulator") {
+    renderLaunchImpact();
+    initLaunchSequence();
+    resizeLaunchSequence();
   } else {
     renderOrbitScene();
   }
@@ -3584,12 +4357,47 @@ function wireEncyclopediaControls() {
   });
 }
 
+function wireLaunchSequenceControls() {
+  renderLaunchPhaseList();
+
+  elements.launchPlayPause?.addEventListener("click", () => {
+    const viz = state.launchSequence;
+
+    if (viz.clock >= LAUNCH_SEQUENCE_DURATION) {
+      viz.clock = 0;
+    }
+
+    viz.playing = !viz.playing;
+    viz.lastFrame = performance.now();
+    elements.launchPlayPause.textContent = viz.playing ? "Pause" : "Play";
+    initLaunchSequence();
+    setLaunchSequenceTime(viz.clock || 0, 0);
+  });
+
+  elements.launchRestart?.addEventListener("click", () => {
+    state.launchSequence.clock = 0;
+    state.launchSequence.playing = true;
+    state.launchSequence.lastFrame = performance.now();
+    initLaunchSequence();
+    setLaunchSequenceTime(0, 0);
+  });
+
+  elements.launchScrubber?.addEventListener("input", () => {
+    const time = (Number(elements.launchScrubber.value) / 1000) * LAUNCH_SEQUENCE_DURATION;
+    state.launchSequence.clock = time;
+    state.launchSequence.playing = false;
+    initLaunchSequence();
+    setLaunchSequenceTime(time, 0);
+  });
+}
+
 function wireControls() {
   wireModeTabs();
   wireDisplaySettings();
   wireTimeMachineControls();
   wireWeatherControls();
   wireEncyclopediaControls();
+  wireLaunchSequenceControls();
 
   elements.orbitFilter.addEventListener("change", () => {
     state.filters.orbit = elements.orbitFilter.value;
@@ -3675,6 +4483,7 @@ function wireControls() {
   elements.downloadSimulationCsv.addEventListener("click", exportSimulationCsv);
   elements.downloadReport.addEventListener("click", exportReportJson);
   window.addEventListener("resize", resizeOrbitScene);
+  window.addEventListener("resize", resizeLaunchSequence);
 }
 
 function setupThemeControls() {

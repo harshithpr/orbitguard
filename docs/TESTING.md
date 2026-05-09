@@ -115,6 +115,8 @@ Expected:
 - Objects added: 24
 - Moderate/low sustainability impact
 - Report mentions deorbit planning as a positive factor
+- Immersive Launch Sequence starts at ignition, advances through liftoff, and updates altitude, velocity, stage, and deployed-satellite telemetry
+- Restart returns the sequence to T+00:00, and the mission-time slider scrubs through all 11 phases
 
 ## Weather Ops Test
 
@@ -151,6 +153,7 @@ Expected:
 - Higher risk than Test 1
 - Lower sustainability grade
 - Warnings or recommendations about long lifetime, fragments, missing deorbit plan, and rocket body disposal
+- Launch visualization updates the deployed-satellite count to match the scenario input while still limiting visual objects for performance
 
 ## Download Checks
 

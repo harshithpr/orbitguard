@@ -31,6 +31,8 @@ OrbitGuard also includes a customizable visual theme system that lets users swit
 3. **Launch Impact Simulator**
    - User enters satellites deployed, target altitude, inclination, lifetime, fragments, rocket-body disposal, and deorbit plan
    - App calculates objects added, affected altitude band, band-density increase, launch risk, and sustainability grade
+   - Immersive procedural 3D launch sequence with ignition, liftoff, Max-Q, stage separation, fairing jettison, orbit insertion, and satellite deployment
+   - Lightweight rendering uses generated geometry and particle systems instead of heavy model files
 
 4. **OrbitGuard Space Encyclopedia**
    - 200 curated topics across 10 aerospace and space-sustainability categories
@@ -199,6 +201,8 @@ For a new launch, OrbitGuard estimates:
 - **Band share:** objects in that altitude band divided by all tracked objects
 - **Crowding score:** how dense that band is compared with the densest band in the catalog
 - **Launch risk:** a 0-100 educational index combining crowding, orbital persistence, mission lifetime, debris/rocket-body presence, and deorbit planning
+
+The simulator also includes a browser-based procedural launch visualization. The rocket, exhaust plume, Earth horizon, orbit ring, and satellites are generated with code, so users get a high-quality mission sequence without large 3D asset downloads. The sequence follows 11 mission phases from ignition through payload deployment and updates the same telemetry shown in the launch impact model.
 
 Example output:
 

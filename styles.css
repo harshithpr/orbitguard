@@ -1550,6 +1550,182 @@ td {
   font-weight: 900;
 }
 
+.launch-sequence-panel {
+  margin-top: 1rem;
+}
+
+.launch-sequence-heading {
+  align-items: center;
+}
+
+.panel-note {
+  max-width: 70ch;
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.launch-sequence-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: end;
+}
+
+.launch-sequence-actions button:last-child {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.launch-sequence-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.58fr) minmax(280px, 0.42fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.launch-viewport {
+  position: relative;
+  min-height: clamp(420px, 62vh, 720px);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 92%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 34%),
+    radial-gradient(circle at 18% 14%, color-mix(in srgb, var(--chart-geo) 16%, transparent), transparent 26%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-main) 88%, #030712) 0%, var(--bg-main) 58%, #020617 100%);
+  box-shadow: 0 28px 80px color-mix(in srgb, var(--shadow) 76%, transparent);
+  isolation: isolate;
+}
+
+.launch-viewport canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}
+
+.launch-hud {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 1rem;
+  align-items: end;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-main) 78%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.launch-hud span {
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 820;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.launch-hud strong {
+  color: var(--text);
+  font-size: clamp(1.3rem, 3vw, 2.2rem);
+  line-height: 1;
+}
+
+.launch-hud small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.launch-sequence-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}
+
+.launch-phase-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.launch-phase-step {
+  display: grid;
+  grid-template-columns: 1.7rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.68rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.launch-phase-step span {
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.launch-phase-step strong {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.launch-phase-step small {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.launch-phase-step.complete {
+  border-color: color-mix(in srgb, var(--success) 38%, var(--line));
+}
+
+.launch-phase-step.complete span {
+  background: color-mix(in srgb, var(--success) 28%, var(--ink));
+  color: var(--text);
+}
+
+.launch-phase-step.active {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 78%, var(--panel-2));
+}
+
+.launch-phase-step.active span {
+  background: var(--accent);
+  color: var(--bg-main);
+}
+
+.launch-scrubber span {
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.launch-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.launch-telemetry-grid .metric.compact strong {
+  font-size: clamp(1.18rem, 2vw, 1.65rem);
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 footer {
   display: flex;
   flex-wrap: wrap;
@@ -1605,6 +1781,7 @@ footer a {
   .chart-grid,
   .table-grid,
   .simulator-layout,
+  .launch-sequence-grid,
   .about-grid,
   .compare-grid,
   .encyclopedia-shell,
@@ -1669,6 +1846,7 @@ footer a {
   .ground-operations-grid,
   .ground-controls,
   .ground-network-cards,
+  .launch-telemetry-grid,
   .incident-stats {
     grid-template-columns: 1fr;
   }
@@ -1696,6 +1874,18 @@ footer a {
   .time-intro-panel .panel-heading button {
     min-width: 0;
     width: 100%;
+  }
+
+  .launch-viewport {
+    min-height: 420px;
+  }
+
+  .launch-hud {
+    grid-template-columns: 1fr;
+  }
+
+  .launch-sequence-actions {
+    justify-content: start;
   }
 
   .legend {
