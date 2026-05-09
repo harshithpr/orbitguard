@@ -244,6 +244,56 @@ export function summarize(objects) {
   };
 }
 
+export function summarizeHistoricalObjects(objects) {
+  const summary = summarize(objects);
+  const payloads = objects.filter((object) => object.type === "PAY").length;
+  const leo = objects.filter((object) => object.orbitClass === "LEO").length;
+  const other = objects.filter((object) => !["PAY", "DEB", "R/B"].includes(object.type)).length;
+
+  return {
+    ...summary,
+    payloads,
+    leo,
+    other
+  };
+}
+
+export function objectsForYear(objects, year) {
+  return objects.filter((object) => Number.isFinite(object.launchYear) && object.launchYear <= year);
+}
+
+export function buildTimeMachineComparison(objects, inputYear, currentYear = new Date().getUTCFullYear()) {
+  const launchYears = objects
+    .map((object) => object.launchYear)
+    .filter((year) => Number.isFinite(year) && year >= 1957);
+  const minYear = launchYears.length ? Math.min(1957, ...launchYears) : 1957;
+  const maxYear = Math.max(currentYear, ...(launchYears.length ? launchYears : [currentYear]));
+  const selectedYear = clamp(Number(inputYear || 2010), minYear, maxYear);
+  const pastObjects = objectsForYear(objects, selectedYear);
+  const past = summarizeHistoricalObjects(pastObjects);
+  const current = summarizeHistoricalObjects(objects);
+
+  return {
+    selectedYear,
+    currentYear: maxYear,
+    past,
+    current,
+    change: {
+      totalObjects: current.total - past.total,
+      payloads: current.payloads - past.payloads,
+      activeSatellites: current.active - past.active,
+      debris: current.debris - past.debris,
+      rocketBodies: current.rocketBodies - past.rocketBodies,
+      leoObjects: current.leo - past.leo,
+      averageRiskIndex: current.averageRisk - past.averageRisk
+    },
+    methodology:
+      "Educational historical reconstruction based on launch-year filtering of the current catalog.",
+    limitation:
+      "This does not remove objects that decayed before the selected year and is not a replacement for archived SATCAT/TLE snapshots."
+  };
+}
+
 export function riskLevel(score) {
   if (score >= 68) {
     return "High";

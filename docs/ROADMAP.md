@@ -7,9 +7,18 @@
 - Launch impact simulator
 - Sustainability report
 - 3D Earth orbit visualizer
+- Time Machine comparison mode with year slider
+- Customizable visual theme and accessibility controls
 - Local API endpoints
 
 Status: built.
+
+## Phase 1.5: Historical Accuracy Upgrade
+
+- Replace launch-year reconstruction with archived yearly SATCAT/TLE snapshots
+- Add major debris-event annotations for Fengyun-1C, Iridium-33/Kosmos-2251, and future catalog events
+- Export side-by-side historical comparison CSV files
+- Add a public methodology note explaining which historical records are exact snapshots and which are reconstructed
 
 ## Phase 2: Real Orbital Mechanics
 
@@ -56,4 +65,3 @@ Useful official sources:
 - Add issues labeled `good-first-issue`, `orbital-mechanics`, `data-source`, and `frontend`
 - Ask for review from aerospace, astronomy, and open-source communities
 - Add a public demo link once deployed
-

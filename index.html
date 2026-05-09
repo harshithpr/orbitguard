@@ -5,12 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="OrbitGuard is a space sustainability analyzer for satellite catalog data, launch impact simulation, and orbital congestion risk.">
     <meta name="author" content="Harshith Pranav Praveen">
-    <meta name="theme-color" content="#0d1014">
+    <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>OrbitGuard | Space Sustainability Analyzer</title>
     <link rel="icon" type="image/png" href="/public/favicon.png">
     <link rel="apple-touch-icon" href="/public/favicon.png">
     <link rel="stylesheet" href="styles.css">
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.165.0/build/three.module.js"
+        }
+      }
+    </script>
   </head>
   <body>
     <header class="topbar">
@@ -31,9 +38,83 @@
     <main>
       <nav class="mode-tabs" aria-label="Project modes">
         <button class="mode-tab active" type="button" data-mode="dashboard">Current Orbit Dashboard</button>
+        <button class="mode-tab" type="button" data-mode="time">Time Machine</button>
         <button class="mode-tab" type="button" data-mode="simulator">Launch Impact Simulator</button>
         <button class="mode-tab" type="button" data-mode="report">Sustainability Report</button>
       </nav>
+
+      <section class="hero-band" aria-label="OrbitGuard overview">
+        <div>
+          <p class="eyebrow">Space Sustainability Analyzer</p>
+          <h2>OrbitGuard</h2>
+          <p>Track orbital congestion, compare space debris growth over time, and simulate how new launches affect Earth orbit.</p>
+        </div>
+        <div class="hero-actions">
+          <button class="mode-jump" type="button" data-mode="dashboard">Open Dashboard</button>
+          <button class="mode-jump" type="button" data-mode="simulator">Run Launch Simulator</button>
+          <button class="mode-jump" type="button" data-mode="time">Use Time Machine</button>
+        </div>
+      </section>
+
+      <section class="display-settings" aria-label="Display settings">
+        <div class="theme-controls">
+          <label for="theme-select">Theme</label>
+          <select id="theme-select">
+            <option value="soft-blue">Soft Blue</option>
+            <option value="deep-space">Deep Space</option>
+            <option value="light">Light</option>
+            <option value="high-contrast">High Contrast</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+
+        <label class="setting-control color-control">
+          Accent
+          <input id="accent-color" type="color" value="#93c5fd">
+        </label>
+
+        <label class="setting-control">
+          Background
+          <input id="background-brightness" type="range" min="82" max="118" value="100">
+        </label>
+
+        <label class="setting-control">
+          Text contrast
+          <input id="text-contrast" type="range" min="88" max="118" value="100">
+        </label>
+
+        <label class="setting-control">
+          Chart colors
+          <select id="chart-palette">
+            <option value="balanced">Balanced</option>
+            <option value="aerospace">Aerospace</option>
+            <option value="calm">Calm</option>
+          </select>
+        </label>
+
+        <div class="object-color-controls" aria-label="3D object colors">
+          <label><span>Payload</span><input id="payload-color" type="color" value="#93c5fd"></label>
+          <label><span>Debris</span><input id="debris-color" type="color" value="#f87171"></label>
+          <label><span>Rocket</span><input id="rocket-color" type="color" value="#fbbf24"></label>
+          <label><span>Simulated</span><input id="simulated-color" type="color" value="#a78bfa"></label>
+          <label><span>Other</span><input id="other-color" type="color" value="#cbd5e1"></label>
+        </div>
+
+        <label class="check-row compact-check">
+          <input id="reduce-motion" type="checkbox">
+          <span>Reduce motion</span>
+        </label>
+
+        <label class="check-row compact-check">
+          <input id="large-text" type="checkbox">
+          <span>Larger text</span>
+        </label>
+
+        <label class="check-row compact-check">
+          <input id="high-contrast-toggle" type="checkbox">
+          <span>High contrast</span>
+        </label>
+      </section>
 
       <section class="mode-panel active" id="dashboardMode">
         <section class="control-band" aria-label="Analyzer controls">
@@ -88,24 +169,34 @@
 
         <section class="metrics-grid dashboard-metrics" aria-label="Catalog metrics">
           <article class="metric">
-            <span>Tracked objects</span>
+            <span>Total Objects</span>
             <strong id="metricObjects">-</strong>
+            <small>Current public catalog estimate</small>
           </article>
           <article class="metric">
-            <span>Active satellites</span>
+            <span>Active Payloads</span>
             <strong id="metricActive">-</strong>
+            <small>Operational satellites still in use</small>
           </article>
           <article class="metric">
-            <span>Debris objects</span>
+            <span>Debris Objects</span>
             <strong id="metricDebris">-</strong>
+            <small>Tracked fragments and breakup pieces</small>
           </article>
           <article class="metric">
-            <span>Rocket bodies</span>
+            <span>Rocket Bodies</span>
             <strong id="metricRocketBodies">-</strong>
+            <small>Upper stages and related hardware</small>
           </article>
           <article class="metric">
-            <span>Risk index</span>
+            <span>Most Crowded Orbit Band</span>
+            <strong id="metricCrowdedBand">-</strong>
+            <small id="metricCrowdedBandNote">Highest-density altitude shell</small>
+          </article>
+          <article class="metric">
+            <span>Sustainability Risk Level</span>
             <strong id="metricRisk">-</strong>
+            <small id="metricRiskNote">Average catalog risk index</small>
           </article>
         </section>
 
@@ -116,11 +207,12 @@
                 <p class="eyebrow">Orbital environment</p>
                 <h2>3D Earth Orbit Visualizer</h2>
               </div>
-              <div class="legend">
+              <div class="legend orbit-legend">
                 <span><i class="payload-dot"></i>Payload</span>
                 <span><i class="debris-dot"></i>Debris</span>
                 <span><i class="rocket-dot"></i>Rocket body</span>
                 <span><i class="launch-dot"></i>Simulated launch</span>
+                <span><i class="other-dot"></i>Other</span>
               </div>
             </div>
             <div class="orbit-scene" id="orbitScene" aria-label="3D Earth orbit visualizer">
@@ -247,6 +339,114 @@
                 <tbody id="objectRows"></tbody>
               </table>
             </div>
+          </article>
+        </section>
+      </section>
+
+      <section class="mode-panel" id="timeMode">
+        <section class="time-machine-grid" aria-label="OrbitGuard Time Machine">
+          <article class="panel time-intro-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Historical orbit comparison</p>
+                <h2>OrbitGuard Time Machine</h2>
+              </div>
+              <button id="downloadTimeMachineJson" type="button">Download Comparison</button>
+            </div>
+            <p class="time-lede">
+              Compare a selected launch year against today's catalog to see how satellites, debris, rocket bodies, and LEO congestion have changed.
+            </p>
+
+            <div class="time-controls">
+              <label for="yearSlider">
+                Selected year
+                <input id="yearSlider" type="range" min="1957" max="2026" value="2010">
+              </label>
+              <strong id="selectedYear">2010</strong>
+              <button id="compareToday" type="button">Compare With Today</button>
+            </div>
+
+            <div class="time-toggle-row" aria-label="Object type display toggles">
+              <label class="check-row compact-check">
+                <input id="timePayloadToggle" type="checkbox" checked>
+                <span>Payloads</span>
+              </label>
+              <label class="check-row compact-check">
+                <input id="timeDebrisToggle" type="checkbox" checked>
+                <span>Debris</span>
+              </label>
+              <label class="check-row compact-check">
+                <input id="timeRocketToggle" type="checkbox" checked>
+                <span>Rocket bodies</span>
+              </label>
+              <label class="check-row compact-check">
+                <input id="timeOtherToggle" type="checkbox" checked>
+                <span>Other hardware</span>
+              </label>
+            </div>
+          </article>
+
+          <article class="panel time-summary-panel">
+            <div class="compare-grid">
+              <div class="compare-card">
+                <p class="eyebrow">Past catalog</p>
+                <h3 id="pastYearTitle">2010 Orbit</h3>
+                <p id="pastSummary">Move the slider to view historical orbital congestion.</p>
+              </div>
+              <div class="compare-card">
+                <p class="eyebrow">Current catalog</p>
+                <h3 id="currentYearTitle">Current Orbit</h3>
+                <p id="currentSummary">Current catalog data will appear here.</p>
+              </div>
+            </div>
+            <div class="compare-card difference-card">
+              <p class="eyebrow">What changed?</p>
+              <h3>Past vs. Today</h3>
+              <p id="differenceSummary">Select a year to compare past orbital congestion with today.</p>
+            </div>
+          </article>
+
+          <article class="panel orbit-panel time-orbit-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Interactive reconstruction</p>
+                <h2>Moveable 3D Orbit View</h2>
+              </div>
+              <div class="legend orbit-legend">
+                <span><i class="payload-dot"></i>Payload</span>
+                <span><i class="debris-dot"></i>Debris</span>
+                <span><i class="rocket-dot"></i>Rocket body</span>
+                <span><i class="other-dot"></i>Other</span>
+              </div>
+            </div>
+            <div class="orbit-scene" id="timeOrbitScene" aria-label="OrbitGuard Time Machine 3D orbit visualizer">
+              <canvas id="timeOrbitCanvas" width="900" height="560" aria-label="Fallback historical orbital population visualization"></canvas>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Comparison table</p>
+                <h2>Catalog Change Summary</h2>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="comparison-table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th id="pastColumnTitle">Past</th>
+                    <th>Today</th>
+                    <th>Change</th>
+                  </tr>
+                </thead>
+                <tbody id="comparisonBody"></tbody>
+              </table>
+            </div>
+            <p class="time-note">
+              Note: This historical view is an educational reconstruction using launch-year data from the current catalog. A future version can use archived orbital snapshots for higher accuracy.
+            </p>
           </article>
         </section>
       </section>

@@ -4,6 +4,7 @@ import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   buildBands,
+  buildTimeMachineComparison,
   filterObjects,
   normalizeObject,
   scoreObjects,
@@ -141,6 +142,15 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (url.pathname === "/api/v1/time-machine") {
+    const generatedYear = new Date(catalog.metadata.generatedAt).getUTCFullYear();
+    sendJson(res, 200, {
+      metadata: catalog.metadata,
+      ...buildTimeMachineComparison(catalog.objects, url.searchParams.get("year"), generatedYear)
+    });
+    return;
+  }
+
   if (url.pathname === "/api/v1/sustainability" && req.method === "GET") {
     const impact = simulateLaunchImpact(catalog.objects, searchParamsToObject(url.searchParams));
     sendJson(res, 200, {
@@ -176,6 +186,7 @@ async function handleApi(req, res) {
       "GET /api/v1/summary",
       "GET /api/v1/objects?band=500-600&type=debris",
       "GET /api/v1/bands?size=100",
+      "GET /api/v1/time-machine?year=2005",
       "GET /api/v1/sustainability?satellites=24&altitude=550&inclination=53&rocketBodyRemains=true",
       "POST /api/v1/simulate"
     ]

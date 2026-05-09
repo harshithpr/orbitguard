@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   buildBands,
+  buildTimeMachineComparison,
   filterObjects,
   normalizeObject,
   scoreObjects,
@@ -72,5 +73,4 @@ export async function readBody(req) {
   return body ? JSON.parse(body) : {};
 }
 
-export { buildBands, filterObjects, simulateLaunchImpact, summarize };
-
+export { buildBands, buildTimeMachineComparison, filterObjects, simulateLaunchImpact, summarize };

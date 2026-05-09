@@ -38,9 +38,43 @@ The app should:
 - Load the OrbitGuard logo and favicon
 - Show current CelesTrak object counts
 - Render the 3D orbit visualizer
+- Switch between Soft Blue, Deep Space, Light, High Contrast, and Custom themes
+- Save display settings after refresh
 - Keep controls readable on phone width
-- Switch between all three modes
+- Switch between all four modes
 - Avoid text overlapping controls
+
+## Display Settings Test
+
+Open the top display settings panel.
+
+Expected:
+
+- `Theme` changes the full app palette without hiding text
+- `Accent`, `Background`, and `Text contrast` switch the selector to `Custom`
+- `Chart colors` changes dashboard bar/timeline colors
+- 3D object color inputs change payload, debris, rocket-body, simulated, and other object dots
+- `Reduce motion`, `Larger text`, and `High contrast` apply immediately and remain after refresh
+
+## Time Machine Test
+
+Open the `Time Machine` tab.
+
+Input:
+
+```text
+Selected year: 2005
+Object toggles: Payloads, Debris, Rocket bodies, Other hardware all enabled
+```
+
+Expected:
+
+- Past card changes to `2005 Orbit`
+- Current card stays on the current catalog year
+- Comparison table shows positive changes for total objects and LEO objects
+- 3D orbit view updates to the selected year
+- Drag rotates the globe, scroll/pinch zooms, and the object points remain visible
+- Download Comparison saves a JSON report with selected year, current year, and change values
 
 ## Launch Simulator Test 1
 
@@ -92,6 +126,7 @@ Click:
 
 - Download Data CSV
 - Download Data JSON
+- Download Comparison
 - Download Launch Simulation
 - Download Simulation CSV
 - Download Sustainability Report
@@ -110,6 +145,7 @@ Open these in the browser:
 http://localhost:4173/api/v1/health
 http://localhost:4173/api/v1/summary
 http://localhost:4173/api/v1/objects?band=500-600&type=debris&limit=5
+http://localhost:4173/api/v1/time-machine?year=2005
 http://localhost:4173/api/v1/sustainability?satellites=24&altitude=550&inclination=53&rocketBodyRemains=false
 ```
 
@@ -119,5 +155,5 @@ Expected:
 - `health.ok` is `true`
 - `summary` includes catalog counts
 - `objects` returns matching records
+- `time-machine` returns selected year, current year, and change values
 - `sustainability` returns an `impact` object
-

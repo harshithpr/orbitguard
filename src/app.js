@@ -1,5 +1,6 @@
 const DATA_URL = "data/orbitguard-data.json";
 const THREE_URL = "https://unpkg.com/three@0.165.0/build/three.module.js";
+const ORBIT_CONTROLS_URL = "https://unpkg.com/three@0.165.0/examples/jsm/controls/OrbitControls.js";
 const CREATOR = {
   name: "Harshith Pranav Praveen",
   bio:
@@ -15,15 +16,82 @@ const CREATOR = {
   ]
 };
 const ACTIVE_STATUS_CODES = new Set(["+", "P", "B", "S", "X"]);
+const THEME_STORAGE_KEY = "orbitguard-display-settings";
+const DEFAULT_DISPLAY_SETTINGS = {
+  theme: "soft-blue",
+  baseTheme: "soft-blue",
+  accent: "#93c5fd",
+  brightness: 100,
+  textContrast: 100,
+  chartPalette: "balanced",
+  reduceMotion: false,
+  largeText: false,
+  payloadColor: "#93c5fd",
+  debrisColor: "#f87171",
+  rocketColor: "#fbbf24",
+  simulatedColor: "#a78bfa",
+  otherColor: "#cbd5e1"
+};
+const THEME_PRESETS = {
+  "deep-space": {
+    bgMain: "#020617",
+    bgPanel: "#0f172a",
+    bgCard: "#111827",
+    textMain: "#f8fafc",
+    textMuted: "#cbd5e1"
+  },
+  "soft-blue": {
+    bgMain: "#0f172a",
+    bgPanel: "#172033",
+    bgCard: "#1e293b",
+    textMain: "#f8fafc",
+    textMuted: "#dbeafe"
+  },
+  light: {
+    bgMain: "#f8fafc",
+    bgPanel: "#ffffff",
+    bgCard: "#f1f5f9",
+    textMain: "#0f172a",
+    textMuted: "#475569"
+  },
+  "high-contrast": {
+    bgMain: "#000000",
+    bgPanel: "#0a0a0a",
+    bgCard: "#111111",
+    textMain: "#ffffff",
+    textMuted: "#e5e7eb"
+  }
+};
+const CHART_PALETTES = {
+  balanced: {
+    leo: "#60a5fa",
+    meo: "#86efac",
+    geo: "#facc15",
+    heo: "#c084fc"
+  },
+  aerospace: {
+    leo: "#38bdf8",
+    meo: "#22c55e",
+    geo: "#fbbf24",
+    heo: "#818cf8"
+  },
+  calm: {
+    leo: "#93c5fd",
+    meo: "#a7f3d0",
+    geo: "#fde68a",
+    heo: "#ddd6fe"
+  }
+};
 const TYPE_COLORS = {
-  PAY: "#58c7bd",
+  PAY: "#93c5fd",
   DEB: "#f27667",
-  "R/B": "#e9b95f",
-  other: "#b78cff",
-  launch: "#8fd17f"
+  "R/B": "#fbbf24",
+  other: "#cbd5e1",
+  launch: "#a78bfa"
 };
 
 const state = {
+  mode: "dashboard",
   objects: [],
   filtered: [],
   metadata: null,
@@ -49,11 +117,21 @@ const state = {
     deorbitPlan: true
   },
   impact: null,
+  display: { ...DEFAULT_DISPLAY_SETTINGS },
+  timeMachine: {
+    selectedYear: 2010,
+    currentYear: new Date().getFullYear(),
+    showPayloads: true,
+    showDebris: true,
+    showRocketBodies: true,
+    showOther: true
+  },
   three: {
     THREE: null,
     renderer: null,
     scene: null,
     camera: null,
+    controls: null,
     root: null,
     objectPoints: null,
     launchPoints: null,
@@ -66,7 +144,21 @@ const state = {
 const elements = {
   dataSource: document.querySelector("#dataSource"),
   modeTabs: document.querySelectorAll(".mode-tab"),
+  modeJumps: document.querySelectorAll(".mode-jump"),
   modePanels: document.querySelectorAll(".mode-panel"),
+  themeSelect: document.querySelector("#theme-select"),
+  accentColor: document.querySelector("#accent-color"),
+  backgroundBrightness: document.querySelector("#background-brightness"),
+  textContrast: document.querySelector("#text-contrast"),
+  chartPalette: document.querySelector("#chart-palette"),
+  payloadColor: document.querySelector("#payload-color"),
+  debrisColor: document.querySelector("#debris-color"),
+  rocketColor: document.querySelector("#rocket-color"),
+  simulatedColor: document.querySelector("#simulated-color"),
+  otherColor: document.querySelector("#other-color"),
+  reduceMotion: document.querySelector("#reduce-motion"),
+  largeText: document.querySelector("#large-text"),
+  highContrastToggle: document.querySelector("#high-contrast-toggle"),
   orbitFilter: document.querySelector("#orbitFilter"),
   typeFilter: document.querySelector("#typeFilter"),
   statusFilter: document.querySelector("#statusFilter"),
@@ -80,9 +172,29 @@ const elements = {
   metricActive: document.querySelector("#metricActive"),
   metricDebris: document.querySelector("#metricDebris"),
   metricRocketBodies: document.querySelector("#metricRocketBodies"),
+  metricCrowdedBand: document.querySelector("#metricCrowdedBand"),
+  metricCrowdedBandNote: document.querySelector("#metricCrowdedBandNote"),
   metricRisk: document.querySelector("#metricRisk"),
+  metricRiskNote: document.querySelector("#metricRiskNote"),
   orbitScene: document.querySelector("#orbitScene"),
   orbitCanvas: document.querySelector("#orbitCanvas"),
+  timeOrbitScene: document.querySelector("#timeOrbitScene"),
+  timeOrbitCanvas: document.querySelector("#timeOrbitCanvas"),
+  yearSlider: document.querySelector("#yearSlider"),
+  selectedYear: document.querySelector("#selectedYear"),
+  compareToday: document.querySelector("#compareToday"),
+  timePayloadToggle: document.querySelector("#timePayloadToggle"),
+  timeDebrisToggle: document.querySelector("#timeDebrisToggle"),
+  timeRocketToggle: document.querySelector("#timeRocketToggle"),
+  timeOtherToggle: document.querySelector("#timeOtherToggle"),
+  pastYearTitle: document.querySelector("#pastYearTitle"),
+  currentYearTitle: document.querySelector("#currentYearTitle"),
+  pastSummary: document.querySelector("#pastSummary"),
+  currentSummary: document.querySelector("#currentSummary"),
+  differenceSummary: document.querySelector("#differenceSummary"),
+  pastColumnTitle: document.querySelector("#pastColumnTitle"),
+  comparisonBody: document.querySelector("#comparisonBody"),
+  downloadTimeMachineJson: document.querySelector("#downloadTimeMachineJson"),
   deorbitSlider: document.querySelector("#deorbitSlider"),
   deorbitValue: document.querySelector("#deorbitValue"),
   fragmentInput: document.querySelector("#fragmentInput"),
@@ -171,6 +283,48 @@ function percent(value) {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function readCssVar(name, fallback = "") {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
+function hexToChannels(hex) {
+  const normalized = hex.replace("#", "");
+  const value = Number.parseInt(normalized.length === 3 ? normalized.split("").map((char) => char + char).join("") : normalized, 16);
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255
+  };
+}
+
+function channelsToHex({ r, g, b }) {
+  return `#${[r, g, b].map((value) => clamp(Math.round(value), 0, 255).toString(16).padStart(2, "0")).join("")}`;
+}
+
+function mixHex(firstHex, secondHex, amount) {
+  const first = hexToChannels(firstHex);
+  const second = hexToChannels(secondHex);
+  return channelsToHex({
+    r: first.r + (second.r - first.r) * amount,
+    g: first.g + (second.g - first.g) * amount,
+    b: first.b + (second.b - first.b) * amount
+  });
+}
+
+function adjustHexBrightness(hex, percentValue) {
+  const amount = Math.abs(percentValue - 100) / 100;
+  return percentValue >= 100 ? mixHex(hex, "#ffffff", amount) : mixHex(hex, "#000000", amount);
+}
+
+function hexToRgba(hex, alpha) {
+  const { r, g, b } = hexToChannels(hex);
+  return `rgb(${r} ${g} ${b} / ${alpha})`;
+}
+
+function hexToNumber(hex) {
+  return Number.parseInt(hex.replace("#", ""), 16);
 }
 
 function median(values) {
@@ -374,16 +528,118 @@ function applyFilters() {
   });
 }
 
+function loadDisplaySettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) || "{}");
+    const legacyTheme = localStorage.getItem("orbitguard-theme");
+    state.display = { ...DEFAULT_DISPLAY_SETTINGS, ...(legacyTheme ? { theme: legacyTheme, baseTheme: legacyTheme } : {}), ...saved };
+  } catch {
+    state.display = { ...DEFAULT_DISPLAY_SETTINGS };
+  }
+}
+
+function saveDisplaySettings() {
+  localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(state.display));
+}
+
+function setDisplayControls() {
+  elements.themeSelect.value = state.display.theme;
+  elements.accentColor.value = state.display.accent;
+  elements.backgroundBrightness.value = String(state.display.brightness);
+  elements.textContrast.value = String(state.display.textContrast);
+  elements.chartPalette.value = state.display.chartPalette;
+  elements.payloadColor.value = state.display.payloadColor;
+  elements.debrisColor.value = state.display.debrisColor;
+  elements.rocketColor.value = state.display.rocketColor;
+  elements.simulatedColor.value = state.display.simulatedColor;
+  elements.otherColor.value = state.display.otherColor;
+  elements.reduceMotion.checked = state.display.reduceMotion;
+  elements.largeText.checked = state.display.largeText;
+  elements.highContrastToggle.checked = state.display.theme === "high-contrast";
+}
+
+function clearCustomSurfaceVariables() {
+  for (const name of ["--bg-main", "--bg-panel", "--bg-card", "--text-main", "--text-muted", "--accent", "--accent-soft"]) {
+    document.documentElement.style.removeProperty(name);
+  }
+}
+
+function applyCustomSurfaceVariables() {
+  const base = THEME_PRESETS[state.display.baseTheme] || THEME_PRESETS["soft-blue"];
+  const contrast = state.display.textContrast;
+  document.documentElement.style.setProperty("--bg-main", adjustHexBrightness(base.bgMain, state.display.brightness));
+  document.documentElement.style.setProperty("--bg-panel", adjustHexBrightness(base.bgPanel, state.display.brightness));
+  document.documentElement.style.setProperty("--bg-card", adjustHexBrightness(base.bgCard, state.display.brightness));
+  document.documentElement.style.setProperty("--text-main", contrast >= 100 ? mixHex(base.textMain, "#ffffff", (contrast - 100) / 100) : mixHex(base.textMain, "#94a3b8", (100 - contrast) / 100));
+  document.documentElement.style.setProperty("--text-muted", contrast >= 100 ? mixHex(base.textMuted, "#ffffff", (contrast - 100) / 130) : mixHex(base.textMuted, "#64748b", (100 - contrast) / 100));
+  document.documentElement.style.setProperty("--accent", state.display.accent);
+  document.documentElement.style.setProperty("--accent-soft", hexToRgba(state.display.accent, 0.18));
+}
+
+function updateThemeDerivedColors() {
+  const palette = CHART_PALETTES[state.display.chartPalette] || CHART_PALETTES.balanced;
+  const root = document.documentElement;
+  root.style.setProperty("--chart-leo", palette.leo);
+  root.style.setProperty("--chart-meo", palette.meo);
+  root.style.setProperty("--chart-geo", palette.geo);
+  root.style.setProperty("--chart-heo", palette.heo);
+  root.style.setProperty("--payload-color", state.display.payloadColor);
+  root.style.setProperty("--debris-color", state.display.debrisColor);
+  root.style.setProperty("--rocket-color", state.display.rocketColor);
+  root.style.setProperty("--simulated-color", state.display.simulatedColor);
+  root.style.setProperty("--other-color", state.display.otherColor);
+
+  TYPE_COLORS.PAY = state.display.payloadColor;
+  TYPE_COLORS.DEB = state.display.debrisColor;
+  TYPE_COLORS["R/B"] = state.display.rocketColor;
+  TYPE_COLORS.launch = state.display.simulatedColor;
+  TYPE_COLORS.other = state.display.otherColor;
+}
+
+function applyDisplaySettings({ persist = true, rerender = true } = {}) {
+  document.documentElement.dataset.theme = state.display.theme;
+  document.documentElement.classList.toggle("reduce-motion", state.display.reduceMotion);
+  document.documentElement.classList.toggle("large-text", state.display.largeText);
+
+  if (state.display.theme === "custom") {
+    applyCustomSurfaceVariables();
+  } else {
+    clearCustomSurfaceVariables();
+  }
+
+  updateThemeDerivedColors();
+
+  if (persist) {
+    saveDisplaySettings();
+  }
+
+  if (rerender && state.objects.length) {
+    renderCharts();
+    renderTables();
+    renderLaunchImpact();
+    renderTimeMachine();
+    renderFallbackOrbitCanvas();
+  }
+}
+
+function switchToCustomTheme() {
+  if (state.display.theme !== "custom") {
+    state.display.baseTheme = state.display.theme === "custom" ? state.display.baseTheme : state.display.theme;
+    state.display.theme = "custom";
+    elements.themeSelect.value = "custom";
+  }
+}
+
 function riskColor(score) {
   if (score >= 68) {
-    return "#f27667";
+    return readCssVar("--danger", "#f87171");
   }
 
   if (score >= 35) {
-    return "#e9b95f";
+    return readCssVar("--warning", "#facc15");
   }
 
-  return "#8fd17f";
+  return readCssVar("--success", "#86efac");
 }
 
 function riskLevel(score) {
@@ -438,6 +694,179 @@ function summarize(objects) {
     medianAltitude,
     averageRisk
   };
+}
+
+function summarizeTimeObjects(objects) {
+  const summary = summarize(objects);
+  const payloads = objects.filter((object) => object.type === "PAY").length;
+  const leo = objects.filter((object) => object.orbitClass === "LEO").length;
+  const other = objects.filter((object) => !["PAY", "DEB", "R/B"].includes(object.type)).length;
+
+  return {
+    ...summary,
+    payloads,
+    leo,
+    other
+  };
+}
+
+function launchYearBounds() {
+  const years = state.objects
+    .map((object) => object.launchYear)
+    .filter((year) => Number.isFinite(year) && year >= 1957);
+  const metadataYear = state.metadata?.generatedAt ? new Date(state.metadata.generatedAt).getUTCFullYear() : new Date().getFullYear();
+
+  return {
+    min: years.length ? Math.min(1957, ...years) : 1957,
+    max: Math.max(metadataYear, new Date().getFullYear(), ...(years.length ? years : [metadataYear]))
+  };
+}
+
+function configureTimeMachineControls() {
+  const { min, max } = launchYearBounds();
+  state.timeMachine.currentYear = max;
+  state.timeMachine.selectedYear = clamp(state.timeMachine.selectedYear, min, max);
+  elements.yearSlider.min = String(min);
+  elements.yearSlider.max = String(max);
+  elements.yearSlider.value = String(state.timeMachine.selectedYear);
+  elements.currentYearTitle.textContent = `${max} Orbit`;
+  renderTimeMachine();
+}
+
+function objectsForYear(objects, year) {
+  return objects.filter((object) => Number.isFinite(object.launchYear) && object.launchYear <= year);
+}
+
+function filterTimeMachineTypes(objects) {
+  return objects.filter((object) => {
+    if (object.type === "PAY") {
+      return state.timeMachine.showPayloads;
+    }
+
+    if (object.type === "DEB") {
+      return state.timeMachine.showDebris;
+    }
+
+    if (object.type === "R/B") {
+      return state.timeMachine.showRocketBodies;
+    }
+
+    return state.timeMachine.showOther;
+  });
+}
+
+function timeMachineSceneObjects() {
+  return filterTimeMachineTypes(objectsForYear(state.objects, state.timeMachine.selectedYear));
+}
+
+function timeSummaryMarkup(summary) {
+  return `
+    Total objects: <strong>${numberFormat(summary.total)}</strong><br>
+    Payloads: <strong>${numberFormat(summary.payloads)}</strong><br>
+    Active satellites: <strong>${numberFormat(summary.active)}</strong><br>
+    Debris: <strong>${numberFormat(summary.debris)}</strong><br>
+    Rocket bodies: <strong>${numberFormat(summary.rocketBodies)}</strong><br>
+    LEO objects: <strong>${numberFormat(summary.leo)}</strong>
+  `;
+}
+
+function updateComparisonTable(year, past, current) {
+  elements.pastColumnTitle.textContent = String(year);
+
+  const rows = [
+    ["Total Objects", past.total, current.total],
+    ["Payloads", past.payloads, current.payloads],
+    ["Active Satellites", past.active, current.active],
+    ["Debris", past.debris, current.debris],
+    ["Rocket Bodies", past.rocketBodies, current.rocketBodies],
+    ["LEO Objects", past.leo, current.leo],
+    ["Average Risk Index", Math.round(past.averageRisk), Math.round(current.averageRisk)]
+  ];
+
+  elements.comparisonBody.innerHTML = rows
+    .map(([label, pastValue, currentValue]) => {
+      const change = currentValue - pastValue;
+      return `
+        <tr>
+          <td>${label}</td>
+          <td>${numberFormat(pastValue)}</td>
+          <td>${numberFormat(currentValue)}</td>
+          <td>${change >= 0 ? "+" : ""}${numberFormat(change)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function buildTimeMachinePayload() {
+  const year = state.timeMachine.selectedYear;
+  const pastObjects = objectsForYear(state.objects, year);
+  const currentObjects = state.objects;
+  const past = summarizeTimeObjects(pastObjects);
+  const current = summarizeTimeObjects(currentObjects);
+
+  return {
+    project: "OrbitGuard",
+    mode: "Time Machine",
+    creator: CREATOR,
+    generatedAt: new Date().toISOString(),
+    selectedYear: year,
+    currentYear: state.timeMachine.currentYear,
+    dataSource: state.metadata?.source || DATA_URL,
+    past,
+    current,
+    change: {
+      totalObjects: current.total - past.total,
+      payloads: current.payloads - past.payloads,
+      activeSatellites: current.active - past.active,
+      debris: current.debris - past.debris,
+      rocketBodies: current.rocketBodies - past.rocketBodies,
+      leoObjects: current.leo - past.leo
+    },
+    displayFilters: {
+      payloads: state.timeMachine.showPayloads,
+      debris: state.timeMachine.showDebris,
+      rocketBodies: state.timeMachine.showRocketBodies,
+      other: state.timeMachine.showOther
+    },
+    limitation:
+      "Educational reconstruction based on launch-year data from the current catalog. It does not remove decayed objects by historical date and is not a replacement for archived TLE snapshots."
+  };
+}
+
+function renderTimeMachine() {
+  if (!state.objects.length) {
+    return;
+  }
+
+  const year = state.timeMachine.selectedYear;
+  const pastObjects = objectsForYear(state.objects, year);
+  const currentObjects = state.objects;
+  const past = summarizeTimeObjects(pastObjects);
+  const current = summarizeTimeObjects(currentObjects);
+  const totalChange = current.total - past.total;
+  const debrisChange = current.debris - past.debris;
+  const leoChange = current.leo - past.leo;
+  const payloadChange = current.payloads - past.payloads;
+
+  elements.selectedYear.textContent = String(year);
+  elements.pastYearTitle.textContent = `${year} Orbit`;
+  elements.currentYearTitle.textContent = `${state.timeMachine.currentYear} Orbit`;
+  elements.pastSummary.innerHTML = timeSummaryMarkup(past);
+  elements.currentSummary.innerHTML = timeSummaryMarkup(current);
+  elements.differenceSummary.innerHTML = `
+    Compared with ${year}, today's catalog has <strong>${numberFormat(totalChange)}</strong> more tracked objects,
+    including <strong>${numberFormat(payloadChange)}</strong> more payloads,
+    <strong>${numberFormat(debrisChange)}</strong> more debris objects,
+    and <strong>${numberFormat(leoChange)}</strong> more LEO objects.
+    The growth makes deorbit planning, upper-stage disposal, and lower-congestion mission design more important.
+  `;
+
+  updateComparisonTable(year, past, current);
+
+  if (state.mode === "time") {
+    renderOrbitScene();
+  }
 }
 
 function scenarioProjection(objects, baseRisk) {
@@ -572,15 +1001,20 @@ function readLaunchInputs() {
 function renderMetrics() {
   const summary = summarize(state.filtered);
   const scenario = scenarioProjection(state.filtered, summary.averageRisk);
+  const [crowdedBand] = buildHotspots(state.filtered);
+  const summaryRiskLevel = riskLevel(summary.averageRisk);
 
   elements.metricObjects.textContent = numberFormat(summary.total);
   elements.metricActive.textContent = numberFormat(summary.active);
   elements.metricDebris.textContent = numberFormat(summary.debris);
   elements.metricRocketBodies.textContent = numberFormat(summary.rocketBodies);
-  elements.metricRisk.textContent = Math.round(summary.averageRisk);
+  elements.metricCrowdedBand.textContent = crowdedBand ? `${crowdedBand.band} km` : "-";
+  elements.metricCrowdedBandNote.textContent = crowdedBand ? `${numberFormat(crowdedBand.count)} objects in highest-density shell` : "No matching altitude shell";
+  elements.metricRisk.textContent = summaryRiskLevel;
+  elements.metricRiskNote.textContent = `${Math.round(summary.averageRisk)} average catalog risk index`;
   elements.scenarioIndex.textContent = Math.round(scenario.projected);
   elements.scenarioDelta.textContent = `${scenario.delta >= 0 ? "+" : ""}${scenario.delta.toFixed(1)} vs current filter`;
-  elements.scenarioDelta.style.color = scenario.delta > 0 ? "#f27667" : "#8fd17f";
+  elements.scenarioDelta.style.color = scenario.delta > 0 ? riskColor(80) : riskColor(10);
 }
 
 function renderLaunchImpact() {
@@ -602,9 +1036,9 @@ function renderLaunchImpact() {
 
 function renderScoreCompare(impact) {
   const rows = [
-    ["Old share", impact.oldShare, "#58c7bd"],
-    ["New share", impact.newShare, "#8fd17f"],
-    ["Old crowding", impact.oldCongestion, "#e9b95f"],
+    ["Old share", impact.oldShare, readCssVar("--chart-leo", "#60a5fa")],
+    ["New share", impact.newShare, readCssVar("--success", "#86efac")],
+    ["Old crowding", impact.oldCongestion, readCssVar("--warning", "#facc15")],
     ["New crowding", impact.newCongestion, riskColor(impact.riskIndex)],
     ["Launch risk", impact.riskIndex, riskColor(impact.riskIndex)]
   ];
@@ -854,7 +1288,7 @@ function renderBars(container, entries, total, colorMap = {}) {
     const value = total ? (count / total) * 100 : 0;
     row.innerHTML = `
       <span>${label}</span>
-      <div class="bar-track"><div class="bar-fill" style="--value: ${value}%; --bar-color: ${colorMap[label] || "#58c7bd"}"></div></div>
+      <div class="bar-track"><div class="bar-fill" style="--value: ${value}%; --bar-color: ${colorMap[label] || readCssVar("--accent", "#60a5fa")}"></div></div>
       <strong>${numberFormat(count)}</strong>
     `;
     container.append(row);
@@ -876,10 +1310,10 @@ function renderCharts() {
   };
 
   renderBars(elements.orbitBars, orbitEntries, state.filtered.length, {
-    LEO: "#58c7bd",
-    MEO: "#8fd17f",
-    GEO: "#e9b95f",
-    HEO: "#b78cff"
+    LEO: readCssVar("--chart-leo", "#60a5fa"),
+    MEO: readCssVar("--chart-meo", "#86efac"),
+    GEO: readCssVar("--chart-geo", "#facc15"),
+    HEO: readCssVar("--chart-heo", "#c084fc")
   });
   renderBars(elements.typeBars, typeEntries, state.filtered.length, typeColorMap);
   renderHistogram();
@@ -954,19 +1388,21 @@ function renderTimeline() {
   const line = cumulative.map((point) => `${x(point.year)},${y(point.total)}`).join(" ");
   const area = `${padding.left},${padding.top + innerHeight} ${line} ${padding.left + innerWidth},${padding.top + innerHeight}`;
   const labelYears = [1960, 1980, 2000, 2020, maxYear].filter((year, index, list) => year >= minYear && list.indexOf(year) === index);
+  const timelineColor = readCssVar("--accent", "#60a5fa");
+  const axisColor = readCssVar("--border", "rgb(203 213 225 / 0.18)");
 
   elements.timelinePeak.textContent = `${numberFormat(maxTotal)} current objects by ${maxYear}`;
   elements.timelineChart.innerHTML = `
     <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Timeline of objects still in orbit by launch year">
-      <polygon points="${area}" fill="rgba(88, 199, 189, 0.18)"></polygon>
-      <polyline points="${line}" fill="none" stroke="#58c7bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
-      <line x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${padding.left + innerWidth}" y2="${padding.top + innerHeight}" stroke="#343d47"></line>
-      <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + innerHeight}" stroke="#343d47"></line>
+      <polygon points="${area}" fill="${hexToRgba(timelineColor, 0.18)}"></polygon>
+      <polyline points="${line}" fill="none" stroke="${timelineColor}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      <line x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${padding.left + innerWidth}" y2="${padding.top + innerHeight}" stroke="${axisColor}"></line>
+      <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + innerHeight}" stroke="${axisColor}"></line>
       ${labelYears
         .map(
           (year) => `
             <text class="timeline-axis" x="${x(year)}" y="${height - 10}" text-anchor="middle">${year}</text>
-            <line x1="${x(year)}" y1="${padding.top}" x2="${x(year)}" y2="${padding.top + innerHeight}" stroke="rgba(52, 61, 71, 0.45)"></line>
+            <line x1="${x(year)}" y1="${padding.top}" x2="${x(year)}" y2="${padding.top + innerHeight}" stroke="${axisColor}"></line>
           `
         )
         .join("")}
@@ -1043,6 +1479,51 @@ function orbitalPosition(object, radius) {
   return [x2, y1, z2];
 }
 
+function activeOrbitContainer() {
+  return state.mode === "time" ? elements.timeOrbitScene : elements.orbitScene;
+}
+
+function activeOrbitCanvas() {
+  return state.mode === "time" ? elements.timeOrbitCanvas : elements.orbitCanvas;
+}
+
+function sceneCatalogObjects() {
+  if (state.mode === "time") {
+    return timeMachineSceneObjects();
+  }
+
+  return state.filtered;
+}
+
+function sceneLaunchObjects() {
+  return state.mode === "time" ? [] : simulatedLaunchObjects();
+}
+
+function syncRendererTarget() {
+  if (!state.three.renderer) {
+    return;
+  }
+
+  const container = activeOrbitContainer();
+  const canvas = activeOrbitCanvas();
+
+  if (state.three.renderer.domElement.parentElement !== container) {
+    container.append(state.three.renderer.domElement);
+  }
+
+  if (elements.orbitCanvas) {
+    elements.orbitCanvas.style.display = state.mode === "dashboard" ? "none" : "block";
+  }
+
+  if (elements.timeOrbitCanvas) {
+    elements.timeOrbitCanvas.style.display = state.mode === "time" ? "none" : "block";
+  }
+
+  if (canvas) {
+    canvas.style.display = "none";
+  }
+}
+
 async function initOrbitScene() {
   if (state.three.ready || state.three.fallback) {
     return;
@@ -1050,17 +1531,19 @@ async function initOrbitScene() {
 
   try {
     const THREE = await import(THREE_URL);
+    const { OrbitControls } = await import(ORBIT_CONTROLS_URL);
     const scene = new THREE.Scene();
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
     const root = new THREE.Group();
-    const container = elements.orbitScene;
+    const container = activeOrbitContainer();
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     container.append(renderer.domElement);
-    elements.orbitCanvas.style.display = "none";
     camera.position.set(0, 1.15, 7.3);
     camera.lookAt(0, 0, 0);
+    root.rotation.x = -0.22;
+    root.rotation.y = 0.16;
     scene.add(root);
     scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 
@@ -1071,8 +1554,8 @@ async function initOrbitScene() {
     const earth = new THREE.Mesh(
       new THREE.SphereGeometry(0.72, 48, 48),
       new THREE.MeshStandardMaterial({
-        color: 0x58c7bd,
-        emissive: 0x132b2d,
+        color: hexToNumber(readCssVar("--payload-color", "#93c5fd")),
+        emissive: hexToNumber(readCssVar("--bg-card", "#172033")),
         roughness: 0.82,
         metalness: 0.05
       })
@@ -1081,13 +1564,13 @@ async function initOrbitScene() {
 
     const atmosphere = new THREE.Mesh(
       new THREE.SphereGeometry(0.77, 48, 48),
-      new THREE.MeshBasicMaterial({ color: 0x8fd17f, transparent: true, opacity: 0.13 })
+      new THREE.MeshBasicMaterial({ color: hexToNumber(readCssVar("--accent", "#60a5fa")), transparent: true, opacity: 0.13 })
     );
     root.add(atmosphere);
 
-    addThreeRing(THREE, root, altitudeToSceneRadius(2000), 0x58c7bd);
-    addThreeRing(THREE, root, altitudeToSceneRadius(20200), 0x8fd17f);
-    addThreeRing(THREE, root, altitudeToSceneRadius(35786), 0xe9b95f);
+    addThreeRing(THREE, root, altitudeToSceneRadius(2000), hexToNumber(readCssVar("--chart-leo", "#60a5fa")));
+    addThreeRing(THREE, root, altitudeToSceneRadius(20200), hexToNumber(readCssVar("--chart-meo", "#86efac")));
+    addThreeRing(THREE, root, altitudeToSceneRadius(35786), hexToNumber(readCssVar("--chart-geo", "#facc15")));
 
     const starGeometry = new THREE.BufferGeometry();
     const starPositions = new Float32Array(360 * 3);
@@ -1099,19 +1582,32 @@ async function initOrbitScene() {
     starGeometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
     scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xf1f4ee, size: 0.015, transparent: true, opacity: 0.45 })));
 
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enableZoom = true;
+    controls.enablePan = true;
+    controls.rotateSpeed = 0.7;
+    controls.zoomSpeed = 0.8;
+    controls.minDistance = 3.2;
+    controls.maxDistance = 13;
+    controls.target.set(0, 0, 0);
+
     state.three = {
       ...state.three,
       THREE,
       renderer,
       scene,
       camera,
+      controls,
       root,
       ready: true
     };
+    syncRendererTarget();
     resizeOrbitScene();
     renderOrbitScene();
     animateOrbitScene();
   } catch (error) {
+    console.warn("OrbitGuard 3D renderer unavailable; using canvas fallback.", error);
     state.three.fallback = true;
     renderFallbackOrbitCanvas();
   }
@@ -1136,16 +1632,17 @@ function animateOrbitScene() {
     return;
   }
 
-  state.three.root.rotation.y += 0.0022;
-  state.three.root.rotation.x = -0.22;
+  state.three.controls.update();
   state.three.renderer.render(state.three.scene, state.three.camera);
   state.three.animationId = window.requestAnimationFrame(animateOrbitScene);
 }
 
 function resizeOrbitScene() {
-  const rect = elements.orbitScene.getBoundingClientRect();
+  const container = activeOrbitContainer();
+  const rect = container.getBoundingClientRect();
 
   if (state.three.ready) {
+    syncRendererTarget();
     state.three.camera.aspect = rect.width / Math.max(1, rect.height);
     state.three.camera.lookAt(0, 0, 0);
     state.three.camera.updateProjectionMatrix();
@@ -1163,6 +1660,7 @@ function simulatedLaunchObjects() {
     objects.push({
       norad: 900000 + index,
       type: "launch",
+      simulated: true,
       altitude: impact.altitude,
       inclination: impact.inclination,
       riskScore: impact.riskIndex
@@ -1173,6 +1671,7 @@ function simulatedLaunchObjects() {
     objects.push({
       norad: 910000 + index,
       type: "R/B",
+      simulated: true,
       altitude: impact.altitude,
       inclination: impact.inclination,
       riskScore: impact.riskIndex
@@ -1183,6 +1682,7 @@ function simulatedLaunchObjects() {
     objects.push({
       norad: 920000 + index,
       type: "DEB",
+      simulated: true,
       altitude: impact.altitude + (seededUnit(index) - 0.5) * 16,
       inclination: impact.inclination + (seededUnit(index + 3) - 0.5) * 1.4,
       riskScore: impact.riskIndex
@@ -1198,6 +1698,7 @@ function renderOrbitScene() {
     return;
   }
 
+  syncRendererTarget();
   const THREE = state.three.THREE;
   const oldPoints = [state.three.objectPoints, state.three.launchPoints].filter(Boolean);
 
@@ -1207,9 +1708,16 @@ function renderOrbitScene() {
     points.material.dispose();
   }
 
-  state.three.objectPoints = createPointCloud(THREE, state.filtered, 2200, 0.026, false);
-  state.three.launchPoints = createPointCloud(THREE, simulatedLaunchObjects(), 700, 0.055, true);
-  state.three.root.add(state.three.objectPoints, state.three.launchPoints);
+  const catalogObjects = sceneCatalogObjects();
+  const launchObjects = sceneLaunchObjects();
+
+  state.three.objectPoints = createPointCloud(THREE, catalogObjects, state.mode === "time" ? 3200 : 2200, 0.026, false);
+  state.three.launchPoints = launchObjects.length ? createPointCloud(THREE, launchObjects, 700, 0.055, true) : null;
+  state.three.root.add(state.three.objectPoints);
+
+  if (state.three.launchPoints) {
+    state.three.root.add(state.three.launchPoints);
+  }
 }
 
 function createPointCloud(THREE, objects, limit, pointSize, forceLaunchColor) {
@@ -1222,7 +1730,7 @@ function createPointCloud(THREE, objects, limit, pointSize, forceLaunchColor) {
     const object = sample[index];
     const radius = altitudeToSceneRadius(object.altitude);
     const [x, y, z] = orbitalPosition(object, radius);
-    const color = hexToRgb(forceLaunchColor ? TYPE_COLORS.launch : TYPE_COLORS[object.type] || TYPE_COLORS.other);
+    const color = hexToRgb(getObjectColor(object, forceLaunchColor));
     positions[index * 3] = x;
     positions[index * 3 + 1] = y;
     positions[index * 3 + 2] = z;
@@ -1246,6 +1754,26 @@ function createPointCloud(THREE, objects, limit, pointSize, forceLaunchColor) {
   );
 }
 
+function getObjectColor(object, forceLaunchColor = false) {
+  if (forceLaunchColor || object.simulated || object.type === "launch") {
+    return TYPE_COLORS.launch;
+  }
+
+  if (object.type === "DEB") {
+    return TYPE_COLORS.DEB;
+  }
+
+  if (object.type === "R/B") {
+    return TYPE_COLORS["R/B"];
+  }
+
+  if (object.type === "PAY") {
+    return TYPE_COLORS.PAY;
+  }
+
+  return TYPE_COLORS.other;
+}
+
 function hexToRgb(hex) {
   const normalized = hex.replace("#", "");
   const value = Number.parseInt(normalized, 16);
@@ -1257,13 +1785,14 @@ function hexToRgb(hex) {
 }
 
 function renderFallbackOrbitCanvas() {
-  const canvas = elements.orbitCanvas;
+  const canvas = activeOrbitCanvas();
 
-  if (!canvas || canvas.style.display === "none") {
+  if (!canvas || state.three.ready) {
     return;
   }
 
-  const rect = elements.orbitScene.getBoundingClientRect();
+  canvas.style.display = "block";
+  const rect = activeOrbitContainer().getBoundingClientRect();
   const scale = window.devicePixelRatio || 1;
   canvas.width = Math.max(600, Math.floor(rect.width * scale));
   canvas.height = Math.max(360, Math.floor(rect.height * scale));
@@ -1277,22 +1806,22 @@ function renderFallbackOrbitCanvas() {
   const earthRadius = Math.min(width, height) * 0.085;
 
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#0b0e12";
+  ctx.fillStyle = readCssVar("--bg-main", "#0b1120");
   ctx.fillRect(0, 0, width, height);
 
   for (let i = 0; i < 160; i += 1) {
     const x = seededUnit(i + 4) * width;
     const y = seededUnit(i + 100) * height;
-    ctx.fillStyle = `rgba(241, 244, 238, ${0.12 + seededUnit(i) * 0.24})`;
+    ctx.fillStyle = hexToRgba(readCssVar("--text-main", "#f8fafc"), 0.12 + seededUnit(i) * 0.24);
     ctx.beginPath();
     ctx.arc(x, y, seededUnit(i + 1) * 1.3 * scale, 0, Math.PI * 2);
     ctx.fill();
   }
 
   const rings = [
-    { label: "LEO", altitude: 2000, color: "rgba(88, 199, 189, 0.35)", labelAngle: -0.05 },
-    { label: "MEO", altitude: 20200, color: "rgba(143, 209, 127, 0.28)", labelAngle: 0.23 },
-    { label: "GEO", altitude: 35786, color: "rgba(233, 185, 95, 0.32)", labelAngle: 0.47 }
+    { label: "LEO", altitude: 2000, color: hexToRgba(readCssVar("--chart-leo", "#60a5fa"), 0.35), labelAngle: -0.05 },
+    { label: "MEO", altitude: 20200, color: hexToRgba(readCssVar("--chart-meo", "#86efac"), 0.28), labelAngle: 0.23 },
+    { label: "GEO", altitude: 35786, color: hexToRgba(readCssVar("--chart-geo", "#facc15"), 0.32), labelAngle: 0.47 }
   ];
 
   ctx.lineWidth = 1.4 * scale;
@@ -1304,7 +1833,7 @@ function renderFallbackOrbitCanvas() {
     ctx.beginPath();
     ctx.ellipse(centerX, centerY, radius, radius * 0.55, 0, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = ring.color.replace("0.3", "0.9").replace("0.2", "0.9");
+    ctx.fillStyle = ring.color.replace(/\/ 0\.\d+\)/, "/ 0.9)");
     ctx.fillText(
       ring.label,
       centerX + Math.cos(ring.labelAngle) * radius + 8 * scale,
@@ -1312,8 +1841,8 @@ function renderFallbackOrbitCanvas() {
     );
   }
 
-  renderFallbackPoints(ctx, state.filtered, maxRadius, earthRadius, centerX, centerY, scale, false);
-  renderFallbackPoints(ctx, simulatedLaunchObjects(), maxRadius, earthRadius, centerX, centerY, scale, true);
+  renderFallbackPoints(ctx, sceneCatalogObjects(), maxRadius, earthRadius, centerX, centerY, scale, false);
+  renderFallbackPoints(ctx, sceneLaunchObjects(), maxRadius, earthRadius, centerX, centerY, scale, true);
 
   ctx.globalAlpha = 1;
   const earthGradient = ctx.createRadialGradient(
@@ -1324,9 +1853,9 @@ function renderFallbackOrbitCanvas() {
     centerY,
     earthRadius
   );
-  earthGradient.addColorStop(0, "#8fd17f");
-  earthGradient.addColorStop(0.48, "#58c7bd");
-  earthGradient.addColorStop(1, "#294951");
+  earthGradient.addColorStop(0, readCssVar("--success", "#86efac"));
+  earthGradient.addColorStop(0.48, readCssVar("--payload-color", "#93c5fd"));
+  earthGradient.addColorStop(1, readCssVar("--bg-card", "#172033"));
   ctx.fillStyle = earthGradient;
   ctx.beginPath();
   ctx.arc(centerX, centerY, earthRadius, 0, Math.PI * 2);
@@ -1342,7 +1871,7 @@ function renderFallbackPoints(ctx, objects, maxRadius, earthRadius, centerX, cen
     const radius = fallbackScaleAltitude(object.altitude, earthRadius, maxRadius);
     const x = centerX + Math.cos(angle) * radius;
     const y = centerY + Math.sin(angle) * radius * 0.55;
-    const color = launch ? TYPE_COLORS.launch : TYPE_COLORS[object.type] || TYPE_COLORS.other;
+    const color = getObjectColor(object, launch);
     const pointSize = launch ? 2.7 : object.riskScore > 70 ? 2.1 : 1.45;
 
     ctx.fillStyle = color;
@@ -1378,26 +1907,141 @@ function populateOwners() {
   }
 }
 
+function setActiveMode(mode) {
+  state.mode = mode;
+
+  for (const item of elements.modeTabs) {
+    item.classList.toggle("active", item.dataset.mode === mode);
+  }
+
+  for (const panel of elements.modePanels) {
+    panel.classList.toggle("active", panel.id === `${mode}Mode`);
+  }
+
+  if (mode === "time") {
+    renderTimeMachine();
+  } else {
+    renderOrbitScene();
+  }
+
+  resizeOrbitScene();
+}
+
 function wireModeTabs() {
   for (const tab of elements.modeTabs) {
     tab.addEventListener("click", () => {
-      const mode = tab.dataset.mode;
+      setActiveMode(tab.dataset.mode);
+    });
+  }
 
-      for (const item of elements.modeTabs) {
-        item.classList.toggle("active", item === tab);
-      }
-
-      for (const panel of elements.modePanels) {
-        panel.classList.toggle("active", panel.id === `${mode}Mode`);
-      }
-
-      resizeOrbitScene();
+  for (const button of elements.modeJumps) {
+    button.addEventListener("click", () => {
+      setActiveMode(button.dataset.mode);
     });
   }
 }
 
+function wireDisplaySettings() {
+  elements.themeSelect.addEventListener("change", () => {
+    state.display.theme = elements.themeSelect.value;
+    if (state.display.theme !== "custom") {
+      state.display.baseTheme = state.display.theme;
+    }
+    state.display.highContrast = state.display.theme === "high-contrast";
+    elements.highContrastToggle.checked = state.display.theme === "high-contrast";
+    applyDisplaySettings();
+  });
+
+  elements.accentColor.addEventListener("input", () => {
+    switchToCustomTheme();
+    state.display.accent = elements.accentColor.value;
+    applyDisplaySettings();
+  });
+
+  elements.backgroundBrightness.addEventListener("input", () => {
+    switchToCustomTheme();
+    state.display.brightness = Number(elements.backgroundBrightness.value);
+    applyDisplaySettings();
+  });
+
+  elements.textContrast.addEventListener("input", () => {
+    switchToCustomTheme();
+    state.display.textContrast = Number(elements.textContrast.value);
+    applyDisplaySettings();
+  });
+
+  elements.chartPalette.addEventListener("change", () => {
+    state.display.chartPalette = elements.chartPalette.value;
+    applyDisplaySettings();
+  });
+
+  const colorControls = [
+    [elements.payloadColor, "payloadColor"],
+    [elements.debrisColor, "debrisColor"],
+    [elements.rocketColor, "rocketColor"],
+    [elements.simulatedColor, "simulatedColor"],
+    [elements.otherColor, "otherColor"]
+  ];
+
+  for (const [input, key] of colorControls) {
+    input.addEventListener("input", () => {
+      state.display[key] = input.value;
+      applyDisplaySettings();
+    });
+  }
+
+  elements.reduceMotion.addEventListener("change", () => {
+    state.display.reduceMotion = elements.reduceMotion.checked;
+    applyDisplaySettings();
+  });
+
+  elements.largeText.addEventListener("change", () => {
+    state.display.largeText = elements.largeText.checked;
+    applyDisplaySettings();
+  });
+
+  elements.highContrastToggle.addEventListener("change", () => {
+    state.display.theme = elements.highContrastToggle.checked ? "high-contrast" : "soft-blue";
+    state.display.baseTheme = state.display.theme;
+    elements.themeSelect.value = state.display.theme;
+    applyDisplaySettings();
+  });
+}
+
+function wireTimeMachineControls() {
+  elements.yearSlider.addEventListener("input", () => {
+    state.timeMachine.selectedYear = Number(elements.yearSlider.value);
+    renderTimeMachine();
+  });
+
+  elements.compareToday.addEventListener("click", () => {
+    renderTimeMachine();
+  });
+
+  const toggles = [
+    [elements.timePayloadToggle, "showPayloads"],
+    [elements.timeDebrisToggle, "showDebris"],
+    [elements.timeRocketToggle, "showRocketBodies"],
+    [elements.timeOtherToggle, "showOther"]
+  ];
+
+  for (const [toggle, key] of toggles) {
+    toggle.addEventListener("change", () => {
+      state.timeMachine[key] = toggle.checked;
+      renderTimeMachine();
+    });
+  }
+
+  elements.downloadTimeMachineJson.addEventListener("click", () => {
+    const payload = buildTimeMachinePayload();
+    downloadJSON(`orbitguard-time-machine-${payload.selectedYear}-to-${payload.currentYear}.json`, payload);
+  });
+}
+
 function wireControls() {
   wireModeTabs();
+  wireDisplaySettings();
+  wireTimeMachineControls();
 
   elements.orbitFilter.addEventListener("change", () => {
     state.filters.orbit = elements.orbitFilter.value;
@@ -1483,6 +2127,12 @@ function wireControls() {
   window.addEventListener("resize", resizeOrbitScene);
 }
 
+function setupThemeControls() {
+  loadDisplaySettings();
+  setDisplayControls();
+  applyDisplaySettings({ persist: false, rerender: false });
+}
+
 function exportFilteredCsv() {
   downloadCSV("orbitguard-current-orbit-data.csv", currentOrbitRows());
 }
@@ -1537,10 +2187,12 @@ async function init() {
     state.objects = scoreObjects(payload.objects.map((object) => normalizeObject(object, currentYear)));
 
     elements.dataSource.textContent = `${numberFormat(state.objects.length)} CelesTrak records updated ${generatedDate.toLocaleDateString()}`;
+    configureTimeMachineControls();
     populateOwners();
     wireControls();
     readLaunchInputs();
     updateAll();
+    renderTimeMachine();
     await initOrbitScene();
   } catch (error) {
     elements.dataSource.textContent = "Dataset unavailable";
@@ -1553,4 +2205,5 @@ async function init() {
   }
 }
 
+setupThemeControls();
 init();

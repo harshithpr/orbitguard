@@ -51,6 +51,14 @@ GET /api/v1/bands?size=100
 
 Returns object density by altitude shell.
 
+## Time Machine
+
+```http
+GET /api/v1/time-machine?year=2005
+```
+
+Returns a past-vs-current catalog comparison using the same launch-year reconstruction as the Time Machine page. The response includes selected year, current year, past counts, current counts, change values, methodology, and limitation notes.
+
 ## Sustainability
 
 ```http
@@ -84,4 +92,3 @@ GET /api/v1/conjunction?norad1=25544&norad2=45623
 ```
 
 This currently returns `501 Not Implemented` by design. True conjunction analysis requires TLE/GP data and SGP4 propagation. SATCAT apogee/perigee data is not enough to compute real closest approach or collision probability.
-

@@ -6,7 +6,9 @@ OrbitGuard is a space sustainability analyzer that tracks satellites and debris,
 
 Built by **Harshith Pranav Praveen**.
 
-It uses public CelesTrak SATCAT data and turns it into a three-mode portfolio project:
+It uses public CelesTrak SATCAT data and turns it into a four-mode portfolio project:
+
+OrbitGuard also includes a customizable visual theme system that lets users switch between soft blue, deep space, light, high-contrast, and custom modes. The design improves accessibility, readability, and visual contrast while keeping sustainability colors meaningful instead of overwhelming.
 
 1. **Current Orbit Dashboard**
    - Total tracked objects
@@ -17,12 +19,20 @@ It uses public CelesTrak SATCAT data and turns it into a three-mode portfolio pr
    - Most crowded altitude bands
    - 3D Earth orbit visualizer
    - Timeline of objects still in orbit by launch year
+   - Softer display settings with theme, contrast, motion, chart color, and 3D object color controls
 
-2. **Launch Impact Simulator**
+2. **OrbitGuard Time Machine**
+   - Year slider from the first space age launches through the current catalog year
+   - Past-vs-today statistics for payloads, active satellites, debris, rocket bodies, and LEO objects
+   - Moveable 3D Earth orbit view with rotate, pan, and zoom controls
+   - Object-type toggles for payloads, debris, rocket bodies, and other hardware
+   - Downloadable Time Machine comparison report
+
+3. **Launch Impact Simulator**
    - User enters satellites deployed, target altitude, inclination, lifetime, fragments, rocket-body disposal, and deorbit plan
    - App calculates objects added, affected altitude band, band-density increase, launch risk, and sustainability grade
 
-3. **Sustainability Report**
+4. **Sustainability Report**
    - Generates a short report explaining how the launch changes orbital congestion
    - Suggests mitigation steps such as deorbit planning, avoiding crowded bands, reducing deployment fragments, and disposing of upper stages
 
@@ -30,6 +40,7 @@ Users can download:
 
 - Current orbit data as CSV
 - Current orbit data as JSON
+- Time Machine comparison report as JSON
 - Launch simulation output as JSON
 - Launch simulation output as CSV
 - Sustainability report as JSON
@@ -113,6 +124,7 @@ GET  /api/v1/health
 GET  /api/v1/summary
 GET  /api/v1/objects?band=500-600&type=debris
 GET  /api/v1/bands?size=100
+GET  /api/v1/time-machine?year=2005
 GET  /api/v1/sustainability?satellites=24&altitude=550&inclination=53
 POST /api/v1/simulate
 ```
