@@ -37,7 +37,7 @@ The app should:
 
 - Load the OrbitGuard logo and favicon
 - Show current CelesTrak object counts
-- Render the 3D orbit visualizer
+- Render the 3D orbit visualizer with colored Earth land/ocean, cloud layer, orbit rings, density points, and 3D object models
 - Switch between Soft Blue, Deep Space, Light, High Contrast, and Custom themes
 - Save display settings after refresh
 - Keep controls readable on phone width

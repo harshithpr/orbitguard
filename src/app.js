@@ -133,8 +133,11 @@ const state = {
     camera: null,
     controls: null,
     root: null,
+    earth: null,
+    clouds: null,
     objectPoints: null,
     launchPoints: null,
+    modelGroup: null,
     animationId: null,
     ready: false,
     fallback: false
@@ -1524,6 +1527,144 @@ function syncRendererTarget() {
   }
 }
 
+function createEarthTexture(THREE) {
+  const width = 1024;
+  const height = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  const ocean = ctx.createLinearGradient(0, 0, 0, height);
+  ocean.addColorStop(0, "#0f4f8a");
+  ocean.addColorStop(0.5, "#0b6aa4");
+  ocean.addColorStop(1, "#08345e");
+  ctx.fillStyle = ocean;
+  ctx.fillRect(0, 0, width, height);
+
+  for (let y = 0; y < height; y += 1) {
+    const latitude = Math.abs((y / height) * 2 - 1);
+    ctx.fillStyle = `rgb(255 255 255 / ${latitude * 0.06})`;
+    ctx.fillRect(0, y, width, 1);
+  }
+
+  const landColor = "#2f8c57";
+  const highlandColor = "#9aa66a";
+  const desertColor = "#c3a15e";
+  const continents = [
+    [-102, 46, 108, 54, landColor],
+    [-61, -14, 55, 88, landColor],
+    [18, 5, 86, 82, desertColor],
+    [76, 45, 156, 54, landColor],
+    [80, 18, 56, 42, landColor],
+    [133, -25, 52, 34, desertColor],
+    [-42, 74, 42, 16, highlandColor],
+    [10, -72, 320, 18, "#dbeafe"]
+  ];
+
+  for (let index = 0; index < continents.length; index += 1) {
+    const [lon, lat, rx, ry, color] = continents[index];
+    drawLandMass(ctx, width, height, lon, lat, rx, ry, color, index + 3);
+  }
+
+  ctx.strokeStyle = "rgb(255 255 255 / 0.08)";
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= width; x += width / 12) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+  for (let y = height / 6; y < height; y += height / 6) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
+function drawLandMass(ctx, width, height, lon, lat, rx, ry, color, seed) {
+  const centerX = ((lon + 180) / 360) * width;
+  const centerY = ((90 - lat) / 180) * height;
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate((seededUnit(seed) - 0.5) * 0.7);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+
+  const points = 28;
+  for (let index = 0; index <= points; index += 1) {
+    const angle = (index / points) * Math.PI * 2;
+    const wobble = 0.78 + seededUnit(seed * 97 + index) * 0.44;
+    const x = Math.cos(angle) * rx * wobble;
+    const y = Math.sin(angle) * ry * (0.72 + seededUnit(seed * 131 + index) * 0.42);
+    if (index === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+
+  ctx.closePath();
+  ctx.fill();
+  ctx.clip();
+
+  for (let index = 0; index < 18; index += 1) {
+    ctx.fillStyle = index % 3 === 0 ? "rgb(214 197 128 / 0.28)" : "rgb(116 172 96 / 0.28)";
+    ctx.beginPath();
+    ctx.ellipse(
+      (seededUnit(seed * 211 + index) - 0.5) * rx * 1.5,
+      (seededUnit(seed * 307 + index) - 0.5) * ry * 1.25,
+      rx * (0.08 + seededUnit(seed * 419 + index) * 0.16),
+      ry * (0.05 + seededUnit(seed * 503 + index) * 0.13),
+      seededUnit(seed * 601 + index) * Math.PI,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function createCloudTexture(THREE) {
+  const width = 1024;
+  const height = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, width, height);
+
+  for (let index = 0; index < 95; index += 1) {
+    const x = seededUnit(index * 13 + 5) * width;
+    const y = seededUnit(index * 17 + 9) * height;
+    const radiusX = 22 + seededUnit(index * 19 + 11) * 62;
+    const radiusY = 5 + seededUnit(index * 23 + 13) * 15;
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radiusX);
+    gradient.addColorStop(0, "rgb(255 255 255 / 0.34)");
+    gradient.addColorStop(0.72, "rgb(255 255 255 / 0.12)");
+    gradient.addColorStop(1, "rgb(255 255 255 / 0)");
+    ctx.fillStyle = gradient;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((seededUnit(index * 29) - 0.5) * 0.8);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
 async function initOrbitScene() {
   if (state.three.ready || state.three.fallback) {
     return;
@@ -1551,11 +1692,14 @@ async function initOrbitScene() {
     light.position.set(3, 4, 5);
     scene.add(light);
 
+    const earthTexture = createEarthTexture(THREE);
+    const cloudTexture = createCloudTexture(THREE);
     const earth = new THREE.Mesh(
-      new THREE.SphereGeometry(0.72, 48, 48),
+      new THREE.SphereGeometry(0.72, 96, 96),
       new THREE.MeshStandardMaterial({
-        color: hexToNumber(readCssVar("--payload-color", "#93c5fd")),
+        map: earthTexture,
         emissive: hexToNumber(readCssVar("--bg-card", "#172033")),
+        emissiveIntensity: 0.12,
         roughness: 0.82,
         metalness: 0.05
       })
@@ -1563,10 +1707,21 @@ async function initOrbitScene() {
     root.add(earth);
 
     const atmosphere = new THREE.Mesh(
-      new THREE.SphereGeometry(0.77, 48, 48),
+      new THREE.SphereGeometry(0.79, 64, 64),
       new THREE.MeshBasicMaterial({ color: hexToNumber(readCssVar("--accent", "#60a5fa")), transparent: true, opacity: 0.13 })
     );
     root.add(atmosphere);
+
+    const clouds = new THREE.Mesh(
+      new THREE.SphereGeometry(0.742, 96, 96),
+      new THREE.MeshBasicMaterial({
+        map: cloudTexture,
+        transparent: true,
+        opacity: 0.42,
+        depthWrite: false
+      })
+    );
+    root.add(clouds);
 
     addThreeRing(THREE, root, altitudeToSceneRadius(2000), hexToNumber(readCssVar("--chart-leo", "#60a5fa")));
     addThreeRing(THREE, root, altitudeToSceneRadius(20200), hexToNumber(readCssVar("--chart-meo", "#86efac")));
@@ -1600,6 +1755,8 @@ async function initOrbitScene() {
       camera,
       controls,
       root,
+      earth,
+      clouds,
       ready: true
     };
     syncRendererTarget();
@@ -1630,6 +1787,11 @@ function addThreeRing(THREE, root, radius, color) {
 function animateOrbitScene() {
   if (!state.three.ready) {
     return;
+  }
+
+  if (!state.display.reduceMotion) {
+    state.three.earth.rotation.y += 0.00055;
+    state.three.clouds.rotation.y += 0.0009;
   }
 
   state.three.controls.update();
@@ -1708,16 +1870,39 @@ function renderOrbitScene() {
     points.material.dispose();
   }
 
+  if (state.three.modelGroup) {
+    state.three.root.remove(state.three.modelGroup);
+    disposeObject3D(state.three.modelGroup);
+  }
+
   const catalogObjects = sceneCatalogObjects();
   const launchObjects = sceneLaunchObjects();
 
-  state.three.objectPoints = createPointCloud(THREE, catalogObjects, state.mode === "time" ? 3200 : 2200, 0.026, false);
-  state.three.launchPoints = launchObjects.length ? createPointCloud(THREE, launchObjects, 700, 0.055, true) : null;
+  state.three.objectPoints = createPointCloud(THREE, catalogObjects, state.mode === "time" ? 3200 : 2200, 0.018, false);
+  state.three.launchPoints = launchObjects.length ? createPointCloud(THREE, launchObjects, 700, 0.038, true) : null;
+  state.three.modelGroup = createObjectModelGroup(THREE, catalogObjects, launchObjects);
   state.three.root.add(state.three.objectPoints);
 
   if (state.three.launchPoints) {
     state.three.root.add(state.three.launchPoints);
   }
+
+  state.three.root.add(state.three.modelGroup);
+}
+
+function disposeObject3D(object) {
+  object.traverse((child) => {
+    if (child.geometry) {
+      child.geometry.dispose();
+    }
+
+    if (child.material) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        material.dispose();
+      }
+    }
+  });
 }
 
 function createPointCloud(THREE, objects, limit, pointSize, forceLaunchColor) {
@@ -1752,6 +1937,149 @@ function createPointCloud(THREE, objects, limit, pointSize, forceLaunchColor) {
       opacity: forceLaunchColor ? 0.96 : 0.72
     })
   );
+}
+
+function createObjectModelGroup(THREE, catalogObjects, launchObjects) {
+  const group = new THREE.Group();
+  const selectedObjects = representativeObjects(catalogObjects, launchObjects, state.mode === "time" ? 90 : 120);
+
+  for (let index = 0; index < selectedObjects.length; index += 1) {
+    const object = selectedObjects[index];
+    const radius = altitudeToSceneRadius(object.altitude) + 0.035;
+    const [x, y, z] = orbitalPosition(object, radius);
+    const model = createOrbitObjectModel(THREE, object);
+    const scale = object.simulated ? 1.25 : object.riskScore > 72 ? 1.08 : 0.92;
+    model.position.set(x, y, z);
+    model.lookAt(0, 0, 0);
+    model.rotateY(Math.PI / 2);
+    model.rotateZ(seededUnit((object.norad || index) + 41) * Math.PI * 2);
+    model.scale.setScalar(scale);
+    group.add(model);
+  }
+
+  return group;
+}
+
+function representativeObjects(catalogObjects, launchObjects, limit) {
+  const launchSample = launchObjects.slice(0, Math.min(28, launchObjects.length));
+  const sortedCatalog = [...catalogObjects]
+    .filter((object) => Number.isFinite(object.altitude))
+    .sort((a, b) => b.riskScore - a.riskScore);
+  const buckets = [
+    sortedCatalog.filter((object) => object.type === "PAY").slice(0, 32),
+    sortedCatalog.filter((object) => object.type === "DEB").slice(0, 32),
+    sortedCatalog.filter((object) => object.type === "R/B").slice(0, 24),
+    sortedCatalog.filter((object) => !["PAY", "DEB", "R/B"].includes(object.type)).slice(0, 12)
+  ];
+  const merged = [...launchSample, ...buckets.flat()];
+  const unique = new Map();
+
+  for (const object of merged) {
+    unique.set(`${object.simulated ? "sim" : "cat"}-${object.norad}-${object.type}`, object);
+  }
+
+  return [...unique.values()].slice(0, limit);
+}
+
+function createOrbitObjectModel(THREE, object) {
+  if (object.simulated || object.type === "launch") {
+    return createSimulatedObjectModel(THREE, object);
+  }
+
+  if (object.type === "PAY") {
+    return createSatelliteModel(THREE, object);
+  }
+
+  if (object.type === "R/B") {
+    return createRocketBodyModel(THREE, object);
+  }
+
+  if (object.type === "DEB") {
+    return createDebrisModel(THREE, object);
+  }
+
+  return createOtherObjectModel(THREE, object);
+}
+
+function createSatelliteModel(THREE, object) {
+  const group = new THREE.Group();
+  const bodyMaterial = new THREE.MeshStandardMaterial({
+    color: hexToNumber(getObjectColor(object)),
+    emissive: hexToNumber(getObjectColor(object)),
+    emissiveIntensity: 0.18,
+    roughness: 0.48,
+    metalness: 0.52
+  });
+  const panelMaterial = new THREE.MeshStandardMaterial({
+    color: 0x1d4ed8,
+    emissive: 0x1e3a8a,
+    emissiveIntensity: 0.28,
+    roughness: 0.36,
+    metalness: 0.25
+  });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.032, 0.032), bodyMaterial);
+  const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.0035, 0.028), panelMaterial);
+  const rightPanel = leftPanel.clone();
+  leftPanel.position.x = -0.062;
+  rightPanel.position.x = 0.062;
+  group.add(body, leftPanel, rightPanel);
+  return group;
+}
+
+function createRocketBodyModel(THREE, object) {
+  const material = new THREE.MeshStandardMaterial({
+    color: hexToNumber(getObjectColor(object)),
+    emissive: hexToNumber(getObjectColor(object)),
+    emissiveIntensity: 0.08,
+    roughness: 0.42,
+    metalness: 0.46
+  });
+  const group = new THREE.Group();
+  const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.015, 0.095, 16), material);
+  cylinder.rotation.z = Math.PI / 2;
+  const nozzle = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.026, 16), material);
+  nozzle.rotation.z = -Math.PI / 2;
+  nozzle.position.x = 0.06;
+  group.add(cylinder, nozzle);
+  return group;
+}
+
+function createDebrisModel(THREE, object) {
+  const material = new THREE.MeshStandardMaterial({
+    color: hexToNumber(getObjectColor(object)),
+    emissive: hexToNumber(getObjectColor(object)),
+    emissiveIntensity: 0.12,
+    roughness: 0.72,
+    metalness: 0.2,
+    flatShading: true
+  });
+  const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.025, 0), material);
+  mesh.scale.set(1.2, 0.72, 0.9);
+  return mesh;
+}
+
+function createSimulatedObjectModel(THREE, object) {
+  const material = new THREE.MeshStandardMaterial({
+    color: hexToNumber(getObjectColor(object, true)),
+    emissive: hexToNumber(getObjectColor(object, true)),
+    emissiveIntensity: 0.35,
+    roughness: 0.36,
+    metalness: 0.18,
+    transparent: true,
+    opacity: 0.92
+  });
+  return new THREE.Mesh(new THREE.OctahedronGeometry(0.034, 0), material);
+}
+
+function createOtherObjectModel(THREE, object) {
+  const material = new THREE.MeshStandardMaterial({
+    color: hexToNumber(getObjectColor(object)),
+    emissive: hexToNumber(getObjectColor(object)),
+    emissiveIntensity: 0.08,
+    roughness: 0.56,
+    metalness: 0.22
+  });
+  return new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.026, 0.02), material);
 }
 
 function getObjectColor(object, forceLaunchColor = false) {
@@ -1860,6 +2188,7 @@ function renderFallbackOrbitCanvas() {
   ctx.beginPath();
   ctx.arc(centerX, centerY, earthRadius, 0, Math.PI * 2);
   ctx.fill();
+  drawFallbackEarthLand(ctx, centerX, centerY, earthRadius, scale);
 }
 
 function renderFallbackPoints(ctx, objects, maxRadius, earthRadius, centerX, centerY, scale, launch) {
@@ -1880,6 +2209,48 @@ function renderFallbackPoints(ctx, objects, maxRadius, earthRadius, centerX, cen
     ctx.arc(x, y, pointSize * scale, 0, Math.PI * 2);
     ctx.fill();
   }
+}
+
+function drawFallbackEarthLand(ctx, centerX, centerY, earthRadius, scale) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, earthRadius, 0, Math.PI * 2);
+  ctx.clip();
+  const landColor = readCssVar("--success", "#86efac");
+  const highlandColor = readCssVar("--warning", "#facc15");
+  const landShapes = [
+    [-0.36, -0.18, 0.28, 0.15, landColor],
+    [-0.1, 0.22, 0.18, 0.28, landColor],
+    [0.24, -0.06, 0.32, 0.18, highlandColor],
+    [0.42, 0.26, 0.18, 0.12, landColor],
+    [-0.22, -0.48, 0.2, 0.06, "#dbeafe"]
+  ];
+
+  for (const [offsetX, offsetY, radiusX, radiusY, color] of landShapes) {
+    ctx.fillStyle = color;
+    ctx.globalAlpha = color === "#dbeafe" ? 0.88 : 0.72;
+    ctx.beginPath();
+    ctx.ellipse(
+      centerX + offsetX * earthRadius,
+      centerY + offsetY * earthRadius,
+      radiusX * earthRadius,
+      radiusY * earthRadius,
+      offsetX,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = `rgb(255 255 255 / 0.14)`;
+  ctx.lineWidth = 0.8 * scale;
+  for (let index = -2; index <= 2; index += 1) {
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY + index * earthRadius * 0.2, earthRadius * 0.94, earthRadius * 0.18, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function fallbackScaleAltitude(altitude, earthRadius, maxRadius) {

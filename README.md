@@ -17,7 +17,7 @@ OrbitGuard also includes a customizable visual theme system that lets users swit
    - Rocket bodies
    - LEO, MEO, GEO, and HEO orbit bands
    - Most crowded altitude bands
-   - 3D Earth orbit visualizer
+   - 3D Earth orbit visualizer with a textured Earth, cloud layer, orbit rings, density points, and representative object models
    - Timeline of objects still in orbit by launch year
    - Softer display settings with theme, contrast, motion, chart color, and 3D object color controls
 
