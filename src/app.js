@@ -2733,24 +2733,7 @@ function createEarthTexture(THREE) {
     ctx.fillRect(0, y, width, 1);
   }
 
-  const landColor = "#2f8c57";
-  const highlandColor = "#9aa66a";
-  const desertColor = "#c3a15e";
-  const continents = [
-    [-102, 46, 108, 54, landColor],
-    [-61, -14, 55, 88, landColor],
-    [18, 5, 86, 82, desertColor],
-    [76, 45, 156, 54, landColor],
-    [80, 18, 56, 42, landColor],
-    [133, -25, 52, 34, desertColor],
-    [-42, 74, 42, 16, highlandColor],
-    [10, -72, 320, 18, "#dbeafe"]
-  ];
-
-  for (let index = 0; index < continents.length; index += 1) {
-    const [lon, lat, rx, ry, color] = continents[index];
-    drawLandMass(ctx, width, height, lon, lat, rx, ry, color, index + 3);
-  }
+  drawDetailedEarthMap(ctx, width, height);
 
   ctx.strokeStyle = "rgb(255 255 255 / 0.08)";
   ctx.lineWidth = 1;
@@ -2771,6 +2754,165 @@ function createEarthTexture(THREE) {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 8;
   return texture;
+}
+
+function drawDetailedEarthMap(ctx, width, height) {
+  const regions = [
+    {
+      color: "#328a5a",
+      points: [[-168, 68], [-145, 61], [-124, 50], [-126, 38], [-116, 31], [-100, 21], [-83, 25], [-72, 40], [-53, 48], [-61, 58], [-83, 66], [-116, 72]]
+    },
+    {
+      color: "#2f8154",
+      points: [[-86, 21], [-72, 18], [-62, 10], [-55, -2], [-48, -18], [-54, -36], [-69, -55], [-78, -35], [-81, -8]]
+    },
+    {
+      color: "#7fa05d",
+      points: [[-12, 60], [8, 62], [32, 58], [45, 47], [30, 38], [10, 42], [-8, 50]]
+    },
+    {
+      color: "#b99558",
+      points: [[-18, 35], [10, 38], [34, 31], [50, 12], [43, -16], [30, -35], [14, -35], [-5, -18], [-17, 7]]
+    },
+    {
+      color: "#3d8f5b",
+      points: [[36, 58], [67, 68], [104, 64], [142, 54], [158, 41], [143, 24], [118, 20], [100, 7], [78, 20], [56, 25], [42, 39]]
+    },
+    {
+      color: "#9f9d58",
+      points: [[67, 25], [81, 29], [89, 21], [82, 8], [72, 7], [68, 18]]
+    },
+    {
+      color: "#36875d",
+      points: [[96, 18], [110, 17], [122, 8], [112, -6], [101, 0]]
+    },
+    {
+      color: "#bc9652",
+      points: [[113, -12], [136, -10], [153, -24], [146, -39], [120, -35], [111, -22]]
+    },
+    {
+      color: "#e1eef8",
+      points: [[-55, 80], [-22, 76], [-19, 64], [-45, 59], [-64, 70]]
+    },
+    {
+      color: "#dbeafe",
+      points: [[-180, -70], [-120, -74], [-60, -69], [0, -73], [60, -69], [120, -74], [180, -70], [180, -90], [-180, -90]]
+    }
+  ];
+
+  regions.forEach((region, index) => drawGeoRegion(ctx, width, height, region.points, region.color, index + 11));
+  drawEarthMountainChains(ctx, width, height);
+  drawEarthPlaceMarkers(ctx, width, height);
+}
+
+function lonLatToCanvas(width, height, lon, lat) {
+  return [((lon + 180) / 360) * width, ((90 - lat) / 180) * height];
+}
+
+function drawGeoRegion(ctx, width, height, points, color, seed) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = "rgb(226 232 240 / 0.28)";
+  ctx.lineWidth = 1.25;
+  ctx.beginPath();
+
+  points.forEach(([lon, lat], index) => {
+    const [x, y] = lonLatToCanvas(width, height, lon, lat);
+    if (index === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.clip();
+
+  const xs = points.map(([lon, lat]) => lonLatToCanvas(width, height, lon, lat)[0]);
+  const ys = points.map(([lon, lat]) => lonLatToCanvas(width, height, lon, lat)[1]);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  for (let index = 0; index < 32; index += 1) {
+    const x = minX + seededUnit(seed * 43 + index) * (maxX - minX);
+    const y = minY + seededUnit(seed * 59 + index) * (maxY - minY);
+    const rx = 8 + seededUnit(seed * 71 + index) * 26;
+    const ry = 2 + seededUnit(seed * 83 + index) * 9;
+    ctx.fillStyle = index % 4 === 0 ? "rgb(245 201 119 / 0.24)" : "rgb(52 211 153 / 0.16)";
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, seededUnit(seed * 97 + index) * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawEarthMountainChains(ctx, width, height) {
+  const chains = [
+    [[-122, 55], [-112, 42], [-106, 31], [-100, 19]],
+    [[-78, 7], [-73, -10], [-70, -25], [-68, -45]],
+    [[7, 43], [16, 46], [27, 44], [38, 39]],
+    [[68, 35], [82, 32], [95, 29]]
+  ];
+
+  ctx.save();
+  ctx.strokeStyle = "rgb(248 250 252 / 0.22)";
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([3, 5]);
+
+  for (const chain of chains) {
+    ctx.beginPath();
+    chain.forEach(([lon, lat], index) => {
+      const [x, y] = lonLatToCanvas(width, height, lon, lat);
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawEarthPlaceMarkers(ctx, width, height) {
+  const places = [
+    ["Tucson", -110.97, 32.22],
+    ["Madison", -86.75, 34.7],
+    ["Houston", -95.37, 29.76],
+    ["Cape Canaveral", -80.6, 28.4],
+    ["London", -0.12, 51.5],
+    ["Madrid", -3.7, 40.4],
+    ["Tokyo", 139.7, 35.7],
+    ["Sydney", 151.2, -33.9],
+    ["Svalbard", 15.6, 78.2]
+  ];
+
+  ctx.save();
+  ctx.font = "12px Inter, Arial, sans-serif";
+  ctx.textBaseline = "middle";
+
+  for (const [name, lon, lat] of places) {
+    const [x, y] = lonLatToCanvas(width, height, lon, lat);
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, 10);
+    gradient.addColorStop(0, "rgb(253 224 71 / 0.95)");
+    gradient.addColorStop(1, "rgb(253 224 71 / 0)");
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgb(255 255 255 / 0.78)";
+    ctx.fillRect(x - 1.4, y - 1.4, 2.8, 2.8);
+    ctx.fillStyle = "rgb(226 232 240 / 0.64)";
+    ctx.fillText(name, x + 5, y - 6);
+  }
+
+  ctx.restore();
 }
 
 function drawLandMass(ctx, width, height, lon, lat, rx, ry, color, seed) {
@@ -3247,6 +3389,20 @@ function createLaunchRocket(THREE) {
   upperBand.position.y = 0.24;
   stageOne.add(lowerBand, upperBand);
 
+  for (const y of [-1.38, -0.96, -0.48, -0.05]) {
+    const seam = new THREE.Mesh(new THREE.CylinderGeometry(0.263, 0.263, 0.012, 36), metal);
+    seam.position.y = y;
+    stageOne.add(seam);
+  }
+
+  for (let index = 0; index < 4; index += 1) {
+    const angle = (index / 4) * Math.PI * 2 + Math.PI / 4;
+    const pipe = new THREE.Mesh(new THREE.BoxGeometry(0.012, 1.64, 0.014), metal);
+    pipe.position.set(Math.cos(angle) * 0.269, -0.78, Math.sin(angle) * 0.269);
+    pipe.rotation.y = -angle;
+    stageOne.add(pipe);
+  }
+
   for (let index = 0; index < 4; index += 1) {
     const angle = (index / 4) * Math.PI * 2;
     const fin = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.36, 0.16), accent);
@@ -3260,6 +3416,35 @@ function createLaunchRocket(THREE) {
     stageOne.add(engine);
   }
 
+  const centerEngine = new THREE.Mesh(new THREE.ConeGeometry(0.078, 0.2, 24), metal);
+  centerEngine.position.y = -2.02;
+  centerEngine.rotation.x = Math.PI;
+  stageOne.add(centerEngine);
+
+  for (let index = 0; index < 8; index += 1) {
+    const angle = (index / 8) * Math.PI * 2;
+    const engine = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.13, 16), metal);
+    engine.position.set(Math.cos(angle) * 0.18, -2, Math.sin(angle) * 0.18);
+    engine.rotation.x = Math.PI;
+    stageOne.add(engine);
+  }
+
+  for (let index = 0; index < 4; index += 1) {
+    const angle = (index / 4) * Math.PI * 2 + Math.PI / 4;
+    const gridFin = new THREE.Group();
+    const finPlate = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.012), black);
+    gridFin.add(finPlate);
+    for (let ribIndex = -1; ribIndex <= 1; ribIndex += 1) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.096, 0.006, 0.016), metal);
+      rib.position.y = ribIndex * 0.026;
+      gridFin.add(rib);
+    }
+    gridFin.position.set(Math.cos(angle) * 0.3, 0.08, Math.sin(angle) * 0.3);
+    gridFin.rotation.y = -angle;
+    gridFin.rotation.z = 0.4;
+    stageOne.add(gridFin);
+  }
+
   const upperStage = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 1.12, 36), white);
   upperStage.position.y = 0.82;
   const upperStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.205, 0.08, 36), black);
@@ -3267,12 +3452,21 @@ function createLaunchRocket(THREE) {
   const vacuumEngine = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.22, 28), metal);
   vacuumEngine.position.y = 0.2;
   vacuumEngine.rotation.x = Math.PI;
-  stageTwo.add(upperStage, upperStripe, vacuumEngine);
+  const upperTankBand = new THREE.Mesh(new THREE.CylinderGeometry(0.203, 0.203, 0.014, 36), metal);
+  upperTankBand.position.y = 0.58;
+  const avionicsBox = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.08, 0.025), accent);
+  avionicsBox.position.set(0, 1.03, 0.205);
+  const stagePipe = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.86, 0.012), metal);
+  stagePipe.position.set(0.205, 0.78, 0);
+  stageTwo.add(upperStage, upperStripe, vacuumEngine, upperTankBand, avionicsBox, stagePipe);
 
   const leftFairing = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.78, 36, 1, false, 0, Math.PI), fairing);
   const rightFairing = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.78, 36, 1, false, Math.PI, Math.PI), fairing.clone());
   leftFairing.position.y = 1.74;
   rightFairing.position.y = 1.74;
+  const fairingSeam = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.72, 0.018), metal);
+  fairingSeam.position.set(0, 1.64, 0.282);
+  fairingGroup.add(fairingSeam);
   fairingGroup.add(leftFairing, rightFairing);
 
   rocket.add(stageOne, stageTwo, fairingGroup);
@@ -3399,12 +3593,22 @@ function createLaunchSatelliteModel(THREE) {
     roughness: 0.32,
     metalness: 0.24
   });
+  const trimMaterial = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.34, metalness: 0.65 });
   const body = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.09, 0.09), bodyMaterial);
-  const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.012, 0.08), panelMaterial);
-  const rightPanel = leftPanel.clone();
-  leftPanel.position.x = -0.18;
-  rightPanel.position.x = 0.18;
-  group.add(body, leftPanel, rightPanel);
+  const payloadDeck = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.018, 0.105), trimMaterial);
+  payloadDeck.position.y = 0.056;
+  const leftPanel = createSolarPanelGroup(THREE, 0.24, 0.085, 0x1d4ed8);
+  const rightPanel = createSolarPanelGroup(THREE, 0.24, 0.085, 0x1d4ed8);
+  leftPanel.position.x = -0.205;
+  rightPanel.position.x = 0.205;
+  const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.18, 12), trimMaterial);
+  boom.rotation.z = Math.PI / 2;
+  boom.position.z = 0.07;
+  const dish = createDishAntenna(THREE, 0.032);
+  dish.position.set(0, 0.105, 0.005);
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.018, 16, 10), panelMaterial);
+  beacon.position.set(0.065, 0.064, -0.044);
+  group.add(body, payloadDeck, leftPanel, rightPanel, boom, dish, beacon);
   group.visible = false;
   return group;
 }
@@ -3848,6 +4052,62 @@ function createOrbitObjectModel(THREE, object) {
   return createOtherObjectModel(THREE, object);
 }
 
+function createSolarPanelGroup(THREE, width, depth, panelColor = 0x1d4ed8) {
+  const group = new THREE.Group();
+  const panelMaterial = new THREE.MeshStandardMaterial({
+    color: panelColor,
+    emissive: 0x172554,
+    emissiveIntensity: 0.32,
+    roughness: 0.32,
+    metalness: 0.28
+  });
+  const gridMaterial = new THREE.MeshBasicMaterial({
+    color: 0x93c5fd,
+    transparent: true,
+    opacity: 0.72
+  });
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(width, 0.004, depth), panelMaterial);
+  group.add(panel);
+
+  for (let index = 1; index < 4; index += 1) {
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.0022, 0.006, depth * 1.02), gridMaterial);
+    rib.position.x = -width / 2 + (width * index) / 4;
+    rib.position.y = 0.004;
+    group.add(rib);
+  }
+
+  for (let index = 1; index < 3; index += 1) {
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(width * 1.02, 0.006, 0.0022), gridMaterial);
+    rib.position.z = -depth / 2 + (depth * index) / 3;
+    rib.position.y = 0.004;
+    group.add(rib);
+  }
+
+  const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.4, metalness: 0.6 });
+  const topFrame = new THREE.Mesh(new THREE.BoxGeometry(width * 1.06, 0.007, 0.004), frameMaterial);
+  const bottomFrame = topFrame.clone();
+  topFrame.position.z = depth / 2;
+  bottomFrame.position.z = -depth / 2;
+  const leftFrame = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.007, depth * 1.05), frameMaterial);
+  const rightFrame = leftFrame.clone();
+  leftFrame.position.x = -width / 2;
+  rightFrame.position.x = width / 2;
+  group.add(topFrame, bottomFrame, leftFrame, rightFrame);
+  return group;
+}
+
+function createDishAntenna(THREE, radius = 0.016) {
+  const group = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.28, metalness: 0.72 });
+  const dish = new THREE.Mesh(new THREE.ConeGeometry(radius, radius * 0.55, 24, 1, true), metal);
+  dish.rotation.x = Math.PI / 2;
+  const feed = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.1, radius * 0.1, radius * 0.9, 10), metal);
+  feed.rotation.x = Math.PI / 2;
+  feed.position.z = radius * 0.42;
+  group.add(dish, feed);
+  return group;
+}
+
 function createSatelliteModel(THREE, object) {
   const group = new THREE.Group();
   const bodyMaterial = new THREE.MeshStandardMaterial({
@@ -3857,19 +4117,23 @@ function createSatelliteModel(THREE, object) {
     roughness: 0.48,
     metalness: 0.52
   });
-  const panelMaterial = new THREE.MeshStandardMaterial({
-    color: 0x1d4ed8,
-    emissive: 0x1e3a8a,
-    emissiveIntensity: 0.28,
-    roughness: 0.36,
-    metalness: 0.25
-  });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.032, 0.032), bodyMaterial);
-  const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.0035, 0.028), panelMaterial);
-  const rightPanel = leftPanel.clone();
-  leftPanel.position.x = -0.062;
-  rightPanel.position.x = 0.062;
-  group.add(body, leftPanel, rightPanel);
+  const trimMaterial = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.38, metalness: 0.58 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.036, 0.038), bodyMaterial);
+  const avionics = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.01, 0.04), trimMaterial);
+  avionics.position.y = 0.024;
+  const leftPanel = createSolarPanelGroup(THREE, 0.09, 0.034);
+  const rightPanel = createSolarPanelGroup(THREE, 0.09, 0.034);
+  leftPanel.position.x = -0.074;
+  rightPanel.position.x = 0.074;
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.0028, 0.0028, 0.052, 10), trimMaterial);
+  mast.position.y = 0.055;
+  const dish = createDishAntenna(THREE, 0.013);
+  dish.position.y = 0.083;
+  dish.rotation.z = -0.35;
+  const sensor = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.018, 16), trimMaterial);
+  sensor.rotation.x = Math.PI / 2;
+  sensor.position.z = 0.03;
+  group.add(body, avionics, leftPanel, rightPanel, mast, dish, sensor);
   return group;
 }
 
@@ -3881,13 +4145,32 @@ function createRocketBodyModel(THREE, object) {
     roughness: 0.42,
     metalness: 0.46
   });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.44, metalness: 0.36 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.32, metalness: 0.7 });
   const group = new THREE.Group();
-  const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.015, 0.095, 16), material);
+  const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.017, 0.108, 24), material);
   cylinder.rotation.z = Math.PI / 2;
-  const nozzle = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.026, 16), material);
+  const forwardCap = new THREE.Mesh(new THREE.SphereGeometry(0.015, 16, 8), metal);
+  forwardCap.scale.set(1, 1, 0.42);
+  forwardCap.position.x = -0.058;
+  const bandA = new THREE.Mesh(new THREE.CylinderGeometry(0.0172, 0.0172, 0.006, 24), dark);
+  const bandB = bandA.clone();
+  bandA.rotation.z = Math.PI / 2;
+  bandB.rotation.z = Math.PI / 2;
+  bandA.position.x = -0.025;
+  bandB.position.x = 0.025;
+  const nozzle = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.028, 18), metal);
   nozzle.rotation.z = -Math.PI / 2;
-  nozzle.position.x = 0.06;
-  group.add(cylinder, nozzle);
+  nozzle.position.x = 0.066;
+
+  for (let index = 0; index < 3; index += 1) {
+    const pipe = new THREE.Mesh(new THREE.BoxGeometry(0.094, 0.0028, 0.0028), metal);
+    const angle = (index / 3) * Math.PI * 2;
+    pipe.position.set(0, Math.cos(angle) * 0.0175, Math.sin(angle) * 0.0175);
+    group.add(pipe);
+  }
+
+  group.add(cylinder, forwardCap, bandA, bandB, nozzle);
   return group;
 }
 
@@ -3900,9 +4183,19 @@ function createDebrisModel(THREE, object) {
     metalness: 0.2,
     flatShading: true
   });
-  const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.025, 0), material);
-  mesh.scale.set(1.2, 0.72, 0.9);
-  return mesh;
+  const group = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.024, 0), material);
+  core.scale.set(1.25, 0.72, 0.9);
+  group.add(core);
+
+  for (let index = 0; index < 3; index += 1) {
+    const shard = new THREE.Mesh(new THREE.TetrahedronGeometry(0.011 + index * 0.002, 0), material);
+    shard.position.set((seededUnit(index + 2) - 0.5) * 0.045, (seededUnit(index + 5) - 0.5) * 0.03, (seededUnit(index + 8) - 0.5) * 0.04);
+    shard.rotation.set(seededUnit(index + 13) * Math.PI, seededUnit(index + 17) * Math.PI, seededUnit(index + 19) * Math.PI);
+    group.add(shard);
+  }
+
+  return group;
 }
 
 function createSimulatedObjectModel(THREE, object) {
@@ -3915,7 +4208,23 @@ function createSimulatedObjectModel(THREE, object) {
     transparent: true,
     opacity: 0.92
   });
-  return new THREE.Mesh(new THREE.OctahedronGeometry(0.034, 0), material);
+  const group = createSatelliteModel(THREE, { ...object, type: "launch" });
+  const glow = new THREE.Mesh(
+    new THREE.TorusGeometry(0.075, 0.002, 8, 36),
+    new THREE.MeshBasicMaterial({
+      color: hexToNumber(getObjectColor(object, true)),
+      transparent: true,
+      opacity: 0.52
+    })
+  );
+  glow.rotation.x = Math.PI / 2;
+  group.add(glow);
+  group.traverse((child) => {
+    if (child.material && child.material.color) {
+      child.material.color.set(material.color);
+    }
+  });
+  return group;
 }
 
 function createOtherObjectModel(THREE, object) {
@@ -3926,7 +4235,15 @@ function createOtherObjectModel(THREE, object) {
     roughness: 0.56,
     metalness: 0.22
   });
-  return new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.026, 0.02), material);
+  const group = new THREE.Group();
+  const bus = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.026, 0.022), material);
+  const boomMaterial = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.4, metalness: 0.62 });
+  const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, 0.07, 8), boomMaterial);
+  boom.rotation.z = Math.PI / 2;
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.007, 12, 8), boomMaterial);
+  beacon.position.x = 0.041;
+  group.add(bus, boom, beacon);
+  return group;
 }
 
 function getObjectColor(object, forceLaunchColor = false) {
