@@ -41,7 +41,7 @@ The app should:
 - Switch between Soft Blue, Deep Space, Light, High Contrast, and Custom themes
 - Save display settings after refresh
 - Keep controls readable on phone width
-- Switch between all four modes
+- Switch between all five modes
 - Avoid text overlapping controls
 
 ## Display Settings Test
@@ -99,6 +99,21 @@ Expected:
 - Moderate/low sustainability impact
 - Report mentions deorbit planning as a positive factor
 
+## Weather Ops Test
+
+Open the `Weather Ops` tab.
+
+Expected:
+
+- Kp, F10.7, solar wind, drag multiplier, and active-alert cards load from the API
+- Altitude Band Impact shows multiple LEO bands with density multipliers
+- Solar Cycle chart renders an F10.7 timeline
+- Starlink 2022 case study shows 49 launched and 38 reentered
+- Ground Station Monitor defaults to Goldstone and shows weather, rain rate, cloud cover, wind, visibility, Ka-band attenuation, optical score, antenna status, and laser comm status
+- Changing preset station updates the selected station card
+- Entering custom coordinates loads a custom ground station
+- Download Weather Snapshot saves JSON
+
 ## Launch Simulator Test 2
 
 Input:
@@ -149,6 +164,9 @@ http://localhost:4173/api/v1/health
 http://localhost:4173/api/v1/summary
 http://localhost:4173/api/v1/objects?band=500-600&type=debris&limit=5
 http://localhost:4173/api/v1/time-machine?year=2005
+http://localhost:4173/api/v1/weather/space
+http://localhost:4173/api/v1/weather/ground?station=goldstone
+http://localhost:4173/api/v1/weather/ground?station=all
 http://localhost:4173/api/v1/sustainability?satellites=24&altitude=550&inclination=53&rocketBodyRemains=false
 ```
 
@@ -159,4 +177,6 @@ Expected:
 - `summary` includes catalog counts
 - `objects` returns matching records
 - `time-machine` returns selected year, current year, and change values
+- `weather/space` returns Kp, F10.7, solar wind, altitude impacts, and solar-cycle fields
+- `weather/ground` returns a station, current conditions, and operations scoring
 - `sustainability` returns an `impact` object

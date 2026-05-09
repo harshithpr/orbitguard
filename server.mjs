@@ -11,6 +11,11 @@ import {
   simulateLaunchImpact,
   summarize
 } from "./src/engines/orbitguard-core.js";
+import {
+  getGroundStationNetwork,
+  getGroundStationWeather,
+  getSpaceWeather
+} from "./src/engines/weather-core.js";
 
 const root = resolve(fileURLToPath(new URL(".", import.meta.url)));
 const port = Number(process.env.PORT || 4173);
@@ -151,6 +156,36 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (url.pathname === "/api/v1/weather/space" || url.pathname === "/api/v1/weather-space") {
+    try {
+      sendJson(res, 200, await getSpaceWeather());
+    } catch (error) {
+      sendJson(res, 502, {
+        ok: false,
+        error: "Space weather feed unavailable",
+        detail: error.message
+      });
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/v1/weather/ground" || url.pathname === "/api/v1/weather-ground") {
+    try {
+      const query = searchParamsToObject(url.searchParams);
+      const payload = String(query.station || "").toLowerCase() === "all"
+        ? await getGroundStationNetwork()
+        : await getGroundStationWeather(query);
+      sendJson(res, 200, payload);
+    } catch (error) {
+      sendJson(res, 502, {
+        ok: false,
+        error: "Ground station weather feed unavailable",
+        detail: error.message
+      });
+    }
+    return;
+  }
+
   if (url.pathname === "/api/v1/sustainability" && req.method === "GET") {
     const impact = simulateLaunchImpact(catalog.objects, searchParamsToObject(url.searchParams));
     sendJson(res, 200, {
@@ -187,6 +222,9 @@ async function handleApi(req, res) {
       "GET /api/v1/objects?band=500-600&type=debris",
       "GET /api/v1/bands?size=100",
       "GET /api/v1/time-machine?year=2005",
+      "GET /api/v1/weather/space",
+      "GET /api/v1/weather/ground?station=goldstone",
+      "GET /api/v1/weather/ground?station=all",
       "GET /api/v1/sustainability?satellites=24&altitude=550&inclination=53&rocketBodyRemains=true",
       "POST /api/v1/simulate"
     ]

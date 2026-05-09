@@ -59,6 +59,55 @@ GET /api/v1/time-machine?year=2005
 
 Returns a past-vs-current catalog comparison using the same launch-year reconstruction as the Time Machine page. The response includes selected year, current year, past counts, current counts, change values, methodology, and limitation notes.
 
+## Space Weather
+
+```http
+GET /api/v1/weather/space
+```
+
+Returns live NOAA SWPC space weather values:
+
+- Kp index and storm level
+- F10.7 solar flux and 90-day mean
+- Solar wind speed and density
+- Active SWPC alert messages
+- Educational drag multiplier and deorbit-timeline shift by LEO altitude band
+- F10.7 solar-cycle timeline points
+- 2022 Starlink geomagnetic storm case study metadata
+
+Official feed roots:
+
+- https://services.swpc.noaa.gov/json/
+- https://services.swpc.noaa.gov/products/
+
+## Ground Station Weather
+
+```http
+GET /api/v1/weather/ground?station=goldstone
+GET /api/v1/weather/ground?station=all
+GET /api/v1/weather/ground?name=School%20Station&lat=34.7304&lon=-86.5861
+```
+
+Preset stations:
+
+- `goldstone`
+- `canberra`
+- `madrid`
+- `svalbard`
+- `mcmurdo`
+- `diego-garcia`
+- `wallops`
+
+Returns current weather plus operations estimates:
+
+- Rain rate and Ka-band attenuation in dB
+- Cloud cover and optical tracking score
+- Wind speed/gust and antenna status
+- Visibility and laser communication status
+- Next likely clear optical window when forecast data is available
+
+If `OPENWEATHER_API_KEY` is set, the server uses OpenWeatherMap current weather first and Open-Meteo for clear-window forecast support. Without a key, it uses Open-Meteo directly.
+
 ## Sustainability
 
 ```http

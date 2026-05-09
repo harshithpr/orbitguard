@@ -126,6 +126,14 @@ const state = {
     showRocketBodies: true,
     showOther: true
   },
+  weather: {
+    space: null,
+    groundNetwork: null,
+    selectedStation: "goldstone",
+    selectedGround: null,
+    loading: false,
+    error: null
+  },
   three: {
     THREE: null,
     renderer: null,
@@ -180,6 +188,17 @@ const elements = {
   metricCrowdedBandNote: document.querySelector("#metricCrowdedBandNote"),
   metricRisk: document.querySelector("#metricRisk"),
   metricRiskNote: document.querySelector("#metricRiskNote"),
+  weatherUpdated: document.querySelector("#weatherUpdated"),
+  weatherRefreshDashboard: document.querySelector("#weatherRefreshDashboard"),
+  dashKpValue: document.querySelector("#dashKpValue"),
+  dashKpLevel: document.querySelector("#dashKpLevel"),
+  dashF107Value: document.querySelector("#dashF107Value"),
+  dashF107Note: document.querySelector("#dashF107Note"),
+  dashSolarWindValue: document.querySelector("#dashSolarWindValue"),
+  dashSolarWindNote: document.querySelector("#dashSolarWindNote"),
+  dashDragValue: document.querySelector("#dashDragValue"),
+  dashDragNote: document.querySelector("#dashDragNote"),
+  groundStationDigest: document.querySelector("#groundStationDigest"),
   orbitScene: document.querySelector("#orbitScene"),
   orbitCanvas: document.querySelector("#orbitCanvas"),
   timeOrbitScene: document.querySelector("#timeOrbitScene"),
@@ -200,6 +219,54 @@ const elements = {
   comparisonBody: document.querySelector("#comparisonBody"),
   downloadTimeMachineJson: document.querySelector("#downloadTimeMachineJson"),
   downloadTimeGoogleEarthKml: document.querySelector("#downloadTimeGoogleEarthKml"),
+  weatherRefresh: document.querySelector("#weatherRefresh"),
+  downloadWeatherSnapshot: document.querySelector("#downloadWeatherSnapshot"),
+  weatherStatus: document.querySelector("#weatherStatus"),
+  weatherKpValue: document.querySelector("#weatherKpValue"),
+  weatherKpNote: document.querySelector("#weatherKpNote"),
+  weatherStormLevel: document.querySelector("#weatherStormLevel"),
+  weatherStormNote: document.querySelector("#weatherStormNote"),
+  weatherF107Value: document.querySelector("#weatherF107Value"),
+  weatherF107Note: document.querySelector("#weatherF107Note"),
+  weatherSolarWindValue: document.querySelector("#weatherSolarWindValue"),
+  weatherSolarWindNote: document.querySelector("#weatherSolarWindNote"),
+  weatherDragMultiplier: document.querySelector("#weatherDragMultiplier"),
+  weatherDragNote: document.querySelector("#weatherDragNote"),
+  weatherAlertCount: document.querySelector("#weatherAlertCount"),
+  weatherAlertNote: document.querySelector("#weatherAlertNote"),
+  dragImpactBands: document.querySelector("#dragImpactBands"),
+  solarCycleCurrent: document.querySelector("#solarCycleCurrent"),
+  solarCycleChart: document.querySelector("#solarCycleChart"),
+  solarCycleNote: document.querySelector("#solarCycleNote"),
+  starlinkIncidentStats: document.querySelector("#starlinkIncidentStats"),
+  spaceWeatherAlerts: document.querySelector("#spaceWeatherAlerts"),
+  groundStationSelect: document.querySelector("#groundStationSelect"),
+  customGroundName: document.querySelector("#customGroundName"),
+  customGroundLat: document.querySelector("#customGroundLat"),
+  customGroundLon: document.querySelector("#customGroundLon"),
+  useCustomStation: document.querySelector("#useCustomStation"),
+  groundStationName: document.querySelector("#groundStationName"),
+  groundStationMeta: document.querySelector("#groundStationMeta"),
+  groundPrimaryStatus: document.querySelector("#groundPrimaryStatus"),
+  groundCondition: document.querySelector("#groundCondition"),
+  groundTemperature: document.querySelector("#groundTemperature"),
+  groundRain: document.querySelector("#groundRain"),
+  groundRainNote: document.querySelector("#groundRainNote"),
+  groundClouds: document.querySelector("#groundClouds"),
+  groundOpticalNote: document.querySelector("#groundOpticalNote"),
+  groundWind: document.querySelector("#groundWind"),
+  groundWindNote: document.querySelector("#groundWindNote"),
+  groundVisibility: document.querySelector("#groundVisibility"),
+  groundLaserNote: document.querySelector("#groundLaserNote"),
+  kaAttenuation: document.querySelector("#kaAttenuation"),
+  kaAttenuationNote: document.querySelector("#kaAttenuationNote"),
+  opticalScore: document.querySelector("#opticalScore"),
+  opticalScoreNote: document.querySelector("#opticalScoreNote"),
+  antennaStatus: document.querySelector("#antennaStatus"),
+  antennaStatusNote: document.querySelector("#antennaStatusNote"),
+  laserStatus: document.querySelector("#laserStatus"),
+  clearWindow: document.querySelector("#clearWindow"),
+  groundNetworkCards: document.querySelector("#groundNetworkCards"),
   deorbitSlider: document.querySelector("#deorbitSlider"),
   deorbitValue: document.querySelector("#deorbitValue"),
   fragmentInput: document.querySelector("#fragmentInput"),
@@ -1005,6 +1072,411 @@ function renderTimeMachine() {
   if (state.mode === "time") {
     renderOrbitScene();
   }
+}
+
+function signedPercent(value) {
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${Math.round(value)}%`;
+}
+
+function observedTime(value) {
+  if (!value) {
+    return "time unavailable";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "time unavailable";
+  }
+
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function weatherSeverityColor(label = "") {
+  const normalized = String(label).toLowerCase();
+
+  if (normalized.includes("g4") || normalized.includes("g5") || normalized.includes("must stow") || normalized.includes("offline") || normalized.includes("severe")) {
+    return readCssVar("--danger", "#f87171");
+  }
+
+  if (normalized.includes("g2") || normalized.includes("g3") || normalized.includes("approaching") || normalized.includes("marginal") || normalized.includes("poor") || normalized.includes("elevated")) {
+    return readCssVar("--warning", "#facc15");
+  }
+
+  return readCssVar("--success", "#86efac");
+}
+
+function selectedGroundWeather() {
+  if (state.weather.selectedGround) {
+    return state.weather.selectedGround;
+  }
+
+  return state.weather.groundNetwork?.stations?.find((item) => item.station?.id === state.weather.selectedStation) || null;
+}
+
+async function fetchJsonEndpoint(url) {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`${url} returned ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function loadWeatherData() {
+  state.weather.loading = true;
+  state.weather.error = null;
+  renderWeatherLoading();
+
+  try {
+    const [space, groundNetwork] = await Promise.all([
+      fetchJsonEndpoint("/api/v1/weather/space"),
+      fetchJsonEndpoint("/api/v1/weather/ground?station=all")
+    ]);
+    state.weather.space = space;
+    state.weather.groundNetwork = groundNetwork;
+    state.weather.selectedGround = null;
+    state.weather.loading = false;
+    renderWeather();
+  } catch (error) {
+    state.weather.loading = false;
+    state.weather.error = error.message;
+    renderWeather();
+  }
+}
+
+async function loadCustomGroundStation() {
+  const lat = Number(elements.customGroundLat.value);
+  const lon = Number(elements.customGroundLon.value);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    elements.weatherStatus.textContent = "Enter a valid latitude and longitude for the custom station.";
+    return;
+  }
+
+  const name = elements.customGroundName.value.trim() || "Custom Station";
+  state.weather.loading = true;
+  elements.weatherStatus.textContent = "Loading custom ground station weather...";
+
+  try {
+    const params = new URLSearchParams({
+      name,
+      lat: String(lat),
+      lon: String(lon)
+    });
+    state.weather.selectedStation = "custom";
+    state.weather.selectedGround = await fetchJsonEndpoint(`/api/v1/weather/ground?${params}`);
+    state.weather.loading = false;
+    renderWeather();
+  } catch (error) {
+    state.weather.loading = false;
+    state.weather.error = error.message;
+    renderWeather();
+  }
+}
+
+function renderWeatherLoading() {
+  if (elements.weatherStatus) {
+    elements.weatherStatus.textContent = "Loading live NOAA and ground-station weather feeds...";
+  }
+
+  if (elements.weatherUpdated) {
+    elements.weatherUpdated.textContent = "Loading weather...";
+  }
+}
+
+function renderWeather() {
+  renderDashboardWeather();
+  renderWeatherOps();
+}
+
+function renderDashboardWeather() {
+  const space = state.weather.space;
+  const ground = selectedGroundWeather();
+
+  if (state.weather.error) {
+    elements.weatherUpdated.textContent = "Weather feed error";
+    elements.groundStationDigest.textContent = state.weather.error;
+    return;
+  }
+
+  if (!space) {
+    renderWeatherLoading();
+    return;
+  }
+
+  const kp = space.kp?.value ?? 0;
+  const f107 = space.f107?.flux ?? 0;
+  const wind = space.solarWind?.speedKmS ?? 0;
+  const density = space.solarWind?.densityPcm3 ?? 0;
+  const timelineChange = space.drag?.deorbitTimelineChangePercent ?? 0;
+
+  elements.weatherUpdated.textContent = `Updated ${observedTime(space.generatedAt)}`;
+  elements.dashKpValue.textContent = decimal(kp, 1);
+  elements.dashKpLevel.textContent = `${space.kp?.stormLevel?.code || "G0"} - ${space.kp?.stormLevel?.label || "Quiet"}`;
+  elements.dashF107Value.textContent = `${Math.round(f107)} sfu`;
+  elements.dashF107Note.textContent = `${signedPercent(space.f107?.percentAboveSolarMinimum || 0)} vs solar-min baseline`;
+  elements.dashSolarWindValue.textContent = wind ? `${Math.round(wind)} km/s` : "-";
+  elements.dashSolarWindNote.textContent = `${decimal(density || 0, 1)} p/cm³ particle density`;
+  elements.dashDragValue.textContent = signedPercent(timelineChange);
+  elements.dashDragNote.textContent = "Estimated LEO lifetime change";
+
+  if (ground?.ok) {
+    const station = ground.station;
+    const operations = ground.operations;
+    elements.groundStationDigest.innerHTML = `
+      <strong>${station.name}</strong>: ${ground.current.condition} -
+      Ka-band ${decimal(operations.kaBandAttenuationDb, 1)} dB fade,
+      optical tracking ${operations.opticalQuality.toLowerCase()},
+      antenna ${operations.antennaStatus.toLowerCase()}.
+    `;
+  } else {
+    elements.groundStationDigest.textContent = "Ground station weather loading...";
+  }
+}
+
+function renderWeatherOps() {
+  const space = state.weather.space;
+  const ground = selectedGroundWeather();
+
+  if (state.weather.error) {
+    elements.weatherStatus.textContent = `Weather feed error: ${state.weather.error}`;
+    return;
+  }
+
+  if (!space) {
+    renderWeatherLoading();
+    return;
+  }
+
+  const storm = space.kp?.stormLevel || { code: "G0", label: "Quiet" };
+  const solarWind = space.solarWind || {};
+  const dragChange = space.drag?.deorbitTimelineChangePercent ?? 0;
+  const alertCount = space.activeAlerts?.length || 0;
+  const stormColor = weatherSeverityColor(storm.code);
+
+  elements.weatherStatus.textContent = `Live feeds loaded from NOAA SWPC and ground weather APIs. Space weather generated ${observedTime(space.generatedAt)}.`;
+  elements.weatherKpValue.textContent = decimal(space.kp?.value || 0, 1);
+  elements.weatherKpNote.textContent = `Observed ${observedTime(space.kp?.observedAt)}`;
+  elements.weatherStormLevel.textContent = storm.code;
+  elements.weatherStormLevel.style.color = stormColor;
+  elements.weatherStormNote.textContent = storm.label;
+  elements.weatherF107Value.textContent = `${Math.round(space.f107?.flux || 0)} sfu`;
+  elements.weatherF107Note.textContent = `${signedPercent(space.f107?.percentAboveSolarMinimum || 0)} vs solar minimum; 90-day mean ${Math.round(space.f107?.ninetyDayMean || 0) || "-"}`;
+  elements.weatherSolarWindValue.textContent = solarWind.speedKmS ? `${Math.round(solarWind.speedKmS)} km/s` : "-";
+  elements.weatherSolarWindNote.textContent = `${decimal(solarWind.densityPcm3 || 0, 1)} p/cm³, observed ${observedTime(solarWind.observedAt)}`;
+  elements.weatherDragMultiplier.textContent = `${decimal(space.drag?.multiplier || 1, 2)}x`;
+  elements.weatherDragNote.textContent = space.drag?.interpretation || "Drag model unavailable.";
+  elements.weatherAlertCount.textContent = numberFormat(alertCount);
+  elements.weatherAlertNote.textContent = alertCount ? "Review current NOAA messages below" : "No active alerts returned";
+
+  renderDragImpactBands(space);
+  renderSolarCycle(space);
+  renderSpaceWeatherAlerts(space);
+  renderStarlinkIncident(space);
+  renderGroundStation(ground);
+  renderGroundNetwork();
+}
+
+function renderDragImpactBands(space) {
+  const impacts = space.altitudeImpacts || [];
+
+  if (!impacts.length) {
+    elements.dragImpactBands.innerHTML = "<p class=\"empty-state\">Drag impact data unavailable</p>";
+    return;
+  }
+
+  const max = Math.max(1, ...impacts.map((impact) => impact.densityMultiplier));
+  elements.dragImpactBands.innerHTML = impacts
+    .map((impact) => {
+      const color = weatherSeverityColor(impact.risk);
+      return `
+        <div class="weather-band-row">
+          <span>${impact.band}</span>
+          <div class="bar-track"><div class="bar-fill" style="--value: ${(impact.densityMultiplier / max) * 100}%; --bar-color: ${color}"></div></div>
+          <strong>${decimal(impact.densityMultiplier, 2)}x</strong>
+          <small>${impact.shell}: ${impact.risk}, natural deorbit timeline shift ${signedPercent(impact.deorbitTimelineChangePercent)}.</small>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderSolarCycle(space) {
+  const points = space.solarCycle?.points || [];
+  const latest = space.f107?.flux || 0;
+  elements.solarCycleCurrent.textContent = latest ? `${Math.round(latest)} sfu now` : "-";
+  elements.solarCycleNote.textContent = `${space.solarCycle?.currentCycle || "Solar cycle"}: current F10.7 is ${signedPercent(space.f107?.percentAboveSolarMinimum || 0)} above a 70 sfu solar-minimum baseline.`;
+
+  if (points.length < 2) {
+    elements.solarCycleChart.innerHTML = "<p class=\"empty-state\">Solar cycle history unavailable</p>";
+    return;
+  }
+
+  const width = 900;
+  const height = 280;
+  const padding = { left: 48, right: 18, top: 18, bottom: 34 };
+  const minYear = Math.min(...points.map((point) => point.year));
+  const maxYear = Math.max(...points.map((point) => point.year));
+  const minFlux = Math.min(60, ...points.map((point) => point.f107));
+  const maxFlux = Math.max(240, ...points.map((point) => point.f107), latest);
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+  const x = (year) => padding.left + ((year - minYear) / Math.max(1, maxYear - minYear)) * innerWidth;
+  const y = (flux) => padding.top + innerHeight - ((flux - minFlux) / Math.max(1, maxFlux - minFlux)) * innerHeight;
+  const line = points.map((point) => `${x(point.year)},${y(point.f107)}`).join(" ");
+  const area = `${padding.left},${padding.top + innerHeight} ${line} ${padding.left + innerWidth},${padding.top + innerHeight}`;
+  const color = readCssVar("--accent", "#60a5fa");
+  const axisColor = readCssVar("--border", "rgb(203 213 225 / 0.18)");
+  const labelYears = [1990, 2000, 2010, 2020, maxYear].filter((year, index, list) => year >= minYear && list.indexOf(year) === index);
+
+  elements.solarCycleChart.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="F10.7 solar flux yearly history">
+      <polygon points="${area}" fill="${hexToRgba(color, 0.16)}"></polygon>
+      <polyline points="${line}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      <line x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${padding.left + innerWidth}" y2="${padding.top + innerHeight}" stroke="${axisColor}"></line>
+      <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + innerHeight}" stroke="${axisColor}"></line>
+      ${labelYears
+        .map(
+          (year) => `
+            <text class="timeline-axis" x="${x(year)}" y="${height - 10}" text-anchor="middle">${year}</text>
+            <line x1="${x(year)}" y1="${padding.top}" x2="${x(year)}" y2="${padding.top + innerHeight}" stroke="${axisColor}"></line>
+          `
+        )
+        .join("")}
+      <line x1="${padding.left}" y1="${y(latest)}" x2="${padding.left + innerWidth}" y2="${y(latest)}" stroke="${readCssVar("--warning", "#facc15")}" stroke-dasharray="5 5"></line>
+      <text class="timeline-axis" x="8" y="${y(maxFlux) + 4}">${Math.round(maxFlux)}</text>
+      <text class="timeline-axis" x="8" y="${padding.top + innerHeight}">${Math.round(minFlux)}</text>
+    </svg>
+  `;
+}
+
+function renderSpaceWeatherAlerts(space) {
+  const alerts = space.activeAlerts || [];
+
+  if (!alerts.length) {
+    elements.spaceWeatherAlerts.innerHTML = "<p class=\"empty-state\">No active NOAA SWPC alert messages returned.</p>";
+    return;
+  }
+
+  elements.spaceWeatherAlerts.innerHTML = alerts
+    .map(
+      (alert) => `
+        <div class="alert-item">
+          <strong>${alert.headline}</strong>
+          <small>Issued ${observedTime(alert.issuedAt)}</small>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderStarlinkIncident(space) {
+  const incident = space.starlinkIncident || {};
+  const stats = [
+    ["Launch date", incident.date || "2022-02-03"],
+    ["Deployment orbit", `${incident.launchAltitudeKm || 210} km`],
+    ["Satellites launched", incident.launchedSatellites || 49],
+    ["Reentered", incident.reenteredSatellites || 38]
+  ];
+
+  elements.starlinkIncidentStats.innerHTML = stats
+    .map(
+      ([label, value]) => `
+        <div class="incident-stat">
+          <strong>${value}</strong>
+          <span>${label}</span>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderGroundStation(ground) {
+  if (!ground?.ok) {
+    elements.groundStationName.textContent = "Ground station weather unavailable";
+    elements.groundStationMeta.textContent = ground?.error || "Waiting for ground station network data.";
+    elements.groundPrimaryStatus.textContent = "Unavailable";
+    elements.groundPrimaryStatus.style.setProperty("--status-color", readCssVar("--danger", "#f87171"));
+    return;
+  }
+
+  const station = ground.station;
+  const current = ground.current;
+  const operations = ground.operations;
+  const primaryStatus = operations.antennaStatus === "Safe" && operations.opticalQuality !== "Offline"
+    ? operations.linkMarginText
+    : operations.antennaStatus;
+  const primaryColor = weatherSeverityColor(`${operations.antennaStatus} ${operations.opticalQuality} ${operations.linkMarginText}`);
+
+  elements.groundStationName.textContent = `${station.name} Ground Station`;
+  elements.groundStationMeta.textContent = `${station.location}. ${station.primaryUse}. Source: ${ground.source}, observed ${observedTime(ground.observedAt)}.`;
+  elements.groundPrimaryStatus.textContent = primaryStatus;
+  elements.groundPrimaryStatus.style.setProperty("--status-color", primaryColor);
+  elements.groundCondition.textContent = current.condition;
+  elements.groundTemperature.textContent = current.temperatureC === null ? "Temperature unavailable" : `${decimal(current.temperatureC, 1)}°C, humidity ${Math.round(current.humidityPercent || 0)}%`;
+  elements.groundRain.textContent = `${decimal(current.rainRateMmHr || 0, 1)} mm/hr`;
+  elements.groundRainNote.textContent = operations.linkMarginText;
+  elements.groundClouds.textContent = `${Math.round(current.cloudCoverPercent || 0)}%`;
+  elements.groundOpticalNote.textContent = `Optical tracking ${operations.opticalQuality.toLowerCase()}`;
+  elements.groundWind.textContent = `${decimal(current.windSpeedMps || 0, 1)} m/s`;
+  elements.groundWindNote.textContent = `Gust ${decimal(current.windGustMps || current.windSpeedMps || 0, 1)} m/s; ${operations.antennaStatus}`;
+  elements.groundVisibility.textContent = `${decimal(current.visibilityKm || 0, 1)} km`;
+  elements.groundLaserNote.textContent = `Laser comm ${operations.laserCommStatus.toLowerCase()}`;
+  elements.kaAttenuation.textContent = `${decimal(operations.kaBandAttenuationDb, 1)} dB`;
+  elements.kaAttenuationNote.textContent = current.rainRateMmHr > 0
+    ? "Rain fade can reduce Ka-band link margin during high-frequency satellite communications."
+    : "No meaningful rain fade estimated at this station right now.";
+  elements.opticalScore.textContent = `${Math.round(operations.opticalScore)}/100`;
+  elements.opticalScoreNote.textContent = `${operations.opticalQuality} optical tracking based on cloud cover, precipitation, and visibility.`;
+  elements.antennaStatus.textContent = operations.antennaStatus;
+  elements.antennaStatusNote.textContent = "Large dish antennas can lose operational availability when wind and gusts approach safety limits.";
+  elements.laserStatus.textContent = operations.laserCommStatus;
+  elements.clearWindow.textContent = operations.nextClearWindow?.label || "Next clear optical window unavailable.";
+}
+
+function renderGroundNetwork() {
+  const stations = state.weather.groundNetwork?.stations || [];
+
+  if (!stations.length) {
+    elements.groundNetworkCards.innerHTML = "<p class=\"empty-state\">Ground station network loading...</p>";
+    return;
+  }
+
+  elements.groundNetworkCards.innerHTML = stations
+    .map((item) => {
+      const status = item.ok ? item.operations.linkMarginText : "Unavailable";
+      const detail = item.ok ? `${Math.round(item.current.cloudCoverPercent || 0)}% clouds, ${decimal(item.current.windSpeedMps || 0, 1)} m/s wind` : item.error;
+      return `
+        <button class="station-card ${item.station.id === state.weather.selectedStation ? "active" : ""}" type="button" data-station="${item.station.id}">
+          <strong>${item.station.name}</strong>
+          <span>${status}</span>
+          <small>${detail}</small>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function buildWeatherSnapshotPayload() {
+  return {
+    project: "OrbitGuard",
+    mode: "Weather Operations",
+    creator: CREATOR,
+    generatedAt: new Date().toISOString(),
+    spaceWeather: state.weather.space,
+    selectedGroundStation: selectedGroundWeather(),
+    groundNetwork: state.weather.groundNetwork,
+    limitation:
+      "Space-weather drag and ground-link calculations are educational screening estimates, not certified mission operations products."
+  };
 }
 
 function scenarioProjection(objects, baseRisk) {
@@ -2426,11 +2898,15 @@ function setActiveMode(mode) {
 
   if (mode === "time") {
     renderTimeMachine();
+    resizeOrbitScene();
+  } else if (mode === "dashboard") {
+    renderOrbitScene();
+    resizeOrbitScene();
+  } else if (mode === "weather") {
+    renderWeather();
   } else {
     renderOrbitScene();
   }
-
-  resizeOrbitScene();
 }
 
 function wireModeTabs() {
@@ -2544,10 +3020,40 @@ function wireTimeMachineControls() {
   });
 }
 
+function wireWeatherControls() {
+  elements.weatherRefresh.addEventListener("click", loadWeatherData);
+  elements.weatherRefreshDashboard.addEventListener("click", loadWeatherData);
+  elements.downloadWeatherSnapshot.addEventListener("click", () => {
+    downloadJSON("orbitguard-weather-operations-snapshot.json", buildWeatherSnapshotPayload());
+  });
+
+  elements.groundStationSelect.addEventListener("change", () => {
+    state.weather.selectedStation = elements.groundStationSelect.value;
+    state.weather.selectedGround = null;
+    renderWeather();
+  });
+
+  elements.useCustomStation.addEventListener("click", loadCustomGroundStation);
+
+  elements.groundNetworkCards.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-station]");
+
+    if (!button) {
+      return;
+    }
+
+    state.weather.selectedStation = button.dataset.station;
+    state.weather.selectedGround = null;
+    elements.groundStationSelect.value = state.weather.selectedStation;
+    renderWeather();
+  });
+}
+
 function wireControls() {
   wireModeTabs();
   wireDisplaySettings();
   wireTimeMachineControls();
+  wireWeatherControls();
 
   elements.orbitFilter.addEventListener("change", () => {
     state.filters.orbit = elements.orbitFilter.value;
@@ -2717,6 +3223,7 @@ async function init() {
     updateAll();
     renderTimeMachine();
     await initOrbitScene();
+    loadWeatherData();
   } catch (error) {
     elements.dataSource.textContent = "Dataset unavailable";
     document.querySelector("main").innerHTML = `

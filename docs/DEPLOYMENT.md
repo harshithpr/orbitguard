@@ -56,6 +56,12 @@ Your public URL will look like:
 https://orbitguard.vercel.app
 ```
 
+Weather Ops works without private keys because it can use NOAA SWPC and Open-Meteo public feeds. If you later want OpenWeatherMap current-weather data, add this environment variable in Vercel:
+
+```text
+OPENWEATHER_API_KEY=your_key_here
+```
+
 ## GitHub Pages Alternative
 
 GitHub Pages is best for static sites. OrbitGuard has API endpoints, so GitHub Pages can host the frontend only, not the API. Use Vercel, Render, Railway, or Fly.io if you want the public API too.

@@ -39,6 +39,7 @@
       <nav class="mode-tabs" aria-label="Project modes">
         <button class="mode-tab active" type="button" data-mode="dashboard">Current Orbit Dashboard</button>
         <button class="mode-tab" type="button" data-mode="time">Time Machine</button>
+        <button class="mode-tab" type="button" data-mode="weather">Weather Ops</button>
         <button class="mode-tab" type="button" data-mode="simulator">Launch Impact Simulator</button>
         <button class="mode-tab" type="button" data-mode="report">Sustainability Report</button>
       </nav>
@@ -53,6 +54,7 @@
           <button class="mode-jump" type="button" data-mode="dashboard">Open Dashboard</button>
           <button class="mode-jump" type="button" data-mode="simulator">Run Launch Simulator</button>
           <button class="mode-jump" type="button" data-mode="time">Use Time Machine</button>
+          <button class="mode-jump" type="button" data-mode="weather">Monitor Weather</button>
         </div>
       </section>
 
@@ -198,6 +200,42 @@
             <strong id="metricRisk">-</strong>
             <small id="metricRiskNote">Average catalog risk index</small>
           </article>
+        </section>
+
+        <section class="weather-digest panel" aria-label="Current space and ground station weather">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Live operations layer</p>
+              <h2>Current Space Environment</h2>
+            </div>
+            <div class="weather-actions">
+              <span id="weatherUpdated" class="panel-stat">Loading weather...</span>
+              <button id="weatherRefreshDashboard" type="button">Refresh Weather</button>
+            </div>
+          </div>
+          <div class="weather-digest-grid">
+            <article class="weather-chip">
+              <span>Kp index</span>
+              <strong id="dashKpValue">-</strong>
+              <small id="dashKpLevel">NOAA SWPC geomagnetic activity</small>
+            </article>
+            <article class="weather-chip">
+              <span>F10.7 flux</span>
+              <strong id="dashF107Value">-</strong>
+              <small id="dashF107Note">Solar radio flux proxy</small>
+            </article>
+            <article class="weather-chip">
+              <span>Solar wind</span>
+              <strong id="dashSolarWindValue">-</strong>
+              <small id="dashSolarWindNote">Speed and particle density</small>
+            </article>
+            <article class="weather-chip">
+              <span>Drag impact</span>
+              <strong id="dashDragValue">-</strong>
+              <small id="dashDragNote">LEO deorbit timeline shift</small>
+            </article>
+          </div>
+          <div class="ground-digest" id="groundStationDigest">Ground station weather loading...</div>
         </section>
 
         <section class="analysis-layout">
@@ -463,6 +501,214 @@
         </section>
       </section>
 
+      <section class="mode-panel" id="weatherMode">
+        <section class="weather-ops-grid" aria-label="OrbitGuard Weather Operations">
+          <article class="panel weather-intro-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Operator-style risk monitor</p>
+                <h2>Space Weather + Ground Station Weather</h2>
+              </div>
+              <div class="weather-actions">
+                <button id="weatherRefresh" type="button">Refresh Live Feeds</button>
+                <button id="downloadWeatherSnapshot" type="button">Download Weather Snapshot</button>
+              </div>
+            </div>
+            <p class="time-lede">
+              OrbitGuard combines NOAA space weather data with ground-station weather to estimate drag risk, Ka-band rain fade, optical tracking quality, antenna wind status, and laser communication availability.
+            </p>
+            <p id="weatherStatus" class="weather-status">Loading live weather feeds...</p>
+          </article>
+
+          <section class="weather-metrics-grid" aria-label="Space weather metrics">
+            <article class="metric weather-metric">
+              <span>Kp index</span>
+              <strong id="weatherKpValue">-</strong>
+              <small id="weatherKpNote">Geomagnetic disturbance level</small>
+            </article>
+            <article class="metric weather-metric">
+              <span>Storm level</span>
+              <strong id="weatherStormLevel">-</strong>
+              <small id="weatherStormNote">NOAA G-scale interpretation</small>
+            </article>
+            <article class="metric weather-metric">
+              <span>F10.7 flux</span>
+              <strong id="weatherF107Value">-</strong>
+              <small id="weatherF107Note">Solar Cycle 25 activity proxy</small>
+            </article>
+            <article class="metric weather-metric">
+              <span>Solar wind</span>
+              <strong id="weatherSolarWindValue">-</strong>
+              <small id="weatherSolarWindNote">Speed / density</small>
+            </article>
+            <article class="metric weather-metric">
+              <span>LEO drag multiplier</span>
+              <strong id="weatherDragMultiplier">-</strong>
+              <small id="weatherDragNote">Educational model</small>
+            </article>
+            <article class="metric weather-metric">
+              <span>Active alerts</span>
+              <strong id="weatherAlertCount">-</strong>
+              <small id="weatherAlertNote">NOAA SWPC alert feed</small>
+            </article>
+          </section>
+
+          <section class="weather-detail-grid">
+            <article class="panel weather-impact-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Orbital drag estimate</p>
+                  <h2>Altitude Band Impact</h2>
+                </div>
+              </div>
+              <div class="weather-band-list" id="dragImpactBands"></div>
+              <p class="time-note" id="dragMethodNote">
+                Educational scaling using Kp and F10.7. Operational lifetime prediction would use density models such as NRLMSISE-00 with spacecraft area, mass, attitude, and orbit data.
+              </p>
+            </article>
+
+            <article class="panel solar-cycle-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">11-year solar cycle</p>
+                  <h2>F10.7 Solar Flux Timeline</h2>
+                </div>
+                <span class="panel-stat" id="solarCycleCurrent">-</span>
+              </div>
+              <div class="solar-cycle-chart" id="solarCycleChart"></div>
+              <p class="time-note" id="solarCycleNote">
+                Current solar flux will appear here after the NOAA feed loads.
+              </p>
+            </article>
+          </section>
+
+          <section class="weather-detail-grid">
+            <article class="panel starlink-incident-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Case study</p>
+                  <h2>2022 Starlink Storm Incident</h2>
+                </div>
+                <span class="risk-chip" style="--chip-color: var(--warning)">Kp ~6</span>
+              </div>
+              <div class="incident-stats" id="starlinkIncidentStats"></div>
+              <p>
+                SpaceX launched 49 Starlink satellites into a very low deployment orbit near 210 km on February 3, 2022. A geomagnetic storm increased atmospheric drag, and 38 satellites reentered instead of raising to operational altitude. OrbitGuard uses this as a permanent reminder that space weather is mission-critical, not decorative.
+              </p>
+            </article>
+
+            <article class="panel alerts-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">NOAA alerts</p>
+                  <h2>Active Space Weather Messages</h2>
+                </div>
+              </div>
+              <div class="alert-list" id="spaceWeatherAlerts"></div>
+            </article>
+          </section>
+
+          <section class="panel ground-station-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Ground network</p>
+                <h2>Ground Station Monitor</h2>
+              </div>
+            </div>
+
+            <div class="ground-controls">
+              <label>
+                Preset station
+                <select id="groundStationSelect">
+                  <option value="goldstone">Goldstone - Mojave Desert, CA</option>
+                  <option value="canberra">Canberra - Australia</option>
+                  <option value="madrid">Madrid - Spain</option>
+                  <option value="svalbard">Svalbard - Norway</option>
+                  <option value="mcmurdo">McMurdo - Antarctica</option>
+                  <option value="diego-garcia">Diego Garcia - Indian Ocean</option>
+                  <option value="wallops">Wallops - Virginia</option>
+                </select>
+              </label>
+              <label>
+                Custom name
+                <input id="customGroundName" type="text" placeholder="School roof station">
+              </label>
+              <label>
+                Latitude
+                <input id="customGroundLat" type="text" inputmode="decimal" placeholder="34.7304">
+              </label>
+              <label>
+                Longitude
+                <input id="customGroundLon" type="text" inputmode="decimal" placeholder="-86.5861">
+              </label>
+              <button id="useCustomStation" type="button">Use Coordinates</button>
+            </div>
+
+            <div class="selected-ground-station">
+              <div>
+                <p class="eyebrow">Selected site</p>
+                <h3 id="groundStationName">Ground station loading...</h3>
+                <p id="groundStationMeta">Weather-dependent communications status will appear here.</p>
+              </div>
+              <div class="ground-status-chip" id="groundPrimaryStatus">Loading</div>
+            </div>
+
+            <div class="ground-metrics-grid">
+              <article class="weather-chip">
+                <span>Weather</span>
+                <strong id="groundCondition">-</strong>
+                <small id="groundTemperature">Temperature loading</small>
+              </article>
+              <article class="weather-chip">
+                <span>Rain rate</span>
+                <strong id="groundRain">-</strong>
+                <small id="groundRainNote">Ka-band rain fade driver</small>
+              </article>
+              <article class="weather-chip">
+                <span>Cloud cover</span>
+                <strong id="groundClouds">-</strong>
+                <small id="groundOpticalNote">Optical tracking quality</small>
+              </article>
+              <article class="weather-chip">
+                <span>Wind</span>
+                <strong id="groundWind">-</strong>
+                <small id="groundWindNote">Antenna operations</small>
+              </article>
+              <article class="weather-chip">
+                <span>Visibility</span>
+                <strong id="groundVisibility">-</strong>
+                <small id="groundLaserNote">Laser comm viability</small>
+              </article>
+            </div>
+
+            <div class="ground-operations-grid">
+              <article class="compare-card">
+                <p class="eyebrow">RF link</p>
+                <h3 id="kaAttenuation">-</h3>
+                <p id="kaAttenuationNote">Ka-band degradation estimate will appear here.</p>
+              </article>
+              <article class="compare-card">
+                <p class="eyebrow">Optical systems</p>
+                <h3 id="opticalScore">-</h3>
+                <p id="opticalScoreNote">Cloud and visibility score will appear here.</p>
+              </article>
+              <article class="compare-card">
+                <p class="eyebrow">Antenna</p>
+                <h3 id="antennaStatus">-</h3>
+                <p id="antennaStatusNote">Wind safety status will appear here.</p>
+              </article>
+              <article class="compare-card">
+                <p class="eyebrow">Laser comm</p>
+                <h3 id="laserStatus">-</h3>
+                <p id="clearWindow">Next optical window estimate will appear here.</p>
+              </article>
+            </div>
+
+            <div class="ground-network-cards" id="groundNetworkCards"></div>
+          </section>
+        </section>
+      </section>
+
       <section class="mode-panel" id="simulatorMode">
         <section class="simulator-layout">
           <article class="panel launch-form-panel">
@@ -609,7 +855,7 @@
     </main>
 
     <footer>
-      <span>Built by Harshith Pranav Praveen. Data: CelesTrak SATCAT. Risk scores are an educational screening model, not operational conjunction analysis.</span>
+      <span>Built by Harshith Pranav Praveen. Data: CelesTrak SATCAT, NOAA SWPC, and weather APIs. Risk scores are educational screening models, not operational flight safety products.</span>
       <span class="footer-links">
         <a href="docs/API.md">API docs</a>
         <a href="docs/ABOUT_CREATOR.md">About creator</a>

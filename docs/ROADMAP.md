@@ -40,12 +40,24 @@ Status: built.
 - Ingest NOAA SWPC Kp and F10.7 products
 - Adjust LEO lifetime estimates under high and low solar activity assumptions
 - Add a space-weather badge to the simulator
+- Add solar wind, SWPC alerts, Solar Cycle 25 timeline, 2022 Starlink case study, and ground-station weather operations monitor
+
+Status: first educational version built. Next upgrade is replacing the simple drag scaling with NRLMSISE-00 density modeling and spacecraft-specific drag assumptions.
+
+## Phase 4.5: Ground Station Network
+
+- Add map-based station selection
+- Add satellite pass windows for each station
+- Add frequency-specific link budget presets for S-band, X-band, Ku-band, and Ka-band
+- Add station-specific antenna wind limits where public hardware data is available
 
 Useful official sources:
 
 - NOAA Kp product: https://www.swpc.noaa.gov/products/planetary-k-index
 - NOAA product index: https://services.swpc.noaa.gov/products/
 - NOAA 45-day Ap/F10.7 forecast: https://www.swpc.noaa.gov/products/45-day-forecast
+- Open-Meteo API: https://open-meteo.com/en/docs
+- OpenWeatherMap current weather API: https://openweathermap.org/api/current
 
 ## Phase 5: Regulatory Screening
 

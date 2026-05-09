@@ -6,7 +6,7 @@ OrbitGuard is a space sustainability analyzer that tracks satellites and debris,
 
 Built by **Harshith Pranav Praveen**.
 
-It uses public CelesTrak SATCAT data and turns it into a four-mode portfolio project:
+It uses public CelesTrak SATCAT data plus live weather feeds and turns them into a five-mode portfolio project:
 
 OrbitGuard also includes a customizable visual theme system that lets users switch between soft blue, deep space, light, high-contrast, and custom modes. The design improves accessibility, readability, and visual contrast while keeping sustainability colors meaningful instead of overwhelming.
 
@@ -32,7 +32,15 @@ OrbitGuard also includes a customizable visual theme system that lets users swit
    - User enters satellites deployed, target altitude, inclination, lifetime, fragments, rocket-body disposal, and deorbit plan
    - App calculates objects added, affected altitude band, band-density increase, launch risk, and sustainability grade
 
-4. **Sustainability Report**
+4. **Weather Ops Monitor**
+   - NOAA SWPC Kp index, F10.7 solar flux, solar wind, and alert messages
+   - Educational LEO drag and deorbit-timeline scaling by altitude band
+   - Solar Cycle 25 F10.7 timeline from public NOAA records
+   - 2022 Starlink geomagnetic storm incident case study
+   - Ground station monitor for Goldstone, Canberra, Madrid, Svalbard, McMurdo, Diego Garcia, Wallops, and custom coordinates
+   - Ka-band rain fade, optical tracking score, wind/antenna status, laser comm viability, and next clear-window estimate
+
+5. **Sustainability Report**
    - Generates a short report explaining how the launch changes orbital congestion
    - Suggests mitigation steps such as deorbit planning, avoiding crowded bands, reducing deployment fragments, and disposing of upper stages
 
@@ -42,6 +50,7 @@ Users can download:
 - Current orbit data as JSON
 - Google Earth KML exports for the dashboard and Time Machine views
 - Time Machine comparison report as JSON
+- Weather operations snapshot as JSON
 - Launch simulation output as JSON
 - Launch simulation output as CSV
 - Sustainability report as JSON
@@ -126,6 +135,9 @@ GET  /api/v1/summary
 GET  /api/v1/objects?band=500-600&type=debris
 GET  /api/v1/bands?size=100
 GET  /api/v1/time-machine?year=2005
+GET  /api/v1/weather/space
+GET  /api/v1/weather/ground?station=goldstone
+GET  /api/v1/weather/ground?station=all
 GET  /api/v1/sustainability?satellites=24&altitude=550&inclination=53
 POST /api/v1/simulate
 ```
@@ -216,3 +228,4 @@ git push -u origin main
 - Compare altitude bands against NASA debris-mitigation rules
 - Save multiple launch scenarios and rank them
 - Export the sustainability report as PDF
+- Replace the educational drag scaling with a full NRLMSISE-00 atmospheric-density model
