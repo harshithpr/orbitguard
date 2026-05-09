@@ -6,15 +6,19 @@ OrbitGuard is structured as a small platform, not just a single-page website.
 Apps
   Browser dashboard
   OrbitGuard Time Machine
+  OrbitGuard Space Encyclopedia
   Weather Ops monitor
   Launch impact simulator
   Sustainability report
-  Display/theme control panel
+  Display/theme drawer
 
 API
   /api/v1/objects
   /api/v1/bands
   /api/v1/time-machine
+  /api/v1/encyclopedia/topics
+  /api/v1/encyclopedia/article
+  /api/v1/encyclopedia/fact-check
   /api/v1/weather/space
   /api/v1/weather/ground
   /api/v1/sustainability
@@ -32,10 +36,16 @@ Engines
     educational drag scaling
     OpenWeatherMap or Open-Meteo ground weather
     Ka-band, optical, antenna, and laser status scoring
+  encyclopedia-core.js
+    topic architecture expansion
+    optional Anthropic article generation
+    local fallback article generation
+    live-data fact checks
 
 Data
   CelesTrak SATCAT CSV
   orbitguard-data.json
+  encyclopedia-topics.json
   NOAA SWPC live JSON feeds
   Open-Meteo weather API fallback
   Optional OpenWeatherMap current-weather API if OPENWEATHER_API_KEY is set
@@ -50,6 +60,7 @@ Data
 5. The local API reads the same file and exposes queryable endpoints.
 6. `src/engines/orbitguard-core.js` contains reusable model logic for the API layer.
 7. `src/engines/weather-core.js` pulls live NOAA SWPC and ground-weather feeds, then returns normalized operations-focused summaries to both the dashboard and deployable API routes.
+8. `src/engines/encyclopedia-core.js` expands 200 topic titles into searchable reference metadata, generates articles on demand, and returns fact-check summaries.
 
 ## Time Machine Layer
 
@@ -57,7 +68,13 @@ The first Time Machine version is intentionally transparent: it uses launch-year
 
 ## Theme Layer
 
-The browser app uses CSS custom properties as a design system. Preset themes define surface, text, accent, status, chart, and object colors. The Custom mode stores user choices in `localStorage`, then updates CSS variables and rerenders charts and 3D point clouds so the visual language stays consistent across the dashboard, Time Machine, simulator, and reports.
+The browser app uses CSS custom properties as a design system. Preset themes define surface, text, accent, status, chart, and object colors. The Custom mode stores user choices in `localStorage`, then updates CSS variables and rerenders charts and 3D point clouds so the visual language stays consistent across the dashboard, Time Machine, encyclopedia, simulator, and reports. Display settings live in a right-side drawer so the controls stay available without occupying the main workflow.
+
+## Encyclopedia Layer
+
+The encyclopedia is data-driven. `data/encyclopedia-topics.json` stores 200 topic titles across 10 categories. The browser builds the searchable index and caches each generated article in `localStorage`. The API can use Anthropic if `ANTHROPIC_API_KEY` is configured; otherwise it uses a local educational generator so the feature still works without secrets.
+
+The fact-check endpoint compares article drafts with live OrbitGuard catalog data, altitude-band summaries, NOAA space-weather data when relevant, and selected historical incident facts. It is intentionally labeled as a review aid rather than a formal citation engine.
 
 ## Weather Operations Layer
 

@@ -59,6 +59,36 @@ GET /api/v1/time-machine?year=2005
 
 Returns a past-vs-current catalog comparison using the same launch-year reconstruction as the Time Machine page. The response includes selected year, current year, past counts, current counts, change values, methodology, and limitation notes.
 
+## Encyclopedia Topics
+
+```http
+GET /api/v1/encyclopedia/topics
+```
+
+Returns the OrbitGuard Space Encyclopedia topic architecture: 200 curated topics, 10 categories, tags, related-topic links, depth labels, and prompt context. The browser also loads `data/encyclopedia-topics.json` directly for the interactive topic index.
+
+## Encyclopedia Article
+
+```http
+GET /api/v1/encyclopedia/article?id=kessler-syndrome
+```
+
+Generates an article for a selected topic. If `ANTHROPIC_API_KEY` is configured, the API can use the Anthropic Messages API. Without a key, OrbitGuard falls back to a local educational article generator so the site still works for reviewers. The browser caches each generated article in `localStorage`.
+
+## Encyclopedia Fact Check
+
+```http
+POST /api/v1/encyclopedia/fact-check
+Content-Type: application/json
+
+{
+  "id": "kessler-syndrome",
+  "articleText": "Generated article text..."
+}
+```
+
+Returns live-data review cards using OrbitGuard catalog counts, most crowded altitude bands, NOAA space-weather values when relevant, and selected historical incident facts. This is a review aid, not a formal citation engine.
+
 ## Space Weather
 
 ```http

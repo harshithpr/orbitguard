@@ -179,6 +179,10 @@ a {
   font-weight: 760;
 }
 
+.settings-toggle {
+  background: transparent;
+}
+
 .top-link:hover {
   border-color: var(--accent);
 }
@@ -258,6 +262,54 @@ main {
   min-width: 11rem;
 }
 
+.settings-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 40;
+  width: min(430px, 94vw);
+  height: 100dvh;
+  overflow-y: auto;
+  padding: 1rem;
+  border-left: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-panel) 94%, black);
+  box-shadow: -22px 0 55px var(--shadow-color);
+  transform: translateX(105%);
+  transition: transform 180ms ease;
+}
+
+.settings-drawer.open {
+  transform: translateX(0);
+}
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgb(0 0 0 / 0.5);
+}
+
+.drawer-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.drawer-heading h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.drawer-heading button {
+  min-height: 2.15rem;
+  padding-inline: 0.75rem;
+}
+
 .display-settings {
   display: grid;
   grid-template-columns: auto minmax(8rem, 0.5fr) minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(10rem, 0.8fr) minmax(20rem, 1.3fr) repeat(3, auto);
@@ -269,6 +321,25 @@ main {
   border-radius: 8px;
   background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
   box-shadow: var(--shadow);
+}
+
+.settings-drawer .display-settings {
+  grid-template-columns: 1fr;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.settings-drawer .theme-controls,
+.settings-drawer .setting-control,
+.settings-drawer .compact-check {
+  width: 100%;
+}
+
+.settings-drawer .object-color-controls {
+  grid-template-columns: 1fr;
 }
 
 .theme-controls {
@@ -336,7 +407,7 @@ input[type="color"] {
 
 .mode-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.5rem;
   margin-bottom: 1rem;
   padding: 0.35rem;
@@ -1015,6 +1086,197 @@ button:hover {
   min-width: 720px;
 }
 
+.encyclopedia-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.encyclopedia-hero p:not(.eyebrow),
+.encyclopedia-reader p {
+  color: var(--text);
+  line-height: 1.58;
+}
+
+.encyclopedia-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.encyclopedia-shell {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.32fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.encyclopedia-sidebar {
+  align-self: start;
+  position: sticky;
+  top: 6rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.category-card-list {
+  display: grid;
+  gap: 0.55rem;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.category-filter-card,
+.topic-card {
+  display: grid;
+  gap: 0.35rem;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.category-filter-card {
+  min-height: auto;
+  padding: 0.7rem;
+}
+
+.category-filter-card.active,
+.topic-card.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 46%, var(--panel-2));
+}
+
+.category-filter-card strong,
+.topic-card strong {
+  font-size: 0.95rem;
+}
+
+.category-filter-card span,
+.category-filter-card small,
+.topic-card span,
+.topic-card small,
+.article-meta {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.topic-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.topic-card {
+  min-height: 9rem;
+  padding: 0.85rem;
+}
+
+.topic-card span {
+  font-size: 0.78rem;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.topic-tags,
+.related-topic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.topic-tags i,
+.related-topic-row button,
+.article-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 720;
+}
+
+.related-topic-row {
+  margin-top: 1rem;
+}
+
+.related-topic-row button {
+  min-height: 1.9rem;
+  background: transparent;
+  color: var(--text);
+}
+
+.encyclopedia-reader {
+  scroll-margin-top: 6rem;
+}
+
+.article-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.article-body {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.article-body p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.fact-check-panel {
+  display: none;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--success) 34%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--success) 8%, var(--panel-2));
+}
+
+.fact-check-panel.active {
+  display: block;
+}
+
+.fact-check-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.fact-check-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.fact-check-card strong {
+  color: var(--accent);
+  font-size: 1.1rem;
+}
+
+.fact-check-card span,
+.fact-check-card small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
 .scenario-panel,
 .launch-impact-panel,
 .launch-form-panel {
@@ -1345,6 +1607,7 @@ footer a {
   .simulator-layout,
   .about-grid,
   .compare-grid,
+  .encyclopedia-shell,
   .weather-detail-grid,
   .report-layout {
     grid-template-columns: 1fr;
@@ -1352,6 +1615,9 @@ footer a {
 
   .dashboard-metrics,
   .impact-metrics,
+  .encyclopedia-stats,
+  .topic-card-grid,
+  .fact-check-grid,
   .weather-digest-grid,
   .weather-metrics-grid,
   .ground-metrics-grid,
@@ -1362,6 +1628,10 @@ footer a {
 
   .ground-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .encyclopedia-sidebar {
+    position: static;
   }
 }
 
@@ -1386,6 +1656,9 @@ footer a {
   .control-band,
   .dashboard-metrics,
   .impact-metrics,
+  .encyclopedia-stats,
+  .topic-card-grid,
+  .fact-check-grid,
   .launch-form,
   .display-settings,
   .time-controls,

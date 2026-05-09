@@ -29,7 +29,8 @@
         </div>
       </div>
       <div class="topbar-actions">
-        <a class="top-link" href="https://github.com/new" target="_blank" rel="noreferrer">GitHub</a>
+        <button class="top-link settings-toggle" id="settingsToggle" type="button">Display</button>
+        <a class="top-link" href="https://github.com/harshithpr/orbitguard" target="_blank" rel="noreferrer">GitHub</a>
         <a class="top-link" href="https://vercel.com/new" target="_blank" rel="noreferrer">Deploy</a>
         <div class="source-pill" id="dataSource">Loading catalog...</div>
       </div>
@@ -39,6 +40,7 @@
       <nav class="mode-tabs" aria-label="Project modes">
         <button class="mode-tab active" type="button" data-mode="dashboard">Current Orbit Dashboard</button>
         <button class="mode-tab" type="button" data-mode="time">Time Machine</button>
+        <button class="mode-tab" type="button" data-mode="encyclopedia">Encyclopedia</button>
         <button class="mode-tab" type="button" data-mode="weather">Weather Ops</button>
         <button class="mode-tab" type="button" data-mode="simulator">Launch Impact Simulator</button>
         <button class="mode-tab" type="button" data-mode="report">Sustainability Report</button>
@@ -52,11 +54,21 @@
         </div>
         <div class="hero-actions">
           <button class="mode-jump" type="button" data-mode="dashboard">Open Dashboard</button>
+          <button class="mode-jump" type="button" data-mode="encyclopedia">Open Encyclopedia</button>
           <button class="mode-jump" type="button" data-mode="simulator">Run Launch Simulator</button>
           <button class="mode-jump" type="button" data-mode="time">Use Time Machine</button>
           <button class="mode-jump" type="button" data-mode="weather">Monitor Weather</button>
         </div>
       </section>
+
+      <aside class="settings-drawer" id="settingsDrawer" aria-hidden="true" aria-label="Display customization drawer">
+        <div class="drawer-heading">
+          <div>
+            <p class="eyebrow">Display settings</p>
+            <h2>Customize OrbitGuard</h2>
+          </div>
+          <button id="settingsClose" type="button" aria-label="Close display settings">Close</button>
+        </div>
 
       <section class="display-settings" aria-label="Display settings">
         <div class="theme-controls">
@@ -117,6 +129,8 @@
           <span>High contrast</span>
         </label>
       </section>
+      </aside>
+      <button class="settings-backdrop" id="settingsBackdrop" type="button" hidden aria-label="Close display settings"></button>
 
       <section class="mode-panel active" id="dashboardMode">
         <section class="control-band" aria-label="Analyzer controls">
@@ -496,6 +510,116 @@
             </div>
             <p class="time-note">
               Note: This historical view is an educational reconstruction using launch-year data from the current catalog. A future version can use archived orbital snapshots for higher accuracy.
+            </p>
+          </article>
+        </section>
+      </section>
+
+      <section class="mode-panel" id="encyclopediaMode">
+        <section class="encyclopedia-layout" aria-label="OrbitGuard Space Encyclopedia">
+          <article class="panel encyclopedia-hero">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Generated reference library</p>
+                <h2>OrbitGuard Space Encyclopedia</h2>
+              </div>
+              <div class="download-actions">
+                <button id="downloadEncyclopediaIndex" type="button">Download Topic Index</button>
+              </div>
+            </div>
+            <p>
+              Browse a 200-topic reference system covering orbital mechanics, debris events, policy, constellations, technology, physics, business, and space organizations. Articles are generated on demand, cached in this browser, and paired with live OrbitGuard fact checks.
+            </p>
+            <p class="time-note">
+              Transparency note: article text is generated for educational research support. Use the built-in fact checker and source suggestions before citing any article in formal work.
+            </p>
+            <div class="encyclopedia-stats">
+              <article class="weather-chip">
+                <span>Topics</span>
+                <strong id="encyclopediaTopicCount">-</strong>
+                <small>Curated reference entries</small>
+              </article>
+              <article class="weather-chip">
+                <span>Categories</span>
+                <strong id="encyclopediaCategoryCount">-</strong>
+                <small>Organized knowledge areas</small>
+              </article>
+              <article class="weather-chip">
+                <span>Cached articles</span>
+                <strong id="encyclopediaCachedCount">-</strong>
+                <small>Already generated locally</small>
+              </article>
+              <article class="weather-chip">
+                <span>Generated words</span>
+                <strong id="encyclopediaWordCount">-</strong>
+                <small>Cached article text</small>
+              </article>
+            </div>
+          </article>
+
+          <section class="encyclopedia-shell">
+            <aside class="panel encyclopedia-sidebar">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Library controls</p>
+                  <h2>Find a Topic</h2>
+                </div>
+              </div>
+              <label>
+                Search encyclopedia
+                <input id="encyclopediaSearch" type="text" placeholder="Search debris, SGP4, policy...">
+              </label>
+              <label>
+                Category
+                <select id="encyclopediaCategory">
+                  <option value="all">All categories</option>
+                </select>
+              </label>
+              <label>
+                Depth
+                <select id="encyclopediaDepth">
+                  <option value="all">All depths</option>
+                  <option value="advanced">Advanced</option>
+                  <option value="detailed">Detailed</option>
+                </select>
+              </label>
+              <div class="category-card-list" id="encyclopediaCategoryCards"></div>
+            </aside>
+
+            <article class="panel encyclopedia-topic-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Topic index</p>
+                  <h2 id="encyclopediaResultsTitle">All Topics</h2>
+                </div>
+                <span class="panel-stat" id="encyclopediaStatus">Loading topics...</span>
+              </div>
+              <div class="topic-card-grid" id="encyclopediaTopicGrid"></div>
+            </article>
+          </section>
+
+          <article class="panel encyclopedia-reader" id="encyclopediaArticlePanel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow" id="articleCategory">Select a topic</p>
+                <h2 id="articleTitle">Choose an encyclopedia entry</h2>
+              </div>
+              <div class="download-actions">
+                <button id="generateArticle" type="button">Generate / Load Article</button>
+                <button id="factCheckArticle" type="button">Run Fact Checker</button>
+                <button id="downloadArticle" type="button">Download Article</button>
+              </div>
+            </div>
+            <div class="article-meta" id="articleMeta">
+              Select any topic card to load a generated article preview.
+            </div>
+            <div class="article-body" id="articleBody">
+              <p class="empty-state">No article selected yet.</p>
+            </div>
+            <div class="related-topic-row" id="relatedTopics"></div>
+            <div class="fact-check-panel" id="factCheckResults"></div>
+            <p class="time-note" id="articleTransparency">
+              Generated article drafts are cached in localStorage so repeat visits load instantly.
             </p>
           </article>
         </section>

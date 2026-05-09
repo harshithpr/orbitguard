@@ -6,7 +6,7 @@ OrbitGuard is a space sustainability analyzer that tracks satellites and debris,
 
 Built by **Harshith Pranav Praveen**.
 
-It uses public CelesTrak SATCAT data plus live weather feeds and turns them into a five-mode portfolio project:
+It uses public CelesTrak SATCAT data plus live weather feeds and turns them into a six-mode portfolio project:
 
 OrbitGuard also includes a customizable visual theme system that lets users switch between soft blue, deep space, light, high-contrast, and custom modes. The design improves accessibility, readability, and visual contrast while keeping sustainability colors meaningful instead of overwhelming.
 
@@ -32,7 +32,14 @@ OrbitGuard also includes a customizable visual theme system that lets users swit
    - User enters satellites deployed, target altitude, inclination, lifetime, fragments, rocket-body disposal, and deorbit plan
    - App calculates objects added, affected altitude band, band-density increase, launch risk, and sustainability grade
 
-4. **Weather Ops Monitor**
+4. **OrbitGuard Space Encyclopedia**
+   - 200 curated topics across 10 aerospace and space-sustainability categories
+   - Search, category filters, related-topic links, reading-time metadata, and downloadable topic index
+   - Articles generate on demand through the OrbitGuard API, cache in the browser, and reload instantly after first generation
+   - Built-in Fact Checker compares generated article drafts against live OrbitGuard catalog summaries, NOAA weather data when relevant, and selected historical incident facts
+   - Transparent methodology note so the encyclopedia is useful without pretending generated text is a primary source
+
+5. **Weather Ops Monitor**
    - NOAA SWPC Kp index, F10.7 solar flux, solar wind, and alert messages
    - Educational LEO drag and deorbit-timeline scaling by altitude band
    - Solar Cycle 25 F10.7 timeline from public NOAA records
@@ -40,7 +47,7 @@ OrbitGuard also includes a customizable visual theme system that lets users swit
    - Ground station monitor for Goldstone, Canberra, Madrid, Svalbard, McMurdo, Diego Garcia, Wallops, and custom coordinates
    - Ka-band rain fade, optical tracking score, wind/antenna status, laser comm viability, and next clear-window estimate
 
-5. **Sustainability Report**
+6. **Sustainability Report**
    - Generates a short report explaining how the launch changes orbital congestion
    - Suggests mitigation steps such as deorbit planning, avoiding crowded bands, reducing deployment fragments, and disposing of upper stages
 
@@ -50,6 +57,8 @@ Users can download:
 - Current orbit data as JSON
 - Google Earth KML exports for the dashboard and Time Machine views
 - Time Machine comparison report as JSON
+- Encyclopedia topic index as JSON
+- Individual encyclopedia article as JSON
 - Weather operations snapshot as JSON
 - Launch simulation output as JSON
 - Launch simulation output as CSV
@@ -135,6 +144,9 @@ GET  /api/v1/summary
 GET  /api/v1/objects?band=500-600&type=debris
 GET  /api/v1/bands?size=100
 GET  /api/v1/time-machine?year=2005
+GET  /api/v1/encyclopedia/topics
+GET  /api/v1/encyclopedia/article?id=kessler-syndrome
+POST /api/v1/encyclopedia/fact-check
 GET  /api/v1/weather/space
 GET  /api/v1/weather/ground?station=goldstone
 GET  /api/v1/weather/ground?station=all

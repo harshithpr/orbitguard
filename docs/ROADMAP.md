@@ -8,6 +8,7 @@
 - Sustainability report
 - 3D Earth orbit visualizer
 - Time Machine comparison mode with year slider
+- Space Encyclopedia with 200 generated-and-cached reference topics
 - Customizable visual theme and accessibility controls
 - Local API endpoints
 
@@ -70,6 +71,14 @@ Useful official sources:
 
 - IADC debris guidelines: https://orbitaldebris.jsc.nasa.gov/library/IADC-Space-Debris-Guidelines-Revision-2.pdf
 - FCC orbital debris order: https://docs.fcc.gov/public/attachments/FCC-22-74A1.pdf
+
+## Phase 5.5: Encyclopedia Accuracy Upgrade
+
+- Add source-specific fact cards for NASA ODPO, ESA, FCC, ITU, and CelesTrak where each topic needs them
+- Add manual reviewer notes for high-risk articles
+- Export article bundles as Markdown
+- Add article revision history so generated drafts can be improved by mentors
+- Add optional Anthropic generation through `ANTHROPIC_API_KEY` while keeping the local generator as fallback
 
 ## Phase 6: Review And Community
 

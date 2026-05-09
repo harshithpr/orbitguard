@@ -1,4 +1,5 @@
 const DATA_URL = "data/orbitguard-data.json";
+const ENCYCLOPEDIA_TOPICS_URL = "data/encyclopedia-topics.json";
 const THREE_URL = "https://unpkg.com/three@0.165.0/build/three.module.js";
 const ORBIT_CONTROLS_URL = "https://unpkg.com/three@0.165.0/examples/jsm/controls/OrbitControls.js";
 const CREATOR = {
@@ -134,6 +135,20 @@ const state = {
     loading: false,
     error: null
   },
+  encyclopedia: {
+    metadata: null,
+    categories: [],
+    topics: [],
+    filtered: [],
+    selectedCategory: "all",
+    selectedDepth: "all",
+    search: "",
+    selectedTopicId: null,
+    selectedArticle: null,
+    factCheck: null,
+    loading: false,
+    error: null
+  },
   three: {
     THREE: null,
     renderer: null,
@@ -157,6 +172,10 @@ const elements = {
   modeTabs: document.querySelectorAll(".mode-tab"),
   modeJumps: document.querySelectorAll(".mode-jump"),
   modePanels: document.querySelectorAll(".mode-panel"),
+  settingsToggle: document.querySelector("#settingsToggle"),
+  settingsDrawer: document.querySelector("#settingsDrawer"),
+  settingsClose: document.querySelector("#settingsClose"),
+  settingsBackdrop: document.querySelector("#settingsBackdrop"),
   themeSelect: document.querySelector("#theme-select"),
   accentColor: document.querySelector("#accent-color"),
   backgroundBrightness: document.querySelector("#background-brightness"),
@@ -219,6 +238,29 @@ const elements = {
   comparisonBody: document.querySelector("#comparisonBody"),
   downloadTimeMachineJson: document.querySelector("#downloadTimeMachineJson"),
   downloadTimeGoogleEarthKml: document.querySelector("#downloadTimeGoogleEarthKml"),
+  downloadEncyclopediaIndex: document.querySelector("#downloadEncyclopediaIndex"),
+  encyclopediaTopicCount: document.querySelector("#encyclopediaTopicCount"),
+  encyclopediaCategoryCount: document.querySelector("#encyclopediaCategoryCount"),
+  encyclopediaCachedCount: document.querySelector("#encyclopediaCachedCount"),
+  encyclopediaWordCount: document.querySelector("#encyclopediaWordCount"),
+  encyclopediaSearch: document.querySelector("#encyclopediaSearch"),
+  encyclopediaCategory: document.querySelector("#encyclopediaCategory"),
+  encyclopediaDepth: document.querySelector("#encyclopediaDepth"),
+  encyclopediaCategoryCards: document.querySelector("#encyclopediaCategoryCards"),
+  encyclopediaResultsTitle: document.querySelector("#encyclopediaResultsTitle"),
+  encyclopediaStatus: document.querySelector("#encyclopediaStatus"),
+  encyclopediaTopicGrid: document.querySelector("#encyclopediaTopicGrid"),
+  encyclopediaArticlePanel: document.querySelector("#encyclopediaArticlePanel"),
+  articleCategory: document.querySelector("#articleCategory"),
+  articleTitle: document.querySelector("#articleTitle"),
+  articleMeta: document.querySelector("#articleMeta"),
+  articleBody: document.querySelector("#articleBody"),
+  relatedTopics: document.querySelector("#relatedTopics"),
+  factCheckResults: document.querySelector("#factCheckResults"),
+  articleTransparency: document.querySelector("#articleTransparency"),
+  generateArticle: document.querySelector("#generateArticle"),
+  factCheckArticle: document.querySelector("#factCheckArticle"),
+  downloadArticle: document.querySelector("#downloadArticle"),
   weatherRefresh: document.querySelector("#weatherRefresh"),
   downloadWeatherSnapshot: document.querySelector("#downloadWeatherSnapshot"),
   weatherStatus: document.querySelector("#weatherStatus"),
@@ -1477,6 +1519,435 @@ function buildWeatherSnapshotPayload() {
     limitation:
       "Space-weather drag and ground-link calculations are educational screening estimates, not certified mission operations products."
   };
+}
+
+function encyclopediaSlug(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function topicWords(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter((word) => word.length > 2 && !["the", "and", "for", "with", "from"].includes(word));
+}
+
+function enrichEncyclopediaTopics(payload) {
+  const bareTopics = payload.categories.flatMap((category, categoryIndex) =>
+    category.topics.map((title, index) => ({
+      id: encyclopediaSlug(title),
+      title,
+      category: category.name,
+      categoryIndex,
+      order: index,
+      tags: topicWords(`${category.name} ${title}`).slice(0, 6),
+      depth: /covariance|probability|nrlmsise|kessler|conjunction|policy|liability|economics|hypervelocity/i.test(title)
+        ? "advanced"
+        : "detailed",
+      promptContext: `Explain ${title} through space sustainability, orbital risk, engineering tradeoffs, and mission-design implications.`
+    }))
+  );
+
+  const topics = bareTopics.map((topic) => {
+    const words = new Set(topicWords(topic.title));
+    const related = bareTopics
+      .filter((candidate) => candidate.id !== topic.id)
+      .map((candidate) => {
+        const score = topicWords(candidate.title).reduce((sum, word) => sum + (words.has(word) ? 2 : 0), 0) + (candidate.category === topic.category ? 1 : 0);
+        return { candidate, score };
+      })
+      .sort((a, b) => b.score - a.score)
+      .map((item) => item.candidate.id)
+      .slice(0, 5);
+
+    return { ...topic, related };
+  });
+
+  return {
+    metadata: {
+      ...payload.metadata,
+      topicCount: topics.length,
+      categoryCount: payload.categories.length
+    },
+    categories: payload.categories.map((category) => ({
+      name: category.name,
+      count: category.topics.length
+    })),
+    topics
+  };
+}
+
+function articleCacheKey(topicId) {
+  return `orbitguard_article_${topicId}`;
+}
+
+function readCachedArticle(topicId) {
+  try {
+    const cached = localStorage.getItem(articleCacheKey(topicId));
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedArticle(article) {
+  localStorage.setItem(articleCacheKey(article.id), JSON.stringify(article));
+}
+
+function cachedArticleStats() {
+  let count = 0;
+  let words = 0;
+
+  for (const topic of state.encyclopedia.topics) {
+    const article = readCachedArticle(topic.id);
+    if (article) {
+      count += 1;
+      words += Number(article.wordCount || 0);
+    }
+  }
+
+  return { count, words };
+}
+
+function selectedEncyclopediaTopic() {
+  return state.encyclopedia.topics.find((topic) => topic.id === state.encyclopedia.selectedTopicId) || null;
+}
+
+async function loadEncyclopediaTopics() {
+  try {
+    const response = await fetch(ENCYCLOPEDIA_TOPICS_URL);
+
+    if (!response.ok) {
+      throw new Error(`Topic index request failed with ${response.status}`);
+    }
+
+    const payload = enrichEncyclopediaTopics(await response.json());
+    state.encyclopedia.metadata = payload.metadata;
+    state.encyclopedia.categories = payload.categories;
+    state.encyclopedia.topics = payload.topics;
+    state.encyclopedia.filtered = payload.topics;
+    populateEncyclopediaCategories();
+    renderEncyclopedia();
+  } catch (error) {
+    state.encyclopedia.error = error.message;
+    elements.encyclopediaStatus.textContent = "Topic index unavailable";
+    elements.encyclopediaTopicGrid.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+function populateEncyclopediaCategories() {
+  elements.encyclopediaCategory.innerHTML = "<option value=\"all\">All categories</option>";
+
+  for (const category of state.encyclopedia.categories) {
+    const option = document.createElement("option");
+    option.value = category.name;
+    option.textContent = `${category.name} (${category.count})`;
+    elements.encyclopediaCategory.append(option);
+  }
+}
+
+function applyEncyclopediaFilters() {
+  const query = state.encyclopedia.search.trim().toLowerCase();
+  state.encyclopedia.filtered = state.encyclopedia.topics.filter((topic) => {
+    if (state.encyclopedia.selectedCategory !== "all" && topic.category !== state.encyclopedia.selectedCategory) {
+      return false;
+    }
+
+    if (state.encyclopedia.selectedDepth !== "all" && topic.depth !== state.encyclopedia.selectedDepth) {
+      return false;
+    }
+
+    if (!query) {
+      return true;
+    }
+
+    return `${topic.title} ${topic.category} ${topic.tags.join(" ")}`.toLowerCase().includes(query);
+  });
+}
+
+function renderEncyclopedia() {
+  if (!state.encyclopedia.topics.length) {
+    return;
+  }
+
+  applyEncyclopediaFilters();
+  renderEncyclopediaStats();
+  renderEncyclopediaCategories();
+  renderEncyclopediaTopics();
+
+  if (!state.encyclopedia.selectedTopicId) {
+    selectEncyclopediaTopic(state.encyclopedia.filtered[0]?.id || state.encyclopedia.topics[0].id, { scroll: false });
+  }
+}
+
+function renderEncyclopediaStats() {
+  const stats = cachedArticleStats();
+  elements.encyclopediaTopicCount.textContent = numberFormat(state.encyclopedia.metadata?.topicCount || state.encyclopedia.topics.length);
+  elements.encyclopediaCategoryCount.textContent = numberFormat(state.encyclopedia.metadata?.categoryCount || state.encyclopedia.categories.length);
+  elements.encyclopediaCachedCount.textContent = numberFormat(stats.count);
+  elements.encyclopediaWordCount.textContent = numberFormat(stats.words);
+  elements.encyclopediaStatus.textContent = `${numberFormat(state.encyclopedia.filtered.length)} matching topics`;
+  elements.encyclopediaResultsTitle.textContent = state.encyclopedia.selectedCategory === "all" ? "All Topics" : state.encyclopedia.selectedCategory;
+}
+
+function renderEncyclopediaCategories() {
+  elements.encyclopediaCategoryCards.innerHTML = [
+    { name: "all", count: state.encyclopedia.topics.length, label: "All categories" },
+    ...state.encyclopedia.categories.map((category) => ({ ...category, label: category.name }))
+  ]
+    .map(
+      (category) => `
+        <button class="category-filter-card ${state.encyclopedia.selectedCategory === category.name ? "active" : ""}" type="button" data-category="${escapeHtml(category.name)}">
+          <strong>${escapeHtml(category.label)}</strong>
+          <span>${numberFormat(category.count)} topics</span>
+        </button>
+      `
+    )
+    .join("");
+}
+
+function renderEncyclopediaTopics() {
+  if (!state.encyclopedia.filtered.length) {
+    elements.encyclopediaTopicGrid.innerHTML = "<p class=\"empty-state\">No encyclopedia topics match that filter.</p>";
+    return;
+  }
+
+  elements.encyclopediaTopicGrid.innerHTML = state.encyclopedia.filtered
+    .map((topic) => {
+      const cached = readCachedArticle(topic.id);
+      return `
+        <button class="topic-card ${state.encyclopedia.selectedTopicId === topic.id ? "active" : ""}" type="button" data-topic-id="${topic.id}">
+          <span>${escapeHtml(topic.category)}</span>
+          <strong>${escapeHtml(topic.title)}</strong>
+          <small>${topic.depth === "advanced" ? "Advanced technical entry" : "Detailed reference entry"} ${cached ? "- cached" : "- ready to generate"}</small>
+          <div class="topic-tags">${topic.tags.slice(0, 4).map((tag) => `<i>${escapeHtml(tag)}</i>`).join("")}</div>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function renderArticleMeta(article, topic) {
+  const cached = readCachedArticle(topic.id);
+  const generatedAt = article?.generatedAt ? observedTime(article.generatedAt) : "not generated yet";
+  const mode = article?.generationMode === "anthropic" ? "AI generated" : article ? "local generated" : "preview";
+  elements.articleMeta.innerHTML = `
+    <span>${escapeHtml(topic.category)}</span>
+    <span>${escapeHtml(topic.depth)}</span>
+    <span>${article?.wordCount ? `${numberFormat(article.wordCount)} words` : "article not loaded"}</span>
+    <span>${article?.readingMinutes ? `${article.readingMinutes} min read` : "select Generate"}</span>
+    <span>${cached ? "cached in browser" : "not cached yet"}</span>
+    <span>${escapeHtml(mode)}</span>
+    <span>${escapeHtml(generatedAt)}</span>
+  `;
+}
+
+function renderArticleBody(article, topic) {
+  if (!article) {
+    elements.articleBody.innerHTML = `
+      <p><strong>${escapeHtml(topic.title)}</strong> is ready to generate. The article will be cached in this browser and can be checked against live OrbitGuard data.</p>
+      <p class="empty-state">Click Generate / Load Article to create the encyclopedia entry.</p>
+    `;
+    return;
+  }
+
+  elements.articleBody.innerHTML = String(article.content)
+    .split(/\n{2,}/)
+    .filter(Boolean)
+    .map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`)
+    .join("");
+}
+
+function renderRelatedTopics(topic) {
+  const related = topic.related
+    .map((id) => state.encyclopedia.topics.find((candidate) => candidate.id === id))
+    .filter(Boolean);
+
+  elements.relatedTopics.innerHTML = related
+    .map((item) => `<button type="button" data-topic-id="${item.id}">${escapeHtml(item.title)}</button>`)
+    .join("");
+}
+
+function renderSelectedArticle() {
+  const topic = selectedEncyclopediaTopic();
+
+  if (!topic) {
+    return;
+  }
+
+  const article = state.encyclopedia.selectedArticle || readCachedArticle(topic.id);
+  elements.articleCategory.textContent = topic.category;
+  elements.articleTitle.textContent = topic.title;
+  renderArticleMeta(article, topic);
+  renderArticleBody(article, topic);
+  renderRelatedTopics(topic);
+  elements.factCheckResults.classList.remove("active");
+  elements.factCheckResults.innerHTML = "";
+  elements.articleTransparency.textContent = article?.transparencyNote || "Generated article drafts are cached in localStorage so repeat visits load instantly.";
+  renderEncyclopediaTopics();
+  renderEncyclopediaStats();
+}
+
+function selectEncyclopediaTopic(topicId, { scroll = true } = {}) {
+  const topic = state.encyclopedia.topics.find((item) => item.id === topicId);
+
+  if (!topic) {
+    return;
+  }
+
+  state.encyclopedia.selectedTopicId = topic.id;
+  state.encyclopedia.selectedArticle = readCachedArticle(topic.id);
+  state.encyclopedia.factCheck = null;
+  renderSelectedArticle();
+
+  if (scroll && state.mode === "encyclopedia") {
+    elements.encyclopediaArticlePanel.scrollIntoView({ behavior: state.display.reduceMotion ? "auto" : "smooth", block: "start" });
+  }
+}
+
+async function generateSelectedArticle() {
+  const topic = selectedEncyclopediaTopic();
+
+  if (!topic) {
+    return;
+  }
+
+  const cached = readCachedArticle(topic.id);
+
+  if (cached) {
+    state.encyclopedia.selectedArticle = cached;
+    renderSelectedArticle();
+    return;
+  }
+
+  state.encyclopedia.loading = true;
+  elements.articleBody.innerHTML = "<p class=\"empty-state\">Generating article and preparing local cache...</p>";
+
+  try {
+    const article = await fetchJsonEndpoint(`/api/v1/encyclopedia/article?id=${encodeURIComponent(topic.id)}`);
+    writeCachedArticle(article);
+    state.encyclopedia.selectedArticle = article;
+  } catch (error) {
+    state.encyclopedia.selectedArticle = {
+      id: topic.id,
+      topic,
+      content: `${topic.title} is currently unavailable because the article generator could not be reached. Try again after restarting the OrbitGuard server.`,
+      wordCount: 24,
+      readingMinutes: 1,
+      generatedAt: new Date().toISOString(),
+      generationMode: "error",
+      transparencyNote: error.message
+    };
+  } finally {
+    state.encyclopedia.loading = false;
+    renderSelectedArticle();
+  }
+}
+
+async function runSelectedArticleFactCheck() {
+  const topic = selectedEncyclopediaTopic();
+  const article = state.encyclopedia.selectedArticle || readCachedArticle(topic?.id);
+
+  if (!topic || !article) {
+    elements.factCheckResults.classList.add("active");
+    elements.factCheckResults.innerHTML = "<p class=\"empty-state\">Generate the article before running the fact checker.</p>";
+    return;
+  }
+
+  elements.factCheckResults.classList.add("active");
+  elements.factCheckResults.innerHTML = "<p class=\"empty-state\">Checking article against live OrbitGuard data...</p>";
+
+  try {
+    const response = await fetch("/api/v1/encyclopedia/fact-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: topic.id, articleText: article.content })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Fact check request failed with ${response.status}`);
+    }
+
+    state.encyclopedia.factCheck = await response.json();
+    renderFactCheckResults();
+  } catch (error) {
+    elements.factCheckResults.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+function renderFactCheckResults() {
+  const result = state.encyclopedia.factCheck;
+
+  if (!result) {
+    return;
+  }
+
+  elements.factCheckResults.classList.add("active");
+  elements.factCheckResults.innerHTML = `
+    <p class="eyebrow">Fact checker</p>
+    <h3>Live Data Review</h3>
+    <p>${escapeHtml(result.methodology)}</p>
+    <div class="fact-check-grid">
+      ${result.checks
+        .map(
+          (check) => `
+            <article class="fact-check-card">
+              <span>${escapeHtml(check.label)}</span>
+              <strong>${escapeHtml(check.value)}</strong>
+              <small>${escapeHtml(check.status)} - ${escapeHtml(check.source)}</small>
+            </article>
+          `
+        )
+        .join("")}
+    </div>
+    <p class="time-note">Numbers found in article draft: ${result.numbersFoundInArticle.map(escapeHtml).join(", ") || "none detected"}.</p>
+  `;
+}
+
+function buildEncyclopediaIndexPayload() {
+  return {
+    project: "OrbitGuard",
+    mode: "Space Encyclopedia",
+    creator: CREATOR,
+    generatedAt: new Date().toISOString(),
+    metadata: state.encyclopedia.metadata,
+    categories: state.encyclopedia.categories,
+    topics: state.encyclopedia.topics,
+    cachedArticleStats: cachedArticleStats(),
+    methodology:
+      "Topic architecture is stored as data. Articles are generated on demand through the OrbitGuard API, cached in localStorage, and paired with a live-data fact checker."
+  };
+}
+
+function exportEncyclopediaArticle() {
+  const topic = selectedEncyclopediaTopic();
+  const article = state.encyclopedia.selectedArticle || readCachedArticle(topic?.id);
+
+  if (!topic || !article) {
+    return;
+  }
+
+  downloadJSON(`${slugify(topic.title)}-orbitguard-article.json`, {
+    project: "OrbitGuard Space Encyclopedia",
+    creator: CREATOR.name,
+    generatedAt: new Date().toISOString(),
+    article,
+    factCheck: state.encyclopedia.factCheck
+  });
 }
 
 function scenarioProjection(objects, baseRisk) {
@@ -2904,6 +3375,8 @@ function setActiveMode(mode) {
     resizeOrbitScene();
   } else if (mode === "weather") {
     renderWeather();
+  } else if (mode === "encyclopedia") {
+    renderEncyclopedia();
   } else {
     renderOrbitScene();
   }
@@ -2923,7 +3396,17 @@ function wireModeTabs() {
   }
 }
 
+function setSettingsDrawer(open) {
+  elements.settingsDrawer.classList.toggle("open", open);
+  elements.settingsDrawer.setAttribute("aria-hidden", open ? "false" : "true");
+  elements.settingsBackdrop.hidden = !open;
+}
+
 function wireDisplaySettings() {
+  elements.settingsToggle.addEventListener("click", () => setSettingsDrawer(true));
+  elements.settingsClose.addEventListener("click", () => setSettingsDrawer(false));
+  elements.settingsBackdrop.addEventListener("click", () => setSettingsDrawer(false));
+
   elements.themeSelect.addEventListener("change", () => {
     state.display.theme = elements.themeSelect.value;
     if (state.display.theme !== "custom") {
@@ -3049,11 +3532,64 @@ function wireWeatherControls() {
   });
 }
 
+function wireEncyclopediaControls() {
+  elements.encyclopediaSearch.addEventListener("input", () => {
+    state.encyclopedia.search = elements.encyclopediaSearch.value;
+    renderEncyclopedia();
+  });
+
+  elements.encyclopediaCategory.addEventListener("change", () => {
+    state.encyclopedia.selectedCategory = elements.encyclopediaCategory.value;
+    renderEncyclopedia();
+  });
+
+  elements.encyclopediaDepth.addEventListener("change", () => {
+    state.encyclopedia.selectedDepth = elements.encyclopediaDepth.value;
+    renderEncyclopedia();
+  });
+
+  elements.encyclopediaCategoryCards.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-category]");
+
+    if (!button) {
+      return;
+    }
+
+    state.encyclopedia.selectedCategory = button.getAttribute("data-category");
+    elements.encyclopediaCategory.value = state.encyclopedia.selectedCategory;
+    renderEncyclopedia();
+  });
+
+  elements.encyclopediaTopicGrid.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-topic-id]");
+
+    if (button) {
+      selectEncyclopediaTopic(button.getAttribute("data-topic-id"));
+    }
+  });
+
+  elements.relatedTopics.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-topic-id]");
+
+    if (button) {
+      selectEncyclopediaTopic(button.getAttribute("data-topic-id"));
+    }
+  });
+
+  elements.generateArticle.addEventListener("click", generateSelectedArticle);
+  elements.factCheckArticle.addEventListener("click", runSelectedArticleFactCheck);
+  elements.downloadArticle.addEventListener("click", exportEncyclopediaArticle);
+  elements.downloadEncyclopediaIndex.addEventListener("click", () => {
+    downloadJSON("orbitguard-space-encyclopedia-index.json", buildEncyclopediaIndexPayload());
+  });
+}
+
 function wireControls() {
   wireModeTabs();
   wireDisplaySettings();
   wireTimeMachineControls();
   wireWeatherControls();
+  wireEncyclopediaControls();
 
   elements.orbitFilter.addEventListener("change", () => {
     state.filters.orbit = elements.orbitFilter.value;
@@ -3218,6 +3754,7 @@ async function init() {
     elements.dataSource.textContent = `${numberFormat(state.objects.length)} CelesTrak records updated ${generatedDate.toLocaleDateString()}`;
     configureTimeMachineControls();
     populateOwners();
+    await loadEncyclopediaTopics();
     wireControls();
     readLaunchInputs();
     updateAll();

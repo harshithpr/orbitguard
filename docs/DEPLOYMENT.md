@@ -29,18 +29,23 @@ Create a public GitHub repo named:
 orbitguard
 ```
 
+For this project, the repo URL is:
+
+```text
+https://github.com/harshithpr/orbitguard
+```
+
 Then run from this folder:
 
 ```bash
-git init
 git add .
-git commit -m "Initial OrbitGuard public app"
+git commit -m "Update OrbitGuard public app"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/orbitguard.git
+git remote add origin https://github.com/harshithpr/orbitguard.git
 git push -u origin main
 ```
 
-Replace `YOUR_USERNAME` with your GitHub username.
+If the remote already exists, skip the `git remote add origin ...` line.
 
 ## Deploy On Vercel
 
@@ -60,6 +65,13 @@ Weather Ops works without private keys because it can use NOAA SWPC and Open-Met
 
 ```text
 OPENWEATHER_API_KEY=your_key_here
+```
+
+The encyclopedia also works without private keys because it has a local educational generator. If you want Anthropic/Claude article generation on Vercel, add:
+
+```text
+ANTHROPIC_API_KEY=your_key_here
+ANTHROPIC_MODEL=claude-sonnet-4-20250514
 ```
 
 ## GitHub Pages Alternative

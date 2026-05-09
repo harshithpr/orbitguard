@@ -41,20 +41,37 @@ The app should:
 - Switch between Soft Blue, Deep Space, Light, High Contrast, and Custom themes
 - Save display settings after refresh
 - Keep controls readable on phone width
-- Switch between all five modes
+- Switch between all six modes
 - Avoid text overlapping controls
 
 ## Display Settings Test
 
-Open the top display settings panel.
+Click `Display` in the top bar.
 
 Expected:
 
+- Display settings open in a right-side drawer instead of taking up space in the main page
 - `Theme` changes the full app palette without hiding text
 - `Accent`, `Background`, and `Text contrast` switch the selector to `Custom`
 - `Chart colors` changes dashboard bar/timeline colors
 - 3D object color inputs change payload, debris, rocket-body, simulated, and other object dots
 - `Reduce motion`, `Larger text`, and `High contrast` apply immediately and remain after refresh
+- Close button hides the drawer
+
+## Encyclopedia Test
+
+Open the `Encyclopedia` tab.
+
+Expected:
+
+- The page shows 200 topics across 10 categories
+- Search filters the topic cards
+- Category cards and the category dropdown filter the same topic list
+- Selecting `Kessler Syndrome` shows an article preview
+- `Generate / Load Article` creates a 280-340 word article and caches it locally
+- `Run Fact Checker` shows live OrbitGuard catalog checks such as tracked objects and debris counts
+- Related topic chips switch the selected article
+- Download Topic Index and Download Article save JSON files
 
 ## Time Machine Test
 
@@ -144,6 +161,8 @@ Click:
 - Download Google Earth KML from the dashboard
 - Download Google Earth KML from Time Machine
 - Download Comparison
+- Download Topic Index
+- Download Article
 - Download Launch Simulation
 - Download Simulation CSV
 - Download Sustainability Report
@@ -164,6 +183,8 @@ http://localhost:4173/api/v1/health
 http://localhost:4173/api/v1/summary
 http://localhost:4173/api/v1/objects?band=500-600&type=debris&limit=5
 http://localhost:4173/api/v1/time-machine?year=2005
+http://localhost:4173/api/v1/encyclopedia/topics
+http://localhost:4173/api/v1/encyclopedia/article?id=kessler-syndrome
 http://localhost:4173/api/v1/weather/space
 http://localhost:4173/api/v1/weather/ground?station=goldstone
 http://localhost:4173/api/v1/weather/ground?station=all
@@ -177,6 +198,8 @@ Expected:
 - `summary` includes catalog counts
 - `objects` returns matching records
 - `time-machine` returns selected year, current year, and change values
+- `encyclopedia/topics` returns 200 topics and 10 categories
+- `encyclopedia/article` returns generated article content, word count, and topic metadata
 - `weather/space` returns Kp, F10.7, solar wind, altitude impacts, and solar-cycle fields
 - `weather/ground` returns a station, current conditions, and operations scoring
 - `sustainability` returns an `impact` object

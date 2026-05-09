@@ -12,6 +12,12 @@ import {
   summarize
 } from "./src/engines/orbitguard-core.js";
 import {
+  buildArticleFactCheck,
+  findTopic,
+  generateEncyclopediaArticle,
+  loadEncyclopediaTopics
+} from "./src/engines/encyclopedia-core.js";
+import {
   getGroundStationNetwork,
   getGroundStationWeather,
   getSpaceWeather
@@ -20,6 +26,7 @@ import {
 const root = resolve(fileURLToPath(new URL(".", import.meta.url)));
 const port = Number(process.env.PORT || 4173);
 const dataPath = resolve(join(root, "data/orbitguard-data.json"));
+const encyclopediaPath = resolve(join(root, "data/encyclopedia-topics.json"));
 let catalogCache = null;
 
 const mimeTypes = new Map([
@@ -156,6 +163,39 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (url.pathname === "/api/v1/encyclopedia/topics") {
+    sendJson(res, 200, await loadEncyclopediaTopics(encyclopediaPath));
+    return;
+  }
+
+  if (url.pathname === "/api/v1/encyclopedia/article" && req.method === "GET") {
+    const topicCatalog = await loadEncyclopediaTopics(encyclopediaPath);
+    const topic = findTopic(topicCatalog, url.searchParams.get("id"));
+
+    if (!topic) {
+      sendJson(res, 404, { error: "Unknown encyclopedia topic" });
+      return;
+    }
+
+    sendJson(res, 200, await generateEncyclopediaArticle(topic, catalog.objects));
+    return;
+  }
+
+  if (url.pathname === "/api/v1/encyclopedia/fact-check") {
+    const topicCatalog = await loadEncyclopediaTopics(encyclopediaPath);
+    const body = req.method === "POST" ? await readJsonBody(req) : {};
+    const id = body.id || url.searchParams.get("id");
+    const topic = findTopic(topicCatalog, id);
+
+    if (!topic) {
+      sendJson(res, 404, { error: "Unknown encyclopedia topic" });
+      return;
+    }
+
+    sendJson(res, 200, await buildArticleFactCheck(topic, body.articleText || "", catalog.objects));
+    return;
+  }
+
   if (url.pathname === "/api/v1/weather/space" || url.pathname === "/api/v1/weather-space") {
     try {
       sendJson(res, 200, await getSpaceWeather());
@@ -222,6 +262,9 @@ async function handleApi(req, res) {
       "GET /api/v1/objects?band=500-600&type=debris",
       "GET /api/v1/bands?size=100",
       "GET /api/v1/time-machine?year=2005",
+      "GET /api/v1/encyclopedia/topics",
+      "GET /api/v1/encyclopedia/article?id=kessler-syndrome",
+      "POST /api/v1/encyclopedia/fact-check",
       "GET /api/v1/weather/space",
       "GET /api/v1/weather/ground?station=goldstone",
       "GET /api/v1/weather/ground?station=all",
