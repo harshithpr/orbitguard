@@ -6737,6 +6737,229 @@ function setupThemeControls() {
   applyDisplaySettings({ persist: false, rerender: false });
 }
 
+function setupInteractiveSpaceEffects() {
+  const canvas = document.querySelector("#spaceBackdropCanvas");
+  const cursor = document.querySelector("#cursorSingularity");
+
+  if (!canvas || !cursor) {
+    return;
+  }
+
+  const context = canvas.getContext("2d", { alpha: true });
+
+  if (!context) {
+    return;
+  }
+  const pointerFine = window.matchMedia("(pointer: fine)");
+  const pointer = {
+    x: window.innerWidth * 0.5,
+    y: window.innerHeight * 0.38,
+    targetX: window.innerWidth * 0.5,
+    targetY: window.innerHeight * 0.38,
+    active: false
+  };
+
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+  let stars = [];
+
+  function canUseCursorEffects() {
+    return pointerFine.matches && !state.display.reduceMotion;
+  }
+
+  function setCursorState() {
+    const enabled = canUseCursorEffects();
+    document.body.classList.toggle("cursor-effects-enabled", enabled);
+    cursor.classList.toggle("active", enabled && pointer.active);
+  }
+
+  function seedStars() {
+    const count = Math.min(620, Math.max(210, Math.floor((width * height) / 4200)));
+    stars = Array.from({ length: count }, (_, index) => ({
+      x: seededUnit(index + 2401) * width,
+      y: seededUnit(index + 2501) * height,
+      radius: 0.45 + seededUnit(index + 2601) * 1.55,
+      depth: 0.25 + seededUnit(index + 2701) * 0.92,
+      phase: seededUnit(index + 2801) * Math.PI * 2,
+      warmth: seededUnit(index + 2901)
+    }));
+  }
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = Math.max(1, Math.floor(width * dpr));
+    canvas.height = Math.max(1, Math.floor(height * dpr));
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    seedStars();
+  }
+
+  function drawNebula(time, interactive) {
+    const accent = readCssVar("--accent", "#93c5fd");
+    const violet = readCssVar("--simulated-color", "#a78bfa");
+    const glow = context.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, Math.max(width, height) * 0.72);
+    glow.addColorStop(0, hexToRgba(accent, interactive && pointer.active ? 0.16 : 0.07));
+    glow.addColorStop(0.32, hexToRgba(violet, interactive && pointer.active ? 0.08 : 0.04));
+    glow.addColorStop(1, "rgb(0 0 0 / 0)");
+
+    context.fillStyle = glow;
+    context.fillRect(0, 0, width, height);
+
+    context.save();
+    context.globalCompositeOperation = "lighter";
+    for (let band = 0; band < 3; band += 1) {
+      const y = height * (0.18 + band * 0.26) + Math.sin(time * 0.00012 + band) * 24;
+      const gradient = context.createLinearGradient(0, y - 80, width, y + 80);
+      gradient.addColorStop(0, "rgb(0 0 0 / 0)");
+      gradient.addColorStop(0.42, band === 1 ? hexToRgba(accent, 0.045) : hexToRgba(violet, 0.035));
+      gradient.addColorStop(1, "rgb(0 0 0 / 0)");
+      context.strokeStyle = gradient;
+      context.lineWidth = 54 + band * 18;
+      context.beginPath();
+      context.moveTo(-40, y);
+      context.bezierCurveTo(width * 0.25, y - 60, width * 0.72, y + 74, width + 40, y - 24);
+      context.stroke();
+    }
+    context.restore();
+  }
+
+  function drawStars(time, interactive) {
+    const lensRadius = Math.min(240, Math.max(150, width * 0.13));
+
+    context.save();
+    context.globalCompositeOperation = "lighter";
+
+    for (const star of stars) {
+      const driftX = Math.sin(time * 0.00006 * star.depth + star.phase) * 12 * star.depth;
+      const driftY = Math.cos(time * 0.00005 * star.depth + star.phase) * 8 * star.depth;
+      const x = (star.x + driftX + width) % width;
+      const y = (star.y + driftY + height) % height;
+      let drawX = x;
+      let drawY = y;
+      let twinkle = 0.24 + Math.sin(time * 0.0017 + star.phase) * 0.12 + star.depth * 0.28;
+
+      if (interactive && pointer.active) {
+        const dx = x - pointer.x;
+        const dy = y - pointer.y;
+        const distance = Math.hypot(dx, dy);
+
+        if (distance < lensRadius) {
+          const falloff = (1 - distance / lensRadius) ** 2;
+          const invDistance = 1 / Math.max(distance, 1);
+          const tangent = falloff * 72 * star.depth;
+          const pull = falloff * 18 * star.depth;
+          drawX = x + -dy * invDistance * tangent - dx * invDistance * pull;
+          drawY = y + dx * invDistance * tangent - dy * invDistance * pull;
+          twinkle += falloff * 0.42;
+
+          if (distance > 18) {
+            context.strokeStyle = star.warmth > 0.82 ? "rgb(253 230 138 / 0.12)" : hexToRgba(readCssVar("--accent", "#93c5fd"), 0.11);
+            context.lineWidth = Math.max(0.45, star.radius * 0.42);
+            context.beginPath();
+            context.moveTo(x, y);
+            context.lineTo(drawX, drawY);
+            context.stroke();
+          }
+        }
+      }
+
+      context.fillStyle = star.warmth > 0.84
+        ? `rgb(253 230 138 / ${clamp(twinkle, 0.15, 0.86)})`
+        : `rgb(226 242 255 / ${clamp(twinkle, 0.15, 0.82)})`;
+      context.beginPath();
+      context.arc(drawX, drawY, star.radius, 0, Math.PI * 2);
+      context.fill();
+    }
+
+    context.restore();
+  }
+
+  function drawSingularityLens(time, interactive) {
+    if (!interactive || !pointer.active) {
+      return;
+    }
+
+    const accent = readCssVar("--accent", "#93c5fd");
+    const violet = readCssVar("--simulated-color", "#a78bfa");
+    const radius = 108 + Math.sin(time * 0.003) * 8;
+    const halo = context.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, radius * 1.75);
+    halo.addColorStop(0, "rgb(0 0 0 / 0.24)");
+    halo.addColorStop(0.18, "rgb(0 0 0 / 0.18)");
+    halo.addColorStop(0.45, hexToRgba(accent, 0.1));
+    halo.addColorStop(1, "rgb(0 0 0 / 0)");
+
+    context.save();
+    context.globalCompositeOperation = "source-over";
+    context.fillStyle = halo;
+    context.beginPath();
+    context.arc(pointer.x, pointer.y, radius * 1.75, 0, Math.PI * 2);
+    context.fill();
+
+    context.globalCompositeOperation = "lighter";
+    for (let ring = 0; ring < 3; ring += 1) {
+      const ringRadius = radius * (0.48 + ring * 0.23);
+      context.strokeStyle = ring % 2 === 0 ? hexToRgba(accent, 0.25 - ring * 0.04) : hexToRgba(violet, 0.22);
+      context.lineWidth = 1.5 - ring * 0.2;
+      context.beginPath();
+      context.ellipse(
+        pointer.x,
+        pointer.y,
+        ringRadius,
+        ringRadius * (0.38 + ring * 0.08),
+        time * 0.0015 + ring * 0.74,
+        Math.PI * 0.08,
+        Math.PI * 1.62
+      );
+      context.stroke();
+    }
+    context.restore();
+  }
+
+  function drawFrame(time = 0) {
+    const interactive = canUseCursorEffects();
+    const renderTime = state.display.reduceMotion ? 0 : time;
+    pointer.x += (pointer.targetX - pointer.x) * (interactive ? 0.18 : 0.04);
+    pointer.y += (pointer.targetY - pointer.y) * (interactive ? 0.18 : 0.04);
+
+    cursor.style.left = `${pointer.x}px`;
+    cursor.style.top = `${pointer.y}px`;
+    setCursorState();
+
+    context.clearRect(0, 0, width, height);
+    drawNebula(renderTime, interactive);
+    drawStars(renderTime, interactive);
+    drawSingularityLens(renderTime, interactive);
+
+    requestAnimationFrame(drawFrame);
+  }
+
+  window.addEventListener("pointermove", (event) => {
+    pointer.targetX = event.clientX;
+    pointer.targetY = event.clientY;
+    pointer.active = true;
+    cursor.classList.toggle("interface-hover", Boolean(event.target.closest("button, a, input, select, textarea, label")));
+    document.documentElement.style.setProperty("--space-x", `${(event.clientX / Math.max(window.innerWidth, 1)) * 100}%`);
+    document.documentElement.style.setProperty("--space-y", `${(event.clientY / Math.max(window.innerHeight, 1)) * 100}%`);
+  }, { passive: true });
+
+  window.addEventListener("pointerleave", () => {
+    pointer.active = false;
+  });
+
+  if (typeof pointerFine.addEventListener === "function") {
+    pointerFine.addEventListener("change", setCursorState);
+  } else if (typeof pointerFine.addListener === "function") {
+    pointerFine.addListener(setCursorState);
+  }
+  window.addEventListener("resize", resize, { passive: true });
+  resize();
+  requestAnimationFrame(drawFrame);
+}
+
 function exportFilteredCsv() {
   downloadCSV("orbitguard-current-orbit-data.csv", currentOrbitRows());
 }
@@ -6827,4 +7050,5 @@ async function init() {
 }
 
 setupThemeControls();
+setupInteractiveSpaceEffects();
 init();
