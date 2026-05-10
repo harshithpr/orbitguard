@@ -68,14 +68,6 @@ Users can download:
 - Launch simulation output as CSV
 - Sustainability report as JSON
 
-## College-App Framing
-
-Use this description:
-
-> I built OrbitGuard, a space sustainability analyzer that uses public orbital data to evaluate how satellite launches affect congestion and debris risk in Earth orbit. The project combines aerospace engineering, data analysis, and environmental responsibility in space.
-
-That sounds stronger than "I made a data analyzer" because it shows a real problem, an engineering model, public data, and impact.
-
 ## About The Creator
 
 **Harshith Pranav Praveen** is interested in aerospace engineering and excited to explore the field through hands-on engineering, design, manufacturing, and future work with aerospace companies such as Boeing, Lockheed Martin, and other organizations building advanced flight and space systems.
@@ -215,23 +207,6 @@ Example output:
 OrbitGuard is not an operational collision prediction system. It is a transparent educational screening model for student research and aerospace portfolio work.
 
 The project intentionally does not claim true conjunction probability yet. Real conjunction assessment needs TLE/GP data, SGP4 propagation, covariance assumptions, and a documented collision-probability method.
-
-## Upload To GitHub
-
-1. Create a new GitHub repository named `orbitguard`.
-2. In this project folder, run:
-
-```bash
-git init
-git add .
-git commit -m "Build OrbitGuard space sustainability analyzer"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/orbitguard.git
-git push -u origin main
-```
-
-3. Add the GitHub repo link to your college application activities or portfolio.
-4. Ask for review by opening GitHub Issues labeled `orbital-mechanics`, `data-source`, `frontend`, and `good-first-issue`.
 
 ## Deployment Options
 
