@@ -3940,6 +3940,7 @@ function renderSolarEnvironmentScene(THREE) {
   group.rotation.y = 0.18;
   state.three.environmentGroup = group;
   state.three.root.add(group);
+  group.add(createEnvironmentStarField(THREE, environment === "overview" ? 1400 : 900, environment === "overview" ? 12 : 8));
 
   if (environment === "moon") {
     buildMoonEnvironment(THREE, group);
@@ -3960,29 +3961,34 @@ function renderSolarEnvironmentScene(THREE) {
 }
 
 function buildMoonEnvironment(THREE, group) {
+  const moonTexture = createMoonTexture(THREE);
+  const moonBump = createMoonBumpTexture(THREE);
   const moon = new THREE.Mesh(
-    new THREE.SphereGeometry(0.82, 80, 80),
+    new THREE.SphereGeometry(0.82, 128, 128),
     new THREE.MeshStandardMaterial({
-      map: createMoonTexture(THREE),
+      map: moonTexture,
+      bumpMap: moonBump,
+      bumpScale: 0.055,
       roughness: 0.95,
       metalness: 0.02
     })
   );
   moon.userData.rotateSpeed = 0.00028;
   group.add(moon);
+  group.add(createMoonTerminator(THREE, 0.825));
 
-  const earth = new THREE.Mesh(
-    new THREE.SphereGeometry(0.22, 48, 48),
-    new THREE.MeshStandardMaterial({ map: createEarthTexture(THREE), roughness: 0.78 })
-  );
+  const earth = createTexturedBody(THREE, 0.22, createEarthTexture(THREE), { roughness: 0.78 });
   earth.position.set(-2.65, 1.18, -1.05);
   earth.userData.rotateSpeed = 0.00065;
-  group.add(earth, createBodyLabel(THREE, "Earth in distance", -2.65, 1.55, -1.05));
+  const earthGlow = createAtmosphereGlow(THREE, 0.28, 0x60a5fa, 0.18);
+  earthGlow.position.copy(earth.position);
+  group.add(earth, earthGlow, createBodyLabel(THREE, "Earth in distance", -2.65, 1.55, -1.05));
 
-  addThreeRing(THREE, group, 1.35, 0xcbd5e1).rotation.x = Math.PI / 2.9;
-  addThreeRing(THREE, group, 1.85, hexToNumber(readCssVar("--simulated-color", "#a78bfa"))).rotation.x = Math.PI / 2.9;
+  addTiltedOrbitRing(THREE, group, 1.35, 0xcbd5e1, 0.58, 0.35);
+  addTiltedOrbitRing(THREE, group, 1.85, hexToNumber(readCssVar("--simulated-color", "#a78bfa")), 0.6, -0.08);
   addMissionArc(THREE, group, 0x93c5fd, 2.4, -0.9, 0.7);
   addLunarGateway(THREE, group, 1.35, 0.42);
+  addCislunarTransferPath(THREE, group);
 
   for (let index = 0; index < 8; index += 1) {
     const angle = (index / 8) * Math.PI * 2;
@@ -3991,22 +3997,30 @@ function buildMoonEnvironment(THREE, group) {
     sat.lookAt(0, 0, 0);
     group.add(sat);
   }
+
+  group.add(createBodyLabel(THREE, "South Pole candidate region", 0.16, -0.82, 0.5));
 }
 
 function buildMarsEnvironment(THREE, group) {
+  const marsTexture = createMarsTexture(THREE);
+  const marsBump = createMarsBumpTexture(THREE);
   const mars = new THREE.Mesh(
-    new THREE.SphereGeometry(0.86, 80, 80),
+    new THREE.SphereGeometry(0.86, 128, 128),
     new THREE.MeshStandardMaterial({
-      map: createMarsTexture(THREE),
+      map: marsTexture,
+      bumpMap: marsBump,
+      bumpScale: 0.04,
       roughness: 0.92,
       metalness: 0.02
     })
   );
   mars.userData.rotateSpeed = 0.00042;
   group.add(mars);
+  group.add(createAtmosphereGlow(THREE, 0.96, 0xf97316, 0.12));
+  group.add(createMarsDustShell(THREE));
 
-  addThreeRing(THREE, group, 1.32, 0xf97316).rotation.x = Math.PI / 2.7;
-  addThreeRing(THREE, group, 1.78, 0xfca5a5).rotation.x = Math.PI / 2.7;
+  addTiltedOrbitRing(THREE, group, 1.32, 0xf97316, 0.64, 0.18);
+  addTiltedOrbitRing(THREE, group, 1.78, 0xfca5a5, 0.58, -0.12);
   addMissionArc(THREE, group, 0x60a5fa, 2.7, -1.2, 0.95);
 
   const phobos = createRockMoon(THREE, 0.065);
@@ -4024,11 +4038,12 @@ function buildMarsEnvironment(THREE, group) {
   }
 
   group.add(createBodyLabel(THREE, `${simulatedMarsDelayMinutes()} min one-way delay`, 0, 1.32, 0));
+  group.add(createBodyLabel(THREE, "Valles Marineris / dust risk", -0.18, -1.02, 0.65));
 }
 
 function buildSolarWeatherEnvironment(THREE, group) {
   const sun = new THREE.Mesh(
-    new THREE.SphereGeometry(0.9, 96, 96),
+    new THREE.SphereGeometry(0.9, 128, 128),
     new THREE.MeshBasicMaterial({
       map: createSunTexture(THREE),
       color: 0xffd166
@@ -4037,17 +4052,8 @@ function buildSolarWeatherEnvironment(THREE, group) {
   sun.userData.rotateSpeed = 0.0009;
   group.add(sun);
 
-  const corona = new THREE.Mesh(
-    new THREE.SphereGeometry(1.12, 80, 80),
-    new THREE.MeshBasicMaterial({
-      color: 0xfacc15,
-      transparent: true,
-      opacity: 0.22,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
-    })
-  );
-  group.add(corona);
+  group.add(createSolarCorona(THREE));
+  group.add(createSolarProminences(THREE));
 
   addSolarWindParticles(THREE, group);
   addMissionArc(THREE, group, 0xfacc15, 2.9, -0.2, 0.42);
@@ -4062,92 +4068,362 @@ function buildSolarWeatherEnvironment(THREE, group) {
 
 function buildSolarSystemOverview(THREE, group) {
   const planets = [
-    ["Sun", 0, 0.44, 0xfacc15],
-    ["Mercury", 0.9, 0.07, 0xa3a3a3],
-    ["Venus", 1.35, 0.11, 0xfbbf24],
-    ["Earth", 1.9, 0.13, 0x60a5fa],
-    ["Moon", 2.12, 0.038, 0xcbd5e1],
-    ["Mars", 2.62, 0.1, 0xf97316],
-    ["Jupiter", 3.55, 0.28, 0xd6a35d],
-    ["Saturn", 4.45, 0.24, 0xe6c36a],
-    ["Uranus", 5.18, 0.17, 0x7dd3fc],
-    ["Neptune", 5.86, 0.16, 0x3b82f6]
+    { name: "Sun", orbit: 0, angle: 0, radius: 0.42, texture: createSunTexture(THREE), emissive: true },
+    { name: "Mercury", orbit: 0.82, angle: 0.62, radius: 0.065, texture: createRockyPlanetTexture(THREE, "mercury") },
+    { name: "Venus", orbit: 1.14, angle: 2.02, radius: 0.105, texture: createRockyPlanetTexture(THREE, "venus"), glow: 0xfde68a },
+    { name: "Earth", orbit: 1.5, angle: 3.02, radius: 0.13, texture: createEarthTexture(THREE), glow: 0x60a5fa },
+    { name: "Moon", orbit: 1.68, angle: 3.12, radius: 0.038, texture: createMoonTexture(THREE) },
+    { name: "Mars", orbit: 1.95, angle: 4.16, radius: 0.1, texture: createMarsTexture(THREE), glow: 0xf97316 },
+    { name: "Jupiter", orbit: 2.8, angle: 5.16, radius: 0.29, texture: createGasGiantTexture(THREE, "jupiter") },
+    { name: "Saturn", orbit: 3.65, angle: 0.26, radius: 0.24, texture: createGasGiantTexture(THREE, "saturn"), rings: true },
+    { name: "Uranus", orbit: 4.35, angle: 1.32, radius: 0.17, texture: createGasGiantTexture(THREE, "uranus"), rings: "thin" },
+    { name: "Neptune", orbit: 5.0, angle: 2.58, radius: 0.16, texture: createGasGiantTexture(THREE, "neptune") }
   ];
 
-  for (const [name, x, radius, color] of planets) {
-    const material = name === "Sun"
-      ? new THREE.MeshBasicMaterial({ color })
-      : new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.04 });
-    const planet = new THREE.Mesh(new THREE.SphereGeometry(radius, 48, 48), material);
-    planet.position.x = x - 2.8;
+  for (const planetInfo of planets) {
+    const { name, orbit, angle, radius } = planetInfo;
+    const material = planetInfo.emissive
+      ? new THREE.MeshBasicMaterial({ map: planetInfo.texture, color: 0xfff0a6 })
+      : new THREE.MeshStandardMaterial({ map: planetInfo.texture, roughness: 0.74, metalness: 0.03 });
+    const planet = new THREE.Mesh(new THREE.SphereGeometry(radius, 64, 64), material);
+    planet.position.set(Math.cos(angle) * orbit, 0, Math.sin(angle) * orbit * 0.42);
     planet.userData.rotateSpeed = 0.00025 + radius * 0.001;
-    group.add(planet, createBodyLabel(THREE, name, x - 2.8, radius + 0.2, 0));
+    group.add(planet, createBodyLabel(THREE, name, planet.position.x, radius + 0.2, planet.position.z));
 
-    if (name !== "Sun") {
-      const orbit = addThreeRing(THREE, group, Math.abs(x - 2.8), color);
-      orbit.material.opacity = 0.18;
-      orbit.scale.z = 0.35;
+    if (planetInfo.glow) {
+      const glow = createAtmosphereGlow(THREE, radius * 1.45, planetInfo.glow, 0.11);
+      glow.position.copy(planet.position);
+      group.add(glow);
     }
 
-    if (name === "Saturn") {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(radius * 1.65, 0.01, 8, 64),
-        new THREE.MeshBasicMaterial({ color: 0xfde68a, transparent: true, opacity: 0.72 })
-      );
+    if (name !== "Sun") {
+      const orbitRing = addThreeRing(THREE, group, orbit, planetInfo.glow || 0x94a3b8);
+      orbitRing.material.opacity = 0.18;
+      orbitRing.scale.z = 0.42;
+    }
+
+    if (planetInfo.rings) {
+      const ring = createPlanetRingSystem(THREE, radius, planetInfo.rings === "thin");
       ring.position.copy(planet.position);
-      ring.rotation.x = Math.PI / 2.6;
+      ring.rotation.x = Math.PI / 2.5;
+      ring.rotation.z = -0.22;
       group.add(ring);
     }
   }
 
-  addMissionArc(THREE, group, 0x60a5fa, 2.35, -2.15, 0.55);
-  addMissionArc(THREE, group, 0xa78bfa, 3.05, -1.85, 0.85);
+  group.add(createAsteroidBelt(THREE, 2.25, 2.54));
+  addMissionArc(THREE, group, 0x60a5fa, 1.9, -1.45, 0.55);
+  addMissionArc(THREE, group, 0xa78bfa, 2.6, -1.25, 0.85);
+  group.add(createBodyLabel(THREE, "Mission paths are schematic", 0.2, -0.72, 0));
 }
 
-function createMoonTexture(THREE) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 256;
-  const ctx = canvas.getContext("2d");
-  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  gradient.addColorStop(0, "#d8dee8");
-  gradient.addColorStop(0.5, "#9ca3af");
-  gradient.addColorStop(1, "#e5e7eb");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  for (let index = 0; index < 92; index += 1) {
-    const x = seededUnit(index + 4) * canvas.width;
-    const y = seededUnit(index + 8) * canvas.height;
-    const radius = 4 + seededUnit(index + 12) * 22;
-    ctx.strokeStyle = `rgb(15 23 42 / ${0.12 + seededUnit(index) * 0.22})`;
-    ctx.fillStyle = `rgb(15 23 42 / ${0.04 + seededUnit(index + 2) * 0.08})`;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  }
-
+function createTextureFromCanvas(THREE, canvas) {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 8;
   return texture;
 }
 
-function createMarsTexture(THREE) {
+function createTexturedBody(THREE, radius, texture, materialOptions = {}) {
+  return new THREE.Mesh(
+    new THREE.SphereGeometry(radius, 96, 96),
+    new THREE.MeshStandardMaterial({
+      map: texture,
+      roughness: 0.78,
+      metalness: 0.03,
+      ...materialOptions
+    })
+  );
+}
+
+function createEnvironmentStarField(THREE, count, spread) {
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * 3;
+    const radius = spread * (0.46 + seededUnit(index + 1201) * 0.54);
+    const theta = seededUnit(index + 1203) * Math.PI * 2;
+    const phi = Math.acos(2 * seededUnit(index + 1205) - 1);
+    positions[offset] = Math.sin(phi) * Math.cos(theta) * radius;
+    positions[offset + 1] = Math.cos(phi) * radius * 0.72;
+    positions[offset + 2] = Math.sin(phi) * Math.sin(theta) * radius;
+    const warmth = seededUnit(index + 1207);
+    colors[offset] = 0.76 + warmth * 0.24;
+    colors[offset + 1] = 0.82 + warmth * 0.14;
+    colors[offset + 2] = 0.95;
+  }
+
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  const stars = new THREE.Points(
+    geometry,
+    new THREE.PointsMaterial({
+      size: 0.018,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.72,
+      depthWrite: false
+    })
+  );
+  stars.userData.rotateSpeed = 0.00006;
+  return stars;
+}
+
+function createAtmosphereGlow(THREE, radius, color, opacity) {
+  return new THREE.Mesh(
+    new THREE.SphereGeometry(radius, 72, 72),
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    })
+  );
+}
+
+function addTiltedOrbitRing(THREE, group, radius, color, tilt = 0.55, yaw = 0) {
+  const ring = addThreeRing(THREE, group, radius, color);
+  ring.rotation.x = Math.PI / 2.9 + tilt * 0.2;
+  ring.rotation.z = yaw;
+  ring.scale.z = 0.72;
+  ring.material.opacity = 0.5;
+  return ring;
+}
+
+function createMoonTerminator(THREE, radius) {
+  const terminator = new THREE.Mesh(
+    new THREE.SphereGeometry(radius, 72, 72),
+    new THREE.MeshBasicMaterial({
+      color: 0x020617,
+      transparent: true,
+      opacity: 0.18,
+      depthWrite: false,
+      blending: THREE.MultiplyBlending
+    })
+  );
+  terminator.scale.set(1, 1, 0.985);
+  terminator.rotation.y = -0.62;
+  return terminator;
+}
+
+function addCislunarTransferPath(THREE, group) {
+  const curvePoints = [];
+  for (let index = 0; index <= 96; index += 1) {
+    const t = index / 96;
+    curvePoints.push(new THREE.Vector3(
+      -2.42 + t * 2.64,
+      0.78 + Math.sin(t * Math.PI) * 0.34,
+      -0.96 + Math.sin(t * Math.PI * 1.3) * 0.46
+    ));
+  }
+
+  const line = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(curvePoints),
+    new THREE.LineBasicMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.74 })
+  );
+  group.add(line);
+}
+
+function createMarsDustShell(THREE) {
+  const geometry = new THREE.BufferGeometry();
+  const count = 260;
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * 3;
+    const angle = seededUnit(index + 1301) * Math.PI * 2;
+    const radius = 0.94 + seededUnit(index + 1303) * 0.08;
+    positions[offset] = Math.cos(angle) * radius;
+    positions[offset + 1] = (seededUnit(index + 1305) - 0.5) * 0.52;
+    positions[offset + 2] = Math.sin(angle) * radius * 0.68;
+    colors[offset] = 1;
+    colors[offset + 1] = 0.58 + seededUnit(index + 1307) * 0.16;
+    colors[offset + 2] = 0.24;
+  }
+
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  const dust = new THREE.Points(
+    geometry,
+    new THREE.PointsMaterial({
+      size: 0.018,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.52,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    })
+  );
+  dust.userData.rotateSpeed = 0.00032;
+  return dust;
+}
+
+function createSolarCorona(THREE) {
+  const group = new THREE.Group();
+  const coronaColors = [
+    [1.12, 0xfacc15, 0.24],
+    [1.34, 0xfb923c, 0.15],
+    [1.62, 0xef4444, 0.07]
+  ];
+
+  for (const [radius, color, opacity] of coronaColors) {
+    group.add(createAtmosphereGlow(THREE, radius, color, opacity));
+  }
+
+  return group;
+}
+
+function createSolarProminences(THREE) {
+  const group = new THREE.Group();
+  const material = new THREE.LineBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.72 });
+
+  for (let loopIndex = 0; loopIndex < 11; loopIndex += 1) {
+    const points = [];
+    const base = seededUnit(loopIndex + 1411) * Math.PI * 2;
+    const width = 0.22 + seededUnit(loopIndex + 1413) * 0.22;
+    const height = 0.18 + seededUnit(loopIndex + 1415) * 0.32;
+
+    for (let index = 0; index <= 32; index += 1) {
+      const t = index / 32;
+      const angle = base + (t - 0.5) * width;
+      const radius = 0.95 + Math.sin(t * Math.PI) * height;
+      points.push(new THREE.Vector3(
+        Math.cos(angle) * radius,
+        (seededUnit(loopIndex + 1417) - 0.5) * 0.9 + Math.sin(t * Math.PI) * height * 0.36,
+        Math.sin(angle) * radius
+      ));
+    }
+
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), material.clone()));
+  }
+
+  group.userData.rotateSpeed = 0.00045;
+  return group;
+}
+
+function createPlanetRingSystem(THREE, radius, thin = false) {
+  const group = new THREE.Group();
+  const bands = thin
+    ? [[1.55, 0.008, 0xbae6fd, 0.32], [1.82, 0.006, 0xe0f2fe, 0.22]]
+    : [[1.38, 0.014, 0xfde68a, 0.56], [1.68, 0.018, 0xf8c471, 0.42], [1.95, 0.012, 0xfef3c7, 0.34]];
+
+  for (const [scale, tube, color, opacity] of bands) {
+    group.add(new THREE.Mesh(
+      new THREE.TorusGeometry(radius * scale, tube, 8, 96),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    ));
+  }
+
+  return group;
+}
+
+function createAsteroidBelt(THREE, inner, outer) {
+  const count = 520;
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * 3;
+    const radius = inner + seededUnit(index + 1501) * (outer - inner);
+    const angle = seededUnit(index + 1503) * Math.PI * 2;
+    positions[offset] = Math.cos(angle) * radius;
+    positions[offset + 1] = (seededUnit(index + 1505) - 0.5) * 0.08;
+    positions[offset + 2] = Math.sin(angle) * radius * 0.35;
+  }
+
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  return new THREE.Points(
+    geometry,
+    new THREE.PointsMaterial({ color: 0xcbd5e1, size: 0.012, transparent: true, opacity: 0.42 })
+  );
+}
+
+function createMoonTexture(THREE) {
   const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 256;
+  canvas.width = 1024;
+  canvas.height = 512;
   const ctx = canvas.getContext("2d");
   const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  gradient.addColorStop(0, "#7c2d12");
-  gradient.addColorStop(0.48, "#c2410c");
-  gradient.addColorStop(1, "#f97316");
+  gradient.addColorStop(0, "#eef2f7");
+  gradient.addColorStop(0.45, "#9aa3b1");
+  gradient.addColorStop(1, "#d9dee7");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  for (let index = 0; index < 58; index += 1) {
-    ctx.fillStyle = index % 4 === 0 ? "rgb(254 215 170 / 0.25)" : "rgb(69 26 3 / 0.2)";
+  for (let index = 0; index < 26; index += 1) {
+    const x = seededUnit(index + 1601) * canvas.width;
+    const y = seededUnit(index + 1603) * canvas.height;
+    const rx = 28 + seededUnit(index + 1605) * 92;
+    const ry = rx * (0.36 + seededUnit(index + 1607) * 0.24);
+    ctx.fillStyle = index % 3 === 0 ? "rgb(51 65 85 / 0.2)" : "rgb(15 23 42 / 0.12)";
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, seededUnit(index + 1609) * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (let index = 0; index < 180; index += 1) {
+    const x = seededUnit(index + 4) * canvas.width;
+    const y = seededUnit(index + 8) * canvas.height;
+    const radius = 3 + seededUnit(index + 12) * 34;
+    const rimAlpha = 0.14 + seededUnit(index) * 0.28;
+    const fillAlpha = 0.035 + seededUnit(index + 2) * 0.095;
+    ctx.strokeStyle = `rgb(15 23 42 / ${rimAlpha})`;
+    ctx.fillStyle = `rgb(15 23 42 / ${fillAlpha})`;
+    ctx.lineWidth = 0.8 + seededUnit(index + 18) * 2.2;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = `rgb(248 250 252 / ${0.08 + seededUnit(index + 20) * 0.18})`;
+    ctx.beginPath();
+    ctx.arc(x - radius * 0.18, y - radius * 0.18, radius * 0.72, Math.PI * 0.95, Math.PI * 1.75);
+    ctx.stroke();
+  }
+
+  for (let ray = 0; ray < 9; ray += 1) {
+    const x = (0.18 + seededUnit(ray + 1711) * 0.68) * canvas.width;
+    const y = (0.18 + seededUnit(ray + 1713) * 0.62) * canvas.height;
+    ctx.strokeStyle = "rgb(248 250 252 / 0.13)";
+    ctx.lineWidth = 1;
+    for (let spoke = 0; spoke < 12; spoke += 1) {
+      const angle = (spoke / 12) * Math.PI * 2 + seededUnit(ray + 1717) * 0.2;
+      const length = 28 + seededUnit(ray * 31 + spoke) * 76;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length * 0.55);
+      ctx.stroke();
+    }
+  }
+
+  return createTextureFromCanvas(THREE, canvas);
+}
+
+function createMarsTexture(THREE) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, "#6b2110");
+  gradient.addColorStop(0.22, "#a93d17");
+  gradient.addColorStop(0.52, "#d35c1f");
+  gradient.addColorStop(0.82, "#9a3412");
+  gradient.addColorStop(1, "#f2a268");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let index = 0; index < 120; index += 1) {
+    ctx.fillStyle = index % 4 === 0 ? "rgb(254 215 170 / 0.28)" : "rgb(69 26 3 / 0.23)";
     ctx.beginPath();
     ctx.ellipse(
       seededUnit(index + 7) * canvas.width,
@@ -4161,30 +4437,53 @@ function createMarsTexture(THREE) {
     ctx.fill();
   }
 
-  ctx.fillStyle = "rgb(255 247 237 / 0.72)";
+  ctx.strokeStyle = "rgb(69 26 3 / 0.52)";
+  ctx.lineWidth = 8;
   ctx.beginPath();
-  ctx.ellipse(canvas.width * 0.5, 18, 82, 13, 0, 0, Math.PI * 2);
+  ctx.moveTo(canvas.width * 0.16, canvas.height * 0.47);
+  ctx.bezierCurveTo(canvas.width * 0.32, canvas.height * 0.42, canvas.width * 0.46, canvas.height * 0.52, canvas.width * 0.67, canvas.height * 0.45);
+  ctx.bezierCurveTo(canvas.width * 0.76, canvas.height * 0.42, canvas.width * 0.82, canvas.height * 0.46, canvas.width * 0.9, canvas.height * 0.43);
+  ctx.stroke();
+  ctx.strokeStyle = "rgb(254 215 170 / 0.18)";
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  const olympusX = canvas.width * 0.32;
+  const olympusY = canvas.height * 0.35;
+  const olympus = ctx.createRadialGradient(olympusX, olympusY, 0, olympusX, olympusY, 44);
+  olympus.addColorStop(0, "rgb(254 215 170 / 0.42)");
+  olympus.addColorStop(0.38, "rgb(120 53 15 / 0.35)");
+  olympus.addColorStop(1, "rgb(120 53 15 / 0)");
+  ctx.fillStyle = olympus;
+  ctx.beginPath();
+  ctx.arc(olympusX, olympusY, 44, 0, Math.PI * 2);
   ctx.fill();
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
-  return texture;
+  ctx.fillStyle = "rgb(255 247 237 / 0.72)";
+  ctx.beginPath();
+  ctx.ellipse(canvas.width * 0.5, 24, 120, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgb(255 247 237 / 0.48)";
+  ctx.beginPath();
+  ctx.ellipse(canvas.width * 0.52, canvas.height - 18, 94, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  return createTextureFromCanvas(THREE, canvas);
 }
 
 function createSunTexture(THREE) {
   const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 256;
+  canvas.width = 1024;
+  canvas.height = 512;
   const ctx = canvas.getContext("2d");
-  const gradient = ctx.createRadialGradient(256, 128, 0, 256, 128, 280);
+  const gradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, 560);
   gradient.addColorStop(0, "#fff7ad");
   gradient.addColorStop(0.48, "#facc15");
   gradient.addColorStop(1, "#ea580c");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  for (let index = 0; index < 90; index += 1) {
+  for (let index = 0; index < 170; index += 1) {
     ctx.strokeStyle = `rgb(255 255 255 / ${0.1 + seededUnit(index) * 0.16})`;
     ctx.lineWidth = 1 + seededUnit(index + 2) * 3;
     ctx.beginPath();
@@ -4194,10 +4493,156 @@ function createSunTexture(THREE) {
     ctx.stroke();
   }
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
-  return texture;
+  for (let index = 0; index < 34; index += 1) {
+    const x = seededUnit(index + 1801) * canvas.width;
+    const y = seededUnit(index + 1803) * canvas.height;
+    const radius = 14 + seededUnit(index + 1805) * 46;
+    const flare = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    flare.addColorStop(0, "rgb(255 255 255 / 0.42)");
+    flare.addColorStop(0.4, "rgb(251 146 60 / 0.28)");
+    flare.addColorStop(1, "rgb(239 68 68 / 0)");
+    ctx.fillStyle = flare;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  return createTextureFromCanvas(THREE, canvas);
+}
+
+function createMoonBumpTexture(THREE) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#7f8792";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let index = 0; index < 220; index += 1) {
+    const x = seededUnit(index + 1901) * canvas.width;
+    const y = seededUnit(index + 1903) * canvas.height;
+    const radius = 3 + seededUnit(index + 1905) * 38;
+    ctx.strokeStyle = "rgb(245 245 245 / 0.55)";
+    ctx.lineWidth = 1 + seededUnit(index + 1907) * 2.4;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = "rgb(30 41 59 / 0.18)";
+    ctx.beginPath();
+    ctx.arc(x + radius * 0.12, y + radius * 0.12, radius * 0.72, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  return createTextureFromCanvas(THREE, canvas);
+}
+
+function createMarsBumpTexture(THREE) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#8c5b3c";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let index = 0; index < 130; index += 1) {
+    ctx.fillStyle = index % 2 ? "rgb(245 158 11 / 0.28)" : "rgb(69 26 3 / 0.26)";
+    ctx.beginPath();
+    ctx.ellipse(
+      seededUnit(index + 2001) * canvas.width,
+      seededUnit(index + 2003) * canvas.height,
+      10 + seededUnit(index + 2005) * 70,
+      2 + seededUnit(index + 2007) * 16,
+      seededUnit(index + 2009) * Math.PI,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  return createTextureFromCanvas(THREE, canvas);
+}
+
+function createRockyPlanetTexture(THREE, kind) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 768;
+  canvas.height = 384;
+  const ctx = canvas.getContext("2d");
+  const palettes = {
+    mercury: ["#5b5f66", "#a3a3a3", "#3f3f46", "#d4d4d8"],
+    venus: ["#8a5f18", "#fbbf24", "#fef3c7", "#b45309"]
+  };
+  const [dark, mid, light, accent] = palettes[kind] || palettes.mercury;
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, light);
+  gradient.addColorStop(0.46, mid);
+  gradient.addColorStop(1, dark);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let index = 0; index < 90; index += 1) {
+    ctx.fillStyle = index % 3 === 0 ? `${accent}66` : "rgb(15 23 42 / 0.14)";
+    ctx.beginPath();
+    ctx.ellipse(
+      seededUnit(index + 2101) * canvas.width,
+      seededUnit(index + 2103) * canvas.height,
+      8 + seededUnit(index + 2105) * 42,
+      3 + seededUnit(index + 2107) * 15,
+      seededUnit(index + 2109) * Math.PI,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+
+  return createTextureFromCanvas(THREE, canvas);
+}
+
+function createGasGiantTexture(THREE, kind) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  const palettes = {
+    jupiter: ["#7c4a22", "#d6a35d", "#f8ddb0", "#b45309", "#f97316"],
+    saturn: ["#a16207", "#e6c36a", "#fff1c2", "#c0842f", "#facc15"],
+    uranus: ["#155e75", "#7dd3fc", "#ccfbf1", "#38bdf8", "#bae6fd"],
+    neptune: ["#172554", "#3b82f6", "#bfdbfe", "#1d4ed8", "#60a5fa"]
+  };
+  const colors = palettes[kind] || palettes.jupiter;
+
+  for (let band = 0; band < 36; band += 1) {
+    const y = (band / 36) * canvas.height;
+    const h = canvas.height / 34 + seededUnit(band + 2201) * 8;
+    ctx.fillStyle = colors[band % colors.length];
+    ctx.globalAlpha = 0.72 + seededUnit(band + 2203) * 0.2;
+    ctx.fillRect(0, y, canvas.width, h);
+  }
+  ctx.globalAlpha = 1;
+
+  for (let index = 0; index < 120; index += 1) {
+    const y = seededUnit(index + 2301) * canvas.height;
+    ctx.strokeStyle = `rgb(255 255 255 / ${0.05 + seededUnit(index + 2303) * 0.13})`;
+    ctx.lineWidth = 1 + seededUnit(index + 2305) * 3;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.bezierCurveTo(canvas.width * 0.28, y + (seededUnit(index + 2307) - 0.5) * 42, canvas.width * 0.72, y + (seededUnit(index + 2309) - 0.5) * 42, canvas.width, y + (seededUnit(index + 2311) - 0.5) * 24);
+    ctx.stroke();
+  }
+
+  if (kind === "jupiter") {
+    const spotX = canvas.width * 0.68;
+    const spotY = canvas.height * 0.56;
+    const spot = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, 54);
+    spot.addColorStop(0, "rgb(248 113 113 / 0.72)");
+    spot.addColorStop(0.54, "rgb(154 52 18 / 0.54)");
+    spot.addColorStop(1, "rgb(154 52 18 / 0)");
+    ctx.fillStyle = spot;
+    ctx.beginPath();
+    ctx.ellipse(spotX, spotY, 76, 34, -0.08, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  return createTextureFromCanvas(THREE, canvas);
 }
 
 function createBodyLabel(THREE, text, x, y, z) {
