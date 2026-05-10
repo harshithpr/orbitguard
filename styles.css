@@ -2228,6 +2228,310 @@ td {
   word-break: normal;
 }
 
+.command-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.82fr);
+  gap: 1rem;
+  align-items: end;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 68%, transparent), transparent 42%),
+    radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--simulated-color) 18%, transparent), transparent 28rem),
+    color-mix(in srgb, var(--bg-panel) 88%, transparent);
+}
+
+.command-actions,
+.maneuver-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: end;
+  align-items: end;
+}
+
+.command-actions label,
+.maneuver-controls label,
+.compact-select {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 12rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 780;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.command-actions select,
+.maneuver-controls select,
+.compact-select select {
+  min-height: 2.45rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.command-metrics {
+  margin-bottom: 1rem;
+}
+
+.replay-layout,
+.traffic-layout,
+.traffic-secondary-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.replay-layout {
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  align-items: stretch;
+}
+
+.digital-twin-viewport {
+  position: relative;
+  min-height: clamp(420px, 58vh, 700px);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line));
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 34%),
+    linear-gradient(180deg, #020617 0%, color-mix(in srgb, var(--bg-main) 88%, #030712) 100%);
+  box-shadow: inset 0 0 70px rgb(0 0 0 / 0.35);
+  isolation: isolate;
+}
+
+.digital-twin-viewport canvas,
+.traffic-radar {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.replay-hud {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-main) 76%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.replay-hud span,
+.selected-alert-card span,
+.operator-card span {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 820;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.replay-hud strong {
+  color: var(--text);
+  font-size: clamp(1.15rem, 2.5vw, 1.75rem);
+}
+
+.replay-telemetry-panel {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}
+
+.mission-autopsy,
+.selected-alert-card,
+.maneuver-result,
+.forecast-card,
+.operator-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.mission-autopsy h3,
+.selected-alert-card h3,
+.maneuver-result h3,
+.forecast-card h3,
+.operator-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.mission-autopsy p,
+.selected-alert-card p,
+.maneuver-result p,
+.forecast-card p,
+.operator-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.autopsy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.autopsy-card {
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-main) 52%, transparent);
+}
+
+.autopsy-card strong {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--text);
+}
+
+.traffic-layout {
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  align-items: stretch;
+}
+
+.traffic-secondary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.traffic-viewport {
+  min-height: clamp(440px, 54vh, 680px);
+}
+
+.traffic-alert-feed {
+  max-height: 33rem;
+  overflow: auto;
+}
+
+.traffic-alert {
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  border-color: color-mix(in srgb, var(--alert-color, var(--accent)) 42%, var(--line));
+  background: color-mix(in srgb, var(--alert-color, var(--accent)) 10%, var(--panel-2));
+  box-shadow: none;
+}
+
+.traffic-alert.active {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--alert-color, var(--accent)) 72%, transparent);
+}
+
+.severity-pill {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.48rem;
+  border: 1px solid color-mix(in srgb, var(--alert-color, var(--accent)) 42%, var(--line));
+  border-radius: 999px;
+  color: var(--alert-color, var(--accent));
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.traffic-radar {
+  min-height: 21rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 8px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 10%, transparent), transparent 62%), #020617;
+}
+
+.health-shell-list,
+.command-log {
+  display: grid;
+  gap: 0.55rem;
+  max-height: 24rem;
+  overflow: auto;
+}
+
+.health-shell {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--shell-color, var(--accent)) 34%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--shell-color, var(--accent)) 10%, var(--panel-2));
+}
+
+.health-shell header,
+.log-entry {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.health-shell strong,
+.log-entry strong {
+  color: var(--text);
+}
+
+.health-bar {
+  height: 0.48rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-main) 70%, transparent);
+}
+
+.health-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--shell-color, var(--accent));
+}
+
+.operator-card dl,
+.maneuver-result dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.operator-card dt,
+.maneuver-result dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.operator-card dd,
+.maneuver-result dd {
+  margin: 0.15rem 0 0;
+  color: var(--text);
+  font-weight: 780;
+}
+
+.command-log {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+
+.log-entry {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.log-entry span {
+  color: var(--accent);
+}
+
 footer {
   display: flex;
   flex-wrap: wrap;
@@ -2290,7 +2594,11 @@ footer a {
   .weather-detail-grid,
   .report-layout,
   .report-card-grid,
-  .report-card-summary {
+  .report-card-summary,
+  .command-hero,
+  .replay-layout,
+  .traffic-layout,
+  .traffic-secondary-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2305,12 +2613,18 @@ footer a {
   .weather-metrics-grid,
   .ground-metrics-grid,
   .ground-operations-grid,
-  .ground-network-cards {
+  .ground-network-cards,
+  .command-metrics,
+  .autopsy-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .ground-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .command-actions {
+    justify-content: start;
   }
 
   .comparison-actions {
@@ -2360,12 +2674,18 @@ footer a {
   .ground-network-cards,
   .solar-system-panel,
   .launch-telemetry-grid,
-  .incident-stats {
+  .incident-stats,
+  .command-metrics,
+  .autopsy-grid,
+  .operator-card dl,
+  .maneuver-result dl {
     grid-template-columns: 1fr;
   }
 
   .comparison-actions,
-  .row-actions {
+  .row-actions,
+  .command-actions,
+  .maneuver-controls {
     justify-content: start;
   }
 
@@ -2400,6 +2720,15 @@ footer a {
 
   .launch-viewport {
     min-height: 420px;
+  }
+
+  .digital-twin-viewport,
+  .traffic-viewport {
+    min-height: 360px;
+  }
+
+  .traffic-radar {
+    min-height: 18rem;
   }
 
   .launch-hud {

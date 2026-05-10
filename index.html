@@ -51,6 +51,8 @@
           <button class="mode-jump" type="button" data-mode="dashboard">Open Dashboard</button>
           <button class="mode-jump" type="button" data-mode="encyclopedia">Open Encyclopedia</button>
           <button class="mode-jump" type="button" data-mode="simulator">Run Launch Simulator</button>
+          <button class="mode-jump" type="button" data-mode="replay">Mission Replay</button>
+          <button class="mode-jump" type="button" data-mode="traffic">Traffic Control</button>
           <button class="mode-jump" type="button" data-mode="time">Use Time Machine</button>
           <button class="mode-jump" type="button" data-mode="weather">Monitor Weather</button>
           <button class="mode-jump" type="button" data-mode="report">Open Report</button>
@@ -1040,6 +1042,286 @@
           </div>
 
           <div class="mission-report-card" id="missionReportCard"></div>
+        </section>
+      </section>
+
+      <section class="mode-panel" id="replayMode">
+        <section class="panel command-hero replay-command-hero">
+          <div>
+            <p class="eyebrow">Live mission replay + digital twin</p>
+            <h2>Mission Replay Mode</h2>
+            <p class="panel-note">Replay a launch or debris event through OrbitGuard's Orbital Digital Twin, with telemetry, risk heat shells, deployment timing, and an engineering autopsy generated as the timeline plays.</p>
+          </div>
+          <div class="command-actions">
+            <label>
+              Scenario
+              <select id="missionReplayScenario">
+                <option value="custom">Current launch scenario</option>
+                <option value="iridium-cosmos">2009 Iridium 33 / Cosmos 2251</option>
+                <option value="fengyun">2007 Fengyun-1C ASAT test</option>
+                <option value="kosmos">2021 Kosmos 1408 debris event</option>
+                <option value="starlink-storm">2022 Starlink geomagnetic storm loss</option>
+              </select>
+            </label>
+            <label>
+              Camera
+              <select id="missionReplayCamera">
+                <option value="mission-control">Mission Control View</option>
+                <option value="earth-orbit">Earth Orbit View</option>
+                <option value="rocket-chase">Rocket Chase Cam</option>
+                <option value="risk-heatmap">Risk Heatmap View</option>
+              </select>
+            </label>
+            <button id="missionReplayPlayPause" type="button">Pause</button>
+            <button id="missionReplayRestart" type="button">Restart</button>
+            <button id="downloadMissionAutopsy" type="button">Download Mission Autopsy</button>
+          </div>
+        </section>
+
+        <section class="metrics-grid command-metrics" aria-label="Mission replay impact metrics">
+          <article class="metric">
+            <span>Sustainability Score</span>
+            <strong id="replaySustainabilityScore">-</strong>
+            <small id="replayScoreNote">Live mission scoring</small>
+          </article>
+          <article class="metric">
+            <span>Objects Added</span>
+            <strong id="replayObjectsAdded">-</strong>
+            <small id="replayObjectsNote">Payloads, rocket bodies, and debris</small>
+          </article>
+          <article class="metric">
+            <span>Affected Band</span>
+            <strong id="replayAffectedBand">-</strong>
+            <small id="replayBandNote">Risk heat shell</small>
+          </article>
+          <article class="metric">
+            <span>Congestion Change</span>
+            <strong id="replayCongestionChange">-</strong>
+            <small>Updates with timeline progress</small>
+          </article>
+          <article class="metric">
+            <span>Risk Level</span>
+            <strong id="replayRiskLevel">-</strong>
+            <small id="replayRiskNote">Digital twin assessment</small>
+          </article>
+          <article class="metric">
+            <span>Current Phase</span>
+            <strong id="replayCurrentPhase">-</strong>
+            <small id="replayPhaseNote">Mission event timeline</small>
+          </article>
+        </section>
+
+        <section class="replay-layout">
+          <article class="panel replay-view-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Orbital Digital Twin</p>
+                <h2>Mission Replay Canvas</h2>
+              </div>
+              <span class="panel-stat" id="replayClock">T+00:00</span>
+            </div>
+            <div class="digital-twin-viewport">
+              <canvas id="missionReplayCanvas" aria-label="Mission replay orbital digital twin"></canvas>
+              <div class="replay-hud">
+                <span id="replayHudPhase">Countdown</span>
+                <strong id="replayHudCallout">Preparing mission timeline</strong>
+              </div>
+            </div>
+          </article>
+
+          <aside class="panel replay-telemetry-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Telemetry</p>
+                <h2>Mission Control</h2>
+              </div>
+            </div>
+            <div class="launch-telemetry-grid">
+              <article class="metric compact">
+                <span>Altitude</span>
+                <strong id="replayAltitude">0 km</strong>
+              </article>
+              <article class="metric compact">
+                <span>Velocity</span>
+                <strong id="replayVelocity">0.0 km/s</strong>
+              </article>
+              <article class="metric compact">
+                <span>Inclination</span>
+                <strong id="replayInclination">0 deg</strong>
+              </article>
+              <article class="metric compact">
+                <span>Payloads</span>
+                <strong id="replayPayloads">0 / 0</strong>
+              </article>
+            </div>
+            <label class="scenario-control replay-scrubber">
+              Mission timeline
+              <input id="missionReplayScrubber" type="range" min="0" max="1000" value="0">
+              <span id="missionReplayScrubberLabel">T+00:00</span>
+            </label>
+            <div class="launch-phase-list mission-replay-timeline" id="missionReplayTimeline"></div>
+            <div class="mission-autopsy" id="missionAutopsy"></div>
+          </aside>
+        </section>
+      </section>
+
+      <section class="mode-panel" id="trafficMode">
+        <section class="panel command-hero traffic-command-hero">
+          <div>
+            <p class="eyebrow">Space Traffic Control Center</p>
+            <h2>Orbital Traffic Command</h2>
+            <p class="panel-note">Monitor simulated conjunction alerts, inspect altitude-shell health, test avoidance maneuvers, trigger debris events, forecast congestion, and export a professional traffic assessment.</p>
+          </div>
+          <div class="command-actions">
+            <button id="triggerDebrisEvent" type="button">Trigger Fragmentation Event</button>
+            <button id="resetTrafficEvent" type="button">Reset Traffic</button>
+            <button id="downloadTrafficReport" type="button">Download Traffic Report</button>
+          </div>
+        </section>
+
+        <section class="metrics-grid command-metrics" aria-label="Space traffic status">
+          <article class="metric">
+            <span>Tracked Objects</span>
+            <strong id="trafficTrackedObjects">-</strong>
+            <small>Current catalog objects</small>
+          </article>
+          <article class="metric">
+            <span>Active Payloads</span>
+            <strong id="trafficActivePayloads">-</strong>
+            <small>Operational traffic</small>
+          </article>
+          <article class="metric">
+            <span>Debris Objects</span>
+            <strong id="trafficDebrisObjects">-</strong>
+            <small>Fragments and nonfunctional debris</small>
+          </article>
+          <article class="metric">
+            <span>High-Risk Passes</span>
+            <strong id="trafficHighRiskPasses">-</strong>
+            <small>Educational conjunction alerts</small>
+          </article>
+          <article class="metric">
+            <span>Most Crowded Band</span>
+            <strong id="trafficCrowdedBand">-</strong>
+            <small id="trafficCrowdedBandNote">Highest-density shell</small>
+          </article>
+          <article class="metric">
+            <span>Drag Risk</span>
+            <strong id="trafficDragRisk">-</strong>
+            <small id="trafficDragRiskNote">Space weather operations layer</small>
+          </article>
+        </section>
+
+        <section class="traffic-layout">
+          <article class="panel traffic-map-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Orbital traffic map</p>
+                <h2>Traffic Density + Risk Shells</h2>
+              </div>
+              <span class="panel-stat">Educational simulation</span>
+            </div>
+            <div class="digital-twin-viewport traffic-viewport">
+              <canvas id="trafficMapCanvas" aria-label="Space traffic control orbital map"></canvas>
+            </div>
+          </article>
+
+          <aside class="panel traffic-alert-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Conjunction alert feed</p>
+                <h2>Predicted Close Approaches</h2>
+              </div>
+            </div>
+            <div class="alert-list traffic-alert-feed" id="trafficAlertFeed"></div>
+          </aside>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Orbital radar</p>
+                <h2>LEO Scan Active</h2>
+              </div>
+              <span class="panel-stat" id="trafficRadarStatus">Scanning</span>
+            </div>
+            <canvas class="traffic-radar" id="trafficRadarCanvas" aria-label="Orbital radar scan"></canvas>
+          </article>
+
+          <article class="panel maneuver-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Avoidance maneuver simulator</p>
+                <h2>Selected Alert Response</h2>
+              </div>
+            </div>
+            <div id="selectedTrafficAlert" class="selected-alert-card"></div>
+            <div class="maneuver-controls">
+              <label>
+                Response
+                <select id="maneuverSelect">
+                  <option value="none">Do nothing</option>
+                  <option value="raise">Raise orbit by 1 km</option>
+                  <option value="lower">Lower orbit by 1 km</option>
+                  <option value="delay">Delay maneuver timing</option>
+                  <option value="inclination">Change inclination slightly</option>
+                </select>
+              </label>
+              <button id="simulateManeuver" type="button">Simulate Maneuver</button>
+            </div>
+            <div id="maneuverResult" class="maneuver-result"></div>
+          </article>
+        </section>
+
+        <section class="traffic-secondary-grid">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Orbital health map</p>
+                <h2>Altitude Shell Scores</h2>
+              </div>
+            </div>
+            <div class="health-shell-list" id="trafficHealthMap"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Traffic forecast</p>
+                <h2>Future Congestion</h2>
+              </div>
+              <label class="compact-select">
+                Horizon
+                <select id="trafficForecastYears">
+                  <option value="1">1 year</option>
+                  <option value="5">5 years</option>
+                  <option value="10" selected>10 years</option>
+                  <option value="25">25 years</option>
+                </select>
+              </label>
+            </div>
+            <div id="trafficForecast" class="forecast-card"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Operator view</p>
+                <h2>Satellite Operations Snapshot</h2>
+              </div>
+              <select id="operatorSatelliteSelect" aria-label="Select operator satellite"></select>
+            </div>
+            <div id="operatorView" class="operator-card"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Command log</p>
+                <h2>Operations Record</h2>
+              </div>
+            </div>
+            <div class="command-log" id="trafficCommandLog"></div>
+          </article>
         </section>
       </section>
 

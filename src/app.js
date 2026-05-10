@@ -106,6 +106,108 @@ const LAUNCH_SEQUENCE_PHASES = [
   { name: "Mission complete", start: 34, end: 36, stage: "Complete", telemetry: "Deployment complete and launch impact model updated." }
 ];
 const LAUNCH_SEQUENCE_DURATION = LAUNCH_SEQUENCE_PHASES[LAUNCH_SEQUENCE_PHASES.length - 1].end;
+const MISSION_REPLAY_DURATION = 72;
+const MISSION_REPLAY_PHASES = {
+  launch: [
+    { name: "Countdown", start: 0, end: 8, callout: "Mission timeline armed and weather/range checks complete." },
+    { name: "Liftoff", start: 8, end: 16, callout: "Vehicle clears the pad and begins ascent through the lower atmosphere." },
+    { name: "Max-Q", start: 16, end: 23, callout: "Peak aerodynamic pressure; guidance holds the planned trajectory." },
+    { name: "Stage separation", start: 23, end: 31, callout: "First stage drops away while the upper stage continues to orbit." },
+    { name: "Orbit insertion", start: 31, end: 43, callout: "The target altitude shell lights up as the mission reaches orbital velocity." },
+    { name: "Payload deployment", start: 43, end: 58, callout: "Satellites deploy and spread along the assigned orbit ring." },
+    { name: "Impact analysis", start: 58, end: 72, callout: "OrbitGuard compares before/after congestion and writes the mission autopsy." }
+  ],
+  event: [
+    { name: "Before event", start: 0, end: 12, callout: "Baseline traffic is monitored before the debris-producing event." },
+    { name: "Close approach", start: 12, end: 24, callout: "Objects converge through a dense orbital shell." },
+    { name: "Event moment", start: 24, end: 34, callout: "A collision, breakup, test, or storm event changes the orbital environment." },
+    { name: "Debris expansion", start: 34, end: 54, callout: "Fragments spread along the affected altitude band." },
+    { name: "Long-term assessment", start: 54, end: 72, callout: "OrbitGuard summarizes sustainability consequences and operating lessons." }
+  ]
+};
+const HISTORICAL_REPLAY_SCENARIOS = {
+  "iridium-cosmos": {
+    name: "Iridium 33 / Cosmos 2251 Collision",
+    type: "event",
+    year: 2009,
+    altitude: 790,
+    band: "700-900",
+    inclination: 86.4,
+    payloads: 0,
+    rocketBodies: 0,
+    debris: 2000,
+    riskIndex: 88,
+    riskLevel: "High",
+    congestionChange: 18.6,
+    description: "Two intact satellites collided at hypervelocity in LEO, creating a long-lived debris cloud across a valuable altitude range.",
+    wentWell: "The event improved global awareness of conjunction screening and public space debris tracking.",
+    increasedRisk: "Thousands of fragments raised collision exposure in the 700-900 km region.",
+    redesign: "Operational satellites need continuous conjunction assessment and retired spacecraft need reliable disposal plans."
+  },
+  fengyun: {
+    name: "Fengyun-1C ASAT Test",
+    type: "event",
+    year: 2007,
+    altitude: 865,
+    band: "800-900",
+    inclination: 98.6,
+    payloads: 0,
+    rocketBodies: 0,
+    debris: 3200,
+    riskIndex: 94,
+    riskLevel: "Critical",
+    congestionChange: 31.4,
+    description: "A kinetic anti-satellite test destroyed Fengyun-1C and produced one of the largest long-lived debris clouds in orbit.",
+    wentWell: "The event became a clear policy example for why destructive debris tests are unsustainable.",
+    increasedRisk: "The debris cloud populated sun-synchronous altitudes used by Earth observation satellites.",
+    redesign: "Avoid debris-generating tests and use non-destructive verification for space security missions."
+  },
+  kosmos: {
+    name: "Kosmos 1408 Debris Event",
+    type: "event",
+    year: 2021,
+    altitude: 480,
+    band: "400-600",
+    inclination: 82.5,
+    payloads: 0,
+    rocketBodies: 0,
+    debris: 1500,
+    riskIndex: 86,
+    riskLevel: "High",
+    congestionChange: 14.2,
+    description: "The breakup of Kosmos 1408 created fragments that produced immediate operational concern for crewed and uncrewed spacecraft.",
+    wentWell: "Tracking networks rapidly cataloged fragments and operators reviewed avoidance procedures.",
+    increasedRisk: "A sudden debris field increased alert volume in already active LEO traffic lanes.",
+    redesign: "International norms should discourage destructive debris events in crewed and commercial orbital regions."
+  },
+  "starlink-storm": {
+    name: "Starlink Geomagnetic Storm Loss",
+    type: "event",
+    year: 2022,
+    altitude: 210,
+    band: "200-300",
+    inclination: 53,
+    payloads: 49,
+    rocketBodies: 0,
+    debris: 0,
+    riskIndex: 62,
+    riskLevel: "Medium",
+    congestionChange: 4.8,
+    description: "A geomagnetic storm increased drag after deployment, preventing many satellites from raising orbit and causing reentry.",
+    wentWell: "The low deployment orbit reduced long-term debris persistence because failed satellites reentered.",
+    increasedRisk: "The event exposed how space weather can erase ascent margins and mission availability.",
+    redesign: "Deployment plans should include storm holds, higher drag margins, and real-time space weather constraints."
+  }
+};
+const TRAFFIC_ALTITUDE_SHELLS = [
+  { label: "300-400 km", min: 300, max: 400 },
+  { label: "400-500 km", min: 400, max: 500 },
+  { label: "500-600 km", min: 500, max: 600 },
+  { label: "600-700 km", min: 600, max: 700 },
+  { label: "700-800 km", min: 700, max: 800 },
+  { label: "800-900 km", min: 800, max: 900 },
+  { label: "GEO belt", min: 33000, max: 41000 }
+];
 const SOLAR_ENVIRONMENTS = {
   earth: {
     label: "Earth Orbit",
@@ -188,6 +290,24 @@ const state = {
     seeded: false,
     selectedId: null,
     missions: []
+  },
+  missionReplay: {
+    scenarioId: "custom",
+    cameraMode: "mission-control",
+    clock: 0,
+    playing: true,
+    lastFrame: 0,
+    lastDomRender: 0,
+    animationId: null
+  },
+  traffic: {
+    selectedAlertId: null,
+    maneuver: "lower",
+    forecastYears: 10,
+    emergencyActive: false,
+    emergencyFragments: 0,
+    commandLog: [],
+    animationId: null
   },
   display: { ...DEFAULT_DISPLAY_SETTINGS },
   timeMachine: {
@@ -475,6 +595,59 @@ const elements = {
   missionPresetButtons: document.querySelector("#missionPresetButtons"),
   missionComparisonRows: document.querySelector("#missionComparisonRows"),
   missionReportCard: document.querySelector("#missionReportCard"),
+  missionReplayScenario: document.querySelector("#missionReplayScenario"),
+  missionReplayCamera: document.querySelector("#missionReplayCamera"),
+  missionReplayPlayPause: document.querySelector("#missionReplayPlayPause"),
+  missionReplayRestart: document.querySelector("#missionReplayRestart"),
+  downloadMissionAutopsy: document.querySelector("#downloadMissionAutopsy"),
+  replaySustainabilityScore: document.querySelector("#replaySustainabilityScore"),
+  replayScoreNote: document.querySelector("#replayScoreNote"),
+  replayObjectsAdded: document.querySelector("#replayObjectsAdded"),
+  replayObjectsNote: document.querySelector("#replayObjectsNote"),
+  replayAffectedBand: document.querySelector("#replayAffectedBand"),
+  replayBandNote: document.querySelector("#replayBandNote"),
+  replayCongestionChange: document.querySelector("#replayCongestionChange"),
+  replayRiskLevel: document.querySelector("#replayRiskLevel"),
+  replayRiskNote: document.querySelector("#replayRiskNote"),
+  replayCurrentPhase: document.querySelector("#replayCurrentPhase"),
+  replayPhaseNote: document.querySelector("#replayPhaseNote"),
+  replayClock: document.querySelector("#replayClock"),
+  missionReplayCanvas: document.querySelector("#missionReplayCanvas"),
+  replayHudPhase: document.querySelector("#replayHudPhase"),
+  replayHudCallout: document.querySelector("#replayHudCallout"),
+  replayAltitude: document.querySelector("#replayAltitude"),
+  replayVelocity: document.querySelector("#replayVelocity"),
+  replayInclination: document.querySelector("#replayInclination"),
+  replayPayloads: document.querySelector("#replayPayloads"),
+  missionReplayScrubber: document.querySelector("#missionReplayScrubber"),
+  missionReplayScrubberLabel: document.querySelector("#missionReplayScrubberLabel"),
+  missionReplayTimeline: document.querySelector("#missionReplayTimeline"),
+  missionAutopsy: document.querySelector("#missionAutopsy"),
+  triggerDebrisEvent: document.querySelector("#triggerDebrisEvent"),
+  resetTrafficEvent: document.querySelector("#resetTrafficEvent"),
+  downloadTrafficReport: document.querySelector("#downloadTrafficReport"),
+  trafficTrackedObjects: document.querySelector("#trafficTrackedObjects"),
+  trafficActivePayloads: document.querySelector("#trafficActivePayloads"),
+  trafficDebrisObjects: document.querySelector("#trafficDebrisObjects"),
+  trafficHighRiskPasses: document.querySelector("#trafficHighRiskPasses"),
+  trafficCrowdedBand: document.querySelector("#trafficCrowdedBand"),
+  trafficCrowdedBandNote: document.querySelector("#trafficCrowdedBandNote"),
+  trafficDragRisk: document.querySelector("#trafficDragRisk"),
+  trafficDragRiskNote: document.querySelector("#trafficDragRiskNote"),
+  trafficMapCanvas: document.querySelector("#trafficMapCanvas"),
+  trafficAlertFeed: document.querySelector("#trafficAlertFeed"),
+  trafficRadarStatus: document.querySelector("#trafficRadarStatus"),
+  trafficRadarCanvas: document.querySelector("#trafficRadarCanvas"),
+  selectedTrafficAlert: document.querySelector("#selectedTrafficAlert"),
+  maneuverSelect: document.querySelector("#maneuverSelect"),
+  simulateManeuver: document.querySelector("#simulateManeuver"),
+  maneuverResult: document.querySelector("#maneuverResult"),
+  trafficHealthMap: document.querySelector("#trafficHealthMap"),
+  trafficForecastYears: document.querySelector("#trafficForecastYears"),
+  trafficForecast: document.querySelector("#trafficForecast"),
+  operatorSatelliteSelect: document.querySelector("#operatorSatelliteSelect"),
+  operatorView: document.querySelector("#operatorView"),
+  trafficCommandLog: document.querySelector("#trafficCommandLog"),
   downloadSimulationJson: document.querySelector("#downloadSimulationJson"),
   downloadSimulationCsv: document.querySelector("#downloadSimulationCsv"),
   reportGrade: document.querySelector("#reportGrade"),
@@ -1444,6 +1617,9 @@ function renderWeatherLoading() {
 function renderWeather() {
   renderDashboardWeather();
   renderWeatherOps();
+  if (state.mode === "traffic") {
+    renderTrafficControl();
+  }
 }
 
 function renderDashboardWeather() {
@@ -2890,6 +3066,829 @@ function buildMissionComparisonPayload() {
 function exportMissionComparisonReport() {
   const payload = buildMissionComparisonPayload();
   downloadJSON("orbitguard-mission-comparison-report.json", payload);
+}
+
+function currentReplayScenario() {
+  if (state.missionReplay.scenarioId !== "custom") {
+    const scenario = HISTORICAL_REPLAY_SCENARIOS[state.missionReplay.scenarioId] || HISTORICAL_REPLAY_SCENARIOS["iridium-cosmos"];
+    return {
+      ...scenario,
+      addedObjects: scenario.payloads + scenario.rocketBodies + scenario.debris,
+      sustainabilityScore: clamp(100 - scenario.riskIndex, 0, 100),
+      phaseType: "event"
+    };
+  }
+
+  const impact = state.impact || simulateLaunchImpact();
+  const sustainabilityScore = clamp(100 - impact.riskIndex + (impact.deorbitPlan ? 6 : -6), 0, 100);
+
+  return {
+    name: impact.name,
+    type: "launch",
+    year: new Date().getFullYear(),
+    altitude: impact.altitude,
+    band: impact.band,
+    inclination: impact.inclination,
+    payloads: impact.payloads,
+    rocketBodies: impact.rocketBodies,
+    debris: impact.debris,
+    addedObjects: impact.addedObjects,
+    riskIndex: impact.riskIndex,
+    riskLevel: impact.riskLevel,
+    congestionChange: impact.bandIncrease,
+    sustainabilityScore,
+    phaseType: "launch",
+    description: `${impact.name} deploys ${numberFormat(impact.payloads)} payloads into ${impact.orbitClass} and updates the ${impact.band} km traffic shell as the replay reaches deployment.`,
+    wentWell: impact.deorbitPlan ? "The mission includes a planned deorbit path, lowering long-term persistence." : "The mission reaches orbit, but sustainability margin is limited without a disposal plan.",
+    increasedRisk: impact.rocketBodies || impact.debris
+      ? "Non-payload objects increase the amount of uncontrolled hardware in the target shell."
+      : `The main risk is adding payloads to the ${impact.band} km altitude band.`,
+    redesign: impact.riskIndex > 55
+      ? "Reduce payload count, avoid the most crowded shell, remove the upper stage, and keep the deorbit plan."
+      : "Keep publishing orbit data, passivate spacecraft, and maintain autonomous collision avoidance."
+  };
+}
+
+function missionReplayPhases(scenario = currentReplayScenario()) {
+  return MISSION_REPLAY_PHASES[scenario.phaseType] || MISSION_REPLAY_PHASES.launch;
+}
+
+function phaseAtTime(phases, time) {
+  return phases.find((phase) => time >= phase.start && time < phase.end) || phases[phases.length - 1];
+}
+
+function missionReplayProgress(scenario = currentReplayScenario()) {
+  const time = clamp(state.missionReplay.clock, 0, MISSION_REPLAY_DURATION);
+  const phases = missionReplayPhases(scenario);
+  const phase = phaseAtTime(phases, time);
+  const missionProgress = time / MISSION_REPLAY_DURATION;
+  const insertionProgress = easeInOut(clamp((time - 31) / 12, 0, 1));
+  const deployProgress = scenario.phaseType === "event"
+    ? easeInOut(clamp((time - 24) / 30, 0, 1))
+    : easeInOut(clamp((time - 43) / 15, 0, 1));
+  const analysisProgress = easeInOut(clamp((time - 58) / 14, 0, 1));
+  const altitude = scenario.phaseType === "event"
+    ? scenario.altitude
+    : Math.round(scenario.altitude * insertionProgress);
+  const velocity = scenario.phaseType === "event"
+    ? 7.6 + Math.sin(time * 0.08) * 0.35
+    : 7.8 * easeInOut(clamp((time - 8) / 35, 0, 1));
+  const deployed = Math.min(scenario.payloads, Math.floor(scenario.payloads * deployProgress));
+  const debrisReleased = Math.floor(scenario.debris * deployProgress);
+  const rocketBodyReleased = scenario.rocketBodies && time > 31 ? scenario.rocketBodies : 0;
+  const objectsAdded = scenario.phaseType === "event"
+    ? debrisReleased + deployed + rocketBodyReleased
+    : deployed + rocketBodyReleased + debrisReleased;
+  const congestionChange = scenario.congestionChange * Math.max(deployProgress, analysisProgress * 0.85);
+  const liveRisk = clamp(scenario.riskIndex * Math.max(0.16, deployProgress), 0, 100);
+  const liveScore = clamp(100 - liveRisk + (scenario.sustainabilityScore - (100 - scenario.riskIndex)) * deployProgress, 0, 100);
+
+  return {
+    time,
+    phases,
+    phase,
+    missionProgress,
+    insertionProgress,
+    deployProgress,
+    analysisProgress,
+    altitude,
+    velocity,
+    deployed,
+    debrisReleased,
+    rocketBodyReleased,
+    objectsAdded,
+    congestionChange,
+    liveRisk,
+    liveScore
+  };
+}
+
+function renderMissionReplayTimeline(phases, activePhase) {
+  elements.missionReplayTimeline.innerHTML = phases.map((phase, index) => {
+    const status = state.missionReplay.clock >= phase.end ? "complete" : phase.name === activePhase.name ? "active" : "";
+
+    return `
+      <div class="launch-phase-step ${status}">
+        <span>${index + 1}</span>
+        <div>
+          <strong>${escapeHTML(phase.name)}</strong>
+          <small>${formatMissionClock(phase.start)} - ${formatMissionClock(phase.end)}</small>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderMissionAutopsy(scenario = currentReplayScenario(), progress = missionReplayProgress(scenario)) {
+  const actionVerb = scenario.phaseType === "event" ? "replay" : "mission";
+  elements.missionAutopsy.innerHTML = `
+    <h3>Mission Autopsy</h3>
+    <p>${escapeHTML(scenario.description)}</p>
+    <div class="autopsy-grid">
+      <article class="autopsy-card">
+        <strong>What went well</strong>
+        <p>${escapeHTML(scenario.wentWell)}</p>
+      </article>
+      <article class="autopsy-card">
+        <strong>What increased risk</strong>
+        <p>${escapeHTML(scenario.increasedRisk)}</p>
+      </article>
+      <article class="autopsy-card">
+        <strong>Recommended redesign</strong>
+        <p>${escapeHTML(scenario.redesign)}</p>
+      </article>
+    </div>
+    <p>Current ${actionVerb} state: ${numberFormat(progress.objectsAdded)} objects represented, ${decimal(progress.congestionChange)}% modeled congestion change, live score ${Math.round(progress.liveScore)}/100.</p>
+  `;
+}
+
+function setCanvasSize(canvas) {
+  const parent = canvas.parentElement;
+  const rect = parent?.getBoundingClientRect() || canvas.getBoundingClientRect();
+  const width = Math.max(320, Math.floor(rect.width || 640));
+  const height = Math.max(260, Math.floor(rect.height || 420));
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+  }
+
+  const context = canvas.getContext("2d");
+  context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { context, width, height, dpr };
+}
+
+function drawDigitalTwinEarth(context, centerX, centerY, radius, time = 0) {
+  const ocean = context.createRadialGradient(centerX - radius * 0.28, centerY - radius * 0.32, radius * 0.1, centerX, centerY, radius);
+  ocean.addColorStop(0, "#60a5fa");
+  ocean.addColorStop(0.45, "#2563eb");
+  ocean.addColorStop(1, "#0f172a");
+  context.fillStyle = ocean;
+  context.beginPath();
+  context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  context.fill();
+
+  context.save();
+  context.beginPath();
+  context.arc(centerX, centerY, radius * 0.98, 0, Math.PI * 2);
+  context.clip();
+  context.fillStyle = "rgb(34 197 94 / 0.5)";
+  for (let index = 0; index < 7; index += 1) {
+    const angle = time * 0.00008 + index * 1.21;
+    const x = centerX + Math.cos(angle) * radius * (0.18 + seededUnit(index + 17) * 0.52);
+    const y = centerY + Math.sin(angle * 1.4) * radius * (0.18 + seededUnit(index + 41) * 0.46);
+    context.beginPath();
+    context.ellipse(x, y, radius * (0.18 + seededUnit(index + 81) * 0.18), radius * (0.055 + seededUnit(index + 101) * 0.09), angle * 0.7, 0, Math.PI * 2);
+    context.fill();
+  }
+  context.strokeStyle = "rgb(248 250 252 / 0.24)";
+  context.lineWidth = Math.max(1, radius * 0.018);
+  for (let index = -2; index <= 2; index += 1) {
+    context.beginPath();
+    context.ellipse(centerX, centerY + index * radius * 0.18, radius * 0.92, radius * 0.12, 0, 0, Math.PI * 2);
+    context.stroke();
+  }
+  context.restore();
+
+  context.strokeStyle = "rgb(147 197 253 / 0.36)";
+  context.lineWidth = Math.max(1, radius * 0.025);
+  context.beginPath();
+  context.arc(centerX, centerY, radius * 1.04, 0, Math.PI * 2);
+  context.stroke();
+}
+
+function drawMissionReplayCanvas(scenario = currentReplayScenario(), progress = missionReplayProgress(scenario), now = performance.now()) {
+  const canvas = elements.missionReplayCanvas;
+
+  if (!canvas) {
+    return;
+  }
+
+  const { context, width, height } = setCanvasSize(canvas);
+  context.clearRect(0, 0, width, height);
+  context.fillStyle = "#020617";
+  context.fillRect(0, 0, width, height);
+
+  for (let index = 0; index < 190; index += 1) {
+    const x = seededUnit(index + 801) * width;
+    const y = seededUnit(index + 901) * height;
+    const alpha = 0.18 + seededUnit(index + 1001) * 0.5;
+    context.fillStyle = `rgb(226 242 255 / ${alpha})`;
+    context.beginPath();
+    context.arc(x, y, 0.55 + seededUnit(index + 1101) * 1.2, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  const centerX = width * (state.missionReplay.cameraMode === "rocket-chase" ? 0.42 : 0.5);
+  const centerY = height * 0.5;
+  const earthRadius = Math.min(width, height) * 0.18;
+  const targetRadius = earthRadius + Math.min(width, height) * (scenario.altitude > 2000 ? 0.25 : 0.15 + scenario.altitude / 9000);
+  const heatColor = scenario.riskIndex >= 82 ? readCssVar("--danger", "#f87171") : scenario.riskIndex >= 58 ? readCssVar("--warning", "#facc15") : readCssVar("--accent", "#93c5fd");
+
+  context.save();
+  context.globalCompositeOperation = "lighter";
+  context.strokeStyle = hexToRgba(heatColor, 0.16 + progress.deployProgress * 0.32);
+  context.lineWidth = 8 + progress.deployProgress * 9;
+  context.beginPath();
+  context.ellipse(centerX, centerY, targetRadius, targetRadius * 0.36, -0.32, 0, Math.PI * 2);
+  context.stroke();
+  context.restore();
+
+  for (let shell = 0; shell < 4; shell += 1) {
+    context.strokeStyle = `rgb(147 197 253 / ${0.1 + shell * 0.03})`;
+    context.lineWidth = 1;
+    context.beginPath();
+    context.ellipse(centerX, centerY, earthRadius + shell * earthRadius * 0.34, (earthRadius + shell * earthRadius * 0.34) * 0.36, -0.32, 0, Math.PI * 2);
+    context.stroke();
+  }
+
+  drawDigitalTwinEarth(context, centerX, centerY, earthRadius, now);
+
+  if (scenario.phaseType === "launch") {
+    const ascent = easeInOut(clamp((progress.time - 8) / 35, 0, 1));
+    const startX = centerX - earthRadius * 0.52;
+    const startY = centerY + earthRadius * 0.9;
+    const endX = centerX + Math.cos(-0.32) * targetRadius;
+    const endY = centerY + Math.sin(-0.32) * targetRadius * 0.36;
+    const rocketX = lerp(startX, endX, ascent);
+    const rocketY = lerp(startY, endY, ascent) - Math.sin(ascent * Math.PI) * earthRadius * 1.1;
+
+    context.strokeStyle = hexToRgba(readCssVar("--simulated-color", "#a78bfa"), 0.68);
+    context.lineWidth = 2.4;
+    context.beginPath();
+    context.moveTo(startX, startY);
+    context.quadraticCurveTo(centerX - earthRadius * 1.45, centerY - earthRadius * 1.2, endX, endY);
+    context.stroke();
+
+    context.save();
+    context.translate(rocketX, rocketY);
+    context.rotate(-0.48);
+    context.fillStyle = "#f8fafc";
+    context.fillRect(-3, -18, 6, 28);
+    context.fillStyle = readCssVar("--simulated-color", "#a78bfa");
+    context.beginPath();
+    context.moveTo(0, -28);
+    context.lineTo(7, -16);
+    context.lineTo(-7, -16);
+    context.closePath();
+    context.fill();
+    context.fillStyle = "rgb(251 191 36 / 0.72)";
+    context.beginPath();
+    context.moveTo(-5, 10);
+    context.lineTo(0, 27 + Math.sin(now * 0.02) * 5);
+    context.lineTo(5, 10);
+    context.closePath();
+    context.fill();
+    context.restore();
+  }
+
+  const visiblePayloads = Math.min(48, Math.max(0, scenario.phaseType === "event" ? Math.min(18, Math.floor(progress.debrisReleased / 90)) : progress.deployed));
+  const visibleDebris = Math.min(100, Math.floor(progress.debrisReleased / Math.max(1, Math.ceil(scenario.debris / 90))));
+  const totalDots = visiblePayloads + visibleDebris + progress.rocketBodyReleased;
+
+  for (let index = 0; index < totalDots; index += 1) {
+    const isDebris = index >= visiblePayloads;
+    const angle = now * 0.00016 + index * 0.42 + progress.deployProgress * Math.PI * 1.2;
+    const radius = targetRadius + (seededUnit(index + 1301) - 0.5) * 26;
+    const x = centerX + Math.cos(angle) * radius;
+    const y = centerY + Math.sin(angle) * radius * 0.36;
+    context.fillStyle = isDebris ? readCssVar("--debris-color", "#f87171") : readCssVar("--payload-color", "#93c5fd");
+    context.shadowColor = context.fillStyle;
+    context.shadowBlur = isDebris ? 10 : 8;
+    context.beginPath();
+    context.arc(x, y, isDebris ? 2.1 : 2.8, 0, Math.PI * 2);
+    context.fill();
+    context.shadowBlur = 0;
+  }
+
+  context.fillStyle = "rgb(203 213 225 / 0.82)";
+  context.font = "600 12px Space Grotesk, sans-serif";
+  context.fillText(`${scenario.band} km risk shell`, centerX - targetRadius * 0.72, centerY - targetRadius * 0.42 - 10);
+}
+
+function renderMissionReplay() {
+  if (!elements.missionReplayCanvas) {
+    return;
+  }
+
+  const scenario = currentReplayScenario();
+  const progress = missionReplayProgress(scenario);
+  const phases = progress.phases;
+  const phase = progress.phase;
+  const score = Math.round(progress.liveScore);
+  const risk = progress.liveRisk >= 72 ? "High" : progress.liveRisk >= 42 ? "Medium" : "Low";
+
+  elements.missionReplayScenario.value = state.missionReplay.scenarioId;
+  elements.missionReplayCamera.value = state.missionReplay.cameraMode;
+  elements.missionReplayPlayPause.textContent = state.missionReplay.playing ? "Pause" : "Play";
+  elements.replaySustainabilityScore.textContent = `${score}/100`;
+  elements.replayScoreNote.textContent = score >= 75 ? "Strong sustainability posture" : score >= 50 ? "Moderate sustainability posture" : "Needs redesign";
+  elements.replayObjectsAdded.textContent = numberFormat(progress.objectsAdded);
+  elements.replayObjectsNote.textContent = scenario.phaseType === "event" ? "Fragments represented as event expands" : "Payloads, rocket body, and deployment fragments";
+  elements.replayAffectedBand.textContent = `${scenario.band} km`;
+  elements.replayBandNote.textContent = `${numberFormat(scenario.altitude)} km target environment`;
+  elements.replayCongestionChange.textContent = `${progress.congestionChange >= 0 ? "+" : ""}${decimal(progress.congestionChange)}%`;
+  elements.replayRiskLevel.textContent = risk;
+  elements.replayRiskNote.textContent = `${Math.round(progress.liveRisk)} live risk index`;
+  elements.replayCurrentPhase.textContent = phase.name;
+  elements.replayPhaseNote.textContent = phase.callout;
+  elements.replayClock.textContent = formatMissionClock(progress.time);
+  elements.replayHudPhase.textContent = phase.name;
+  elements.replayHudCallout.textContent = phase.callout;
+  elements.replayAltitude.textContent = `${numberFormat(progress.altitude)} km`;
+  elements.replayVelocity.textContent = `${decimal(progress.velocity, 1)} km/s`;
+  elements.replayInclination.textContent = `${decimal(scenario.inclination, 1)} deg`;
+  elements.replayPayloads.textContent = `${numberFormat(progress.deployed)} / ${numberFormat(scenario.payloads)}`;
+  elements.missionReplayScrubber.value = Math.round((progress.time / MISSION_REPLAY_DURATION) * 1000);
+  elements.missionReplayScrubberLabel.textContent = formatMissionClock(progress.time);
+
+  renderMissionReplayTimeline(phases, phase);
+  renderMissionAutopsy(scenario, progress);
+  drawMissionReplayCanvas(scenario, progress);
+}
+
+function buildMissionAutopsyPayload() {
+  const scenario = currentReplayScenario();
+  const progress = missionReplayProgress(scenario);
+
+  return {
+    project: "OrbitGuard",
+    creator: CREATOR.name,
+    generatedAt: new Date().toISOString(),
+    mode: "Mission Replay Mode + Orbital Digital Twin",
+    scenario: {
+      name: scenario.name,
+      type: scenario.type,
+      year: scenario.year,
+      altitudeKm: scenario.altitude,
+      affectedBandKm: scenario.band,
+      inclinationDeg: scenario.inclination,
+      objectsAdded: scenario.addedObjects,
+      riskLevel: scenario.riskLevel,
+      riskIndex: Math.round(scenario.riskIndex),
+      sustainabilityScore: Math.round(scenario.sustainabilityScore)
+    },
+    replayState: {
+      missionTime: formatMissionClock(progress.time),
+      phase: progress.phase.name,
+      liveObjectsAdded: progress.objectsAdded,
+      liveCongestionChangePercent: decimal(progress.congestionChange, 2),
+      liveSustainabilityScore: Math.round(progress.liveScore)
+    },
+    autopsy: {
+      whatWentWell: scenario.wentWell,
+      whatIncreasedRisk: scenario.increasedRisk,
+      recommendedRedesign: scenario.redesign
+    },
+    limitation:
+      "Educational cinematic replay. Historical values are simplified event profiles, not operational ephemerides or validated conjunction analysis."
+  };
+}
+
+function exportMissionAutopsy() {
+  const payload = buildMissionAutopsyPayload();
+  downloadJSON(`${slugify(payload.scenario.name) || "orbitguard"}-mission-autopsy.json`, payload);
+}
+
+function severityForMissDistance(distanceKm) {
+  if (distanceKm < 0.75) return "Critical";
+  if (distanceKm < 1.5) return "High";
+  if (distanceKm < 3) return "Medium";
+  return "Low";
+}
+
+function severityColor(severity) {
+  if (severity === "Critical") return readCssVar("--danger", "#f87171");
+  if (severity === "High") return "#fb923c";
+  if (severity === "Medium") return readCssVar("--warning", "#facc15");
+  return readCssVar("--accent", "#93c5fd");
+}
+
+function buildTrafficAlerts() {
+  const payloads = state.objects.filter((object) => object.activePayload && object.orbitClass === "LEO");
+  const hazards = state.objects.filter((object) => isDebrisLike(object) && object.orbitClass === "LEO");
+  const alerts = [];
+  const distances = state.traffic.emergencyActive ? [0.38, 0.62, 0.9, 1.2, 1.8, 2.6, 4.1] : [0.62, 1.1, 1.8, 2.7, 3.8, 5.2];
+  const count = state.traffic.emergencyActive ? 7 : 6;
+
+  for (let index = 0; index < count; index += 1) {
+    const a = payloads[(index * 97 + 13) % Math.max(payloads.length, 1)] || state.objects[index];
+    const b = hazards[(index * 131 + 29) % Math.max(hazards.length, 1)] || state.objects[index + 20] || a;
+    const distanceKm = distances[index % distances.length];
+    const severity = severityForMissDistance(distanceKm);
+    const altitude = a?.altitude || b?.altitude || 550;
+    const band = altitudeBand({ altitude }, 100);
+
+    alerts.push({
+      id: `alert-${index}`,
+      primary: a?.name || `PAYLOAD-${2200 + index}`,
+      secondary: b?.name || `DEBRIS-${7700 + index}`,
+      primaryType: typeLabel(a?.type || "PAY"),
+      secondaryType: typeLabel(b?.type || "DEB"),
+      missDistanceKm: distanceKm,
+      relativeSpeed: 7.8 + seededUnit(index + 47) * 6.2,
+      timeToTcaMinutes: Math.round(28 + seededUnit(index + 59) * 420),
+      altitude,
+      band,
+      severity,
+      recommendedAction: severity === "Low" ? "Continue monitoring" : distanceKm < 1 ? "evaluate immediate avoidance maneuver" : "prepare maneuver option"
+    });
+  }
+
+  return alerts;
+}
+
+function selectedTrafficAlert(alerts = buildTrafficAlerts()) {
+  if (!state.traffic.selectedAlertId || !alerts.some((alert) => alert.id === state.traffic.selectedAlertId)) {
+    state.traffic.selectedAlertId = alerts[0]?.id || null;
+  }
+
+  return alerts.find((alert) => alert.id === state.traffic.selectedAlertId) || alerts[0] || null;
+}
+
+function maneuverAssessment(alert = selectedTrafficAlert(), maneuver = state.traffic.maneuver) {
+  if (!alert) {
+    return null;
+  }
+
+  const profiles = {
+    none: { factor: 1, deltaV: 0, impact: "No fuel used, but risk remains unchanged." },
+    raise: { factor: 6.8, deltaV: 0.72, impact: "Small altitude raise increases miss distance with low fuel cost." },
+    lower: { factor: 7.7, deltaV: 0.69, impact: "Lowering orbit separates the radial path and usually improves miss distance." },
+    delay: { factor: 4.3, deltaV: 0.38, impact: "Timing change can be efficient when warning time is available." },
+    inclination: { factor: 9.1, deltaV: 1.85, impact: "Plane change is powerful but expensive in delta-v." }
+  };
+  const profile = profiles[maneuver] || profiles.none;
+  const newDistance = alert.missDistanceKm * profile.factor;
+  const newSeverity = severityForMissDistance(newDistance);
+
+  return {
+    maneuver,
+    oldDistance: alert.missDistanceKm,
+    newDistance,
+    oldSeverity: alert.severity,
+    newSeverity,
+    deltaV: profile.deltaV,
+    impact: profile.impact
+  };
+}
+
+function addTrafficLog(message) {
+  const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  state.traffic.commandLog = [{ timestamp, message }, ...state.traffic.commandLog].slice(0, 9);
+  renderTrafficCommandLog();
+}
+
+function buildTrafficHealthShells() {
+  return TRAFFIC_ALTITUDE_SHELLS.map((shell) => {
+    const objects = state.objects.filter((object) => object.altitude >= shell.min && object.altitude < shell.max);
+    const debris = objects.filter(isDebrisLike).length;
+    const rocketBodies = objects.filter((object) => object.type === "R/B").length;
+    const densityPenalty = Math.min(44, objects.length / (shell.label === "GEO belt" ? 85 : 55));
+    const debrisPenalty = objects.length ? (debris / objects.length) * 34 : 0;
+    const rocketPenalty = objects.length ? (rocketBodies / objects.length) * 12 : 0;
+    const emergencyPenalty = state.traffic.emergencyActive && shell.label === "800-900 km" ? 24 : 0;
+    const health = clamp(100 - densityPenalty - debrisPenalty - rocketPenalty - emergencyPenalty, 0, 100);
+
+    return {
+      ...shell,
+      objects: objects.length + (state.traffic.emergencyActive && shell.label === "800-900 km" ? state.traffic.emergencyFragments : 0),
+      debris: debris + (state.traffic.emergencyActive && shell.label === "800-900 km" ? state.traffic.emergencyFragments : 0),
+      health,
+      risk: health < 38 ? "High" : health < 62 ? "Caution" : "Stable",
+      color: health < 38 ? readCssVar("--danger", "#f87171") : health < 62 ? readCssVar("--warning", "#facc15") : readCssVar("--accent", "#93c5fd")
+    };
+  });
+}
+
+function renderTrafficAlerts(alerts = buildTrafficAlerts()) {
+  elements.trafficAlertFeed.innerHTML = alerts.map((alert) => {
+    const color = severityColor(alert.severity);
+    const active = alert.id === state.traffic.selectedAlertId ? " active" : "";
+
+    return `
+      <button class="alert-item traffic-alert${active}" type="button" data-alert-id="${alert.id}" style="--alert-color: ${color}">
+        <span class="severity-pill">${escapeHTML(alert.severity)}</span>
+        <strong>${escapeHTML(alert.primary)} / ${escapeHTML(alert.secondary)}</strong>
+        <small>Miss distance ${decimal(alert.missDistanceKm, 2)} km, relative speed ${decimal(alert.relativeSpeed, 1)} km/s, TCA in ${alert.timeToTcaMinutes} min, ${alert.band} km shell.</small>
+      </button>
+    `;
+  }).join("");
+}
+
+function renderSelectedTrafficAlert(alert = selectedTrafficAlert()) {
+  if (!alert) {
+    elements.selectedTrafficAlert.innerHTML = `<p class="empty-state">No simulated alerts available.</p>`;
+    return;
+  }
+
+  const color = severityColor(alert.severity);
+  elements.selectedTrafficAlert.style.setProperty("--alert-color", color);
+  elements.selectedTrafficAlert.innerHTML = `
+    <span>${escapeHTML(alert.severity)} risk</span>
+    <h3>${escapeHTML(alert.primary)}</h3>
+    <p>${escapeHTML(alert.secondary)} predicted pass distance: ${decimal(alert.missDistanceKm, 2)} km. Relative speed: ${decimal(alert.relativeSpeed, 1)} km/s. Recommended action: ${escapeHTML(alert.recommendedAction)}.</p>
+  `;
+}
+
+function renderManeuverResult(assessment = maneuverAssessment()) {
+  if (!assessment) {
+    elements.maneuverResult.innerHTML = "";
+    return;
+  }
+
+  const color = severityColor(assessment.newSeverity);
+  elements.maneuverResult.style.setProperty("--alert-color", color);
+  elements.maneuverResult.innerHTML = `
+    <h3>Response Result</h3>
+    <dl>
+      <div><dt>Before</dt><dd>${decimal(assessment.oldDistance, 2)} km / ${assessment.oldSeverity}</dd></div>
+      <div><dt>After</dt><dd>${decimal(assessment.newDistance, 2)} km / ${assessment.newSeverity}</dd></div>
+      <div><dt>Fuel cost</dt><dd>${decimal(assessment.deltaV, 2)} m/s delta-v</dd></div>
+      <div><dt>Mission impact</dt><dd>${assessment.deltaV > 1 ? "moderate" : "low"}</dd></div>
+    </dl>
+    <p>${escapeHTML(assessment.impact)}</p>
+  `;
+}
+
+function renderTrafficHealthMap(shells = buildTrafficHealthShells()) {
+  elements.trafficHealthMap.innerHTML = shells.map((shell) => `
+    <article class="health-shell" style="--shell-color: ${shell.color}">
+      <header><strong>${escapeHTML(shell.label)}</strong><span>${Math.round(shell.health)}/100</span></header>
+      <div class="health-bar"><span style="width: ${Math.round(shell.health)}%"></span></div>
+      <small>${numberFormat(shell.objects)} objects, ${numberFormat(shell.debris)} debris-like. Status: ${escapeHTML(shell.risk)}.</small>
+    </article>
+  `).join("");
+}
+
+function renderTrafficForecast(shells = buildTrafficHealthShells()) {
+  const years = Number(state.traffic.forecastYears || 10);
+  const summary = summarize(state.objects);
+  const launchGrowth = years * (state.traffic.emergencyActive ? 540 : 390);
+  const decayCredit = years * (state.scenario.deorbitCompliance / 100) * 72;
+  const projectedObjects = Math.round(summary.total + launchGrowth - decayCredit + state.traffic.emergencyFragments);
+  const crowded = [...shells].sort((a, b) => a.health - b.health)[0];
+  const riskTrend = projectedObjects > summary.total * 1.28 || crowded.health < 42 ? "High" : projectedObjects > summary.total * 1.12 ? "Medium" : "Moderate";
+
+  elements.trafficForecast.innerHTML = `
+    <h3>Traffic Forecast: ${new Date().getFullYear() + years}</h3>
+    <p>At the modeled launch rate, the catalog grows from ${numberFormat(summary.total)} to about ${numberFormat(projectedObjects)} objects. The weakest shell is ${escapeHTML(crowded.label)} with a health score of ${Math.round(crowded.health)}/100.</p>
+    <p>Forecast risk: <strong>${riskTrend}</strong>. Strong 5-year deorbit compliance reduces projected congestion by about ${Math.round(state.scenario.deorbitCompliance * 0.31)}% in this educational model.</p>
+  `;
+}
+
+function populateOperatorSelect() {
+  if (!elements.operatorSatelliteSelect || elements.operatorSatelliteSelect.options.length) {
+    return;
+  }
+
+  const candidates = state.objects
+    .filter((object) => object.activePayload)
+    .sort((a, b) => b.riskScore - a.riskScore)
+    .slice(0, 18);
+
+  for (const object of candidates) {
+    const option = document.createElement("option");
+    option.value = String(object.norad || object.name);
+    option.textContent = object.name;
+    elements.operatorSatelliteSelect.append(option);
+  }
+}
+
+function selectedOperatorObject() {
+  const selected = elements.operatorSatelliteSelect?.value;
+  return state.objects.find((object) => String(object.norad || object.name) === selected) || state.objects.find((object) => object.activePayload) || state.objects[0];
+}
+
+function renderOperatorView() {
+  const object = selectedOperatorObject();
+
+  if (!object) {
+    elements.operatorView.innerHTML = `<p class="empty-state">No satellite selected.</p>`;
+    return;
+  }
+
+  const fuel = clamp(92 - object.age * 3.2 - object.riskScore * 0.12, 18, 96);
+  const lifetime = clamp((1200 - Math.min(object.altitude, 1200)) / 140 + (object.orbitClass === "GEO" ? 14 : 2), 0.8, 18);
+  const alerts = buildTrafficAlerts().filter((alert) => alert.primary === object.name || alert.secondary === object.name).length || Math.round(seededUnit((object.norad || 100) + 5) * 3);
+
+  elements.operatorView.innerHTML = `
+    <span>${escapeHTML(typeLabel(object.type))} operations snapshot</span>
+    <h3>${escapeHTML(object.name)}</h3>
+    <dl>
+      <div><dt>Orbit</dt><dd>${escapeHTML(object.orbitClass)}</dd></div>
+      <div><dt>Altitude</dt><dd>${numberFormat(object.altitude)} km</dd></div>
+      <div><dt>Inclination</dt><dd>${decimal(object.inclination, 1)} deg</dd></div>
+      <div><dt>Fuel estimate</dt><dd>${Math.round(fuel)}%</dd></div>
+      <div><dt>Conjunction alerts</dt><dd>${alerts}</dd></div>
+      <div><dt>Lifetime estimate</dt><dd>${decimal(lifetime, 1)} years</dd></div>
+    </dl>
+    <p>Recommended action: maintain tracking data quality, keep maneuver margin, and review disposal planning before end of mission.</p>
+  `;
+}
+
+function renderTrafficCommandLog() {
+  if (!elements.trafficCommandLog) {
+    return;
+  }
+
+  if (!state.traffic.commandLog.length) {
+    state.traffic.commandLog = [
+      { timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }), message: "Space Traffic Control Center initialized." }
+    ];
+  }
+
+  elements.trafficCommandLog.innerHTML = state.traffic.commandLog.map((entry) => `
+    <div class="log-entry"><span>${escapeHTML(entry.timestamp)}</span><strong>${escapeHTML(entry.message)}</strong></div>
+  `).join("");
+}
+
+function drawTrafficMap(alerts = buildTrafficAlerts(), shells = buildTrafficHealthShells(), now = performance.now()) {
+  const canvas = elements.trafficMapCanvas;
+
+  if (!canvas) {
+    return;
+  }
+
+  const { context, width, height } = setCanvasSize(canvas);
+  context.clearRect(0, 0, width, height);
+  context.fillStyle = "#020617";
+  context.fillRect(0, 0, width, height);
+
+  const centerX = width * 0.5;
+  const centerY = height * 0.52;
+  const earthRadius = Math.min(width, height) * 0.15;
+  drawDigitalTwinEarth(context, centerX, centerY, earthRadius, now);
+
+  shells.forEach((shell, index) => {
+    const radius = earthRadius + (index + 1) * Math.min(width, height) * 0.052;
+    context.strokeStyle = hexToRgba(shell.color, 0.22 + (100 - shell.health) / 360);
+    context.lineWidth = shell.health < 45 ? 4 : 1.4;
+    context.beginPath();
+    context.ellipse(centerX, centerY, radius, radius * 0.34, -0.24, 0, Math.PI * 2);
+    context.stroke();
+  });
+
+  const sample = representativeObjects(state.objects, [], 170);
+  for (let index = 0; index < sample.length; index += 1) {
+    const object = sample[index];
+    const radius = fallbackScaleAltitude(object.altitude, earthRadius, Math.min(width, height) * 0.44);
+    const angle = seededUnit((object.norad || index) + 63) * Math.PI * 2 + now * 0.00005 * (1 + seededUnit(index + 12));
+    const x = centerX + Math.cos(angle) * radius;
+    const y = centerY + Math.sin(angle) * radius * 0.34;
+    context.fillStyle = getObjectColor(object);
+    context.globalAlpha = object.riskScore > 70 ? 0.9 : 0.55;
+    context.beginPath();
+    context.arc(x, y, object.riskScore > 70 ? 2.2 : 1.35, 0, Math.PI * 2);
+    context.fill();
+  }
+  context.globalAlpha = 1;
+
+  for (const alert of alerts.slice(0, 4)) {
+    const radius = fallbackScaleAltitude(alert.altitude, earthRadius, Math.min(width, height) * 0.44);
+    const angleA = seededUnit(alert.timeToTcaMinutes + 200) * Math.PI * 2 + now * 0.00012;
+    const angleB = angleA + 0.18 + alert.missDistanceKm * 0.035;
+    const ax = centerX + Math.cos(angleA) * radius;
+    const ay = centerY + Math.sin(angleA) * radius * 0.34;
+    const bx = centerX + Math.cos(angleB) * radius;
+    const by = centerY + Math.sin(angleB) * radius * 0.34;
+    const color = severityColor(alert.severity);
+    context.strokeStyle = hexToRgba(color, 0.72);
+    context.lineWidth = alert.severity === "Critical" ? 2.6 : 1.7;
+    context.beginPath();
+    context.moveTo(ax, ay);
+    context.lineTo(bx, by);
+    context.stroke();
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(ax, ay, 3.5, 0, Math.PI * 2);
+    context.arc(bx, by, 3, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  context.fillStyle = "rgb(203 213 225 / 0.82)";
+  context.font = "700 12px Space Grotesk, sans-serif";
+  context.fillText("Risk heat shells: blue stable, amber caution, red high risk", 18, 28);
+}
+
+function drawTrafficRadar(alerts = buildTrafficAlerts(), now = performance.now()) {
+  const canvas = elements.trafficRadarCanvas;
+
+  if (!canvas) {
+    return;
+  }
+
+  const { context, width, height } = setCanvasSize(canvas);
+  context.clearRect(0, 0, width, height);
+  context.fillStyle = "#020617";
+  context.fillRect(0, 0, width, height);
+  const cx = width * 0.5;
+  const cy = height * 0.5;
+  const radius = Math.min(width, height) * 0.42;
+
+  context.strokeStyle = "rgb(147 197 253 / 0.22)";
+  context.lineWidth = 1;
+  for (let ring = 1; ring <= 4; ring += 1) {
+    context.beginPath();
+    context.arc(cx, cy, radius * (ring / 4), 0, Math.PI * 2);
+    context.stroke();
+  }
+  context.beginPath();
+  context.moveTo(cx - radius, cy);
+  context.lineTo(cx + radius, cy);
+  context.moveTo(cx, cy - radius);
+  context.lineTo(cx, cy + radius);
+  context.stroke();
+
+  const sweep = now * 0.0014;
+  const gradient = context.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  gradient.addColorStop(0, hexToRgba(readCssVar("--accent", "#93c5fd"), 0.18));
+  gradient.addColorStop(1, "rgb(0 0 0 / 0)");
+  context.fillStyle = gradient;
+  context.beginPath();
+  context.moveTo(cx, cy);
+  context.arc(cx, cy, radius, sweep - 0.16, sweep + 0.02);
+  context.closePath();
+  context.fill();
+
+  alerts.forEach((alert, index) => {
+    const angle = seededUnit(index + 310) * Math.PI * 2;
+    const r = radius * (0.22 + seededUnit(index + 320) * 0.72);
+    context.fillStyle = severityColor(alert.severity);
+    context.beginPath();
+    context.arc(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r, alert.severity === "Critical" ? 4 : 2.8, 0, Math.PI * 2);
+    context.fill();
+  });
+}
+
+function renderTrafficControl() {
+  if (!elements.trafficMapCanvas) {
+    return;
+  }
+
+  const summary = summarize(state.objects);
+  const alerts = buildTrafficAlerts();
+  const selected = selectedTrafficAlert(alerts);
+  const shells = buildTrafficHealthShells();
+  const highRiskCount = alerts.filter((alert) => ["High", "Critical"].includes(alert.severity)).length;
+  const [crowdedBand] = buildHotspots(state.objects);
+  const dragLevel = state.weather.space?.drag?.level || state.weather.space?.storm?.label || "Moderate";
+
+  elements.trafficTrackedObjects.textContent = numberFormat(summary.total + state.traffic.emergencyFragments);
+  elements.trafficActivePayloads.textContent = numberFormat(summary.active);
+  elements.trafficDebrisObjects.textContent = numberFormat(summary.debris + state.traffic.emergencyFragments);
+  elements.trafficHighRiskPasses.textContent = numberFormat(highRiskCount);
+  elements.trafficCrowdedBand.textContent = crowdedBand ? `${crowdedBand.band} km` : "-";
+  elements.trafficCrowdedBandNote.textContent = crowdedBand ? `${numberFormat(crowdedBand.count)} objects in shell` : "No shell data";
+  elements.trafficDragRisk.textContent = dragLevel;
+  elements.trafficDragRiskNote.textContent = state.weather.space?.drag?.interpretation || "Space weather model updates when weather data is available.";
+  elements.maneuverSelect.value = state.traffic.maneuver;
+  elements.trafficForecastYears.value = String(state.traffic.forecastYears);
+
+  populateOperatorSelect();
+  renderTrafficAlerts(alerts);
+  renderSelectedTrafficAlert(selected);
+  renderManeuverResult();
+  renderTrafficHealthMap(shells);
+  renderTrafficForecast(shells);
+  renderOperatorView();
+  renderTrafficCommandLog();
+  drawTrafficMap(alerts, shells);
+  drawTrafficRadar(alerts);
+}
+
+function buildTrafficReportPayload() {
+  const alerts = buildTrafficAlerts();
+  const selected = selectedTrafficAlert(alerts);
+  const assessment = maneuverAssessment(selected);
+  const shells = buildTrafficHealthShells();
+
+  return {
+    project: "OrbitGuard",
+    creator: CREATOR.name,
+    generatedAt: new Date().toISOString(),
+    mode: "Space Traffic Control Center",
+    globalStatus: {
+      trackedObjects: state.objects.length + state.traffic.emergencyFragments,
+      activePayloads: summarize(state.objects).active,
+      debrisObjects: summarize(state.objects).debris + state.traffic.emergencyFragments,
+      highRiskPasses: alerts.filter((alert) => ["High", "Critical"].includes(alert.severity)).length,
+      emergencyEventActive: state.traffic.emergencyActive
+    },
+    selectedAlert: selected,
+    maneuverAssessment: assessment,
+    orbitalHealthMap: shells,
+    commandLog: state.traffic.commandLog,
+    methodology:
+      "Educational simulation based on orbital band density, catalog object type, simplified close-approach severity, and maneuver response rules. Not operational conjunction assessment."
+  };
+}
+
+function exportTrafficReport() {
+  downloadJSON("orbitguard-space-traffic-control-report.json", buildTrafficReportPayload());
 }
 
 function buildRecommendations(impact) {
@@ -6613,6 +7612,8 @@ function updateAll() {
   renderCharts();
   renderTables();
   renderLaunchImpact();
+  renderMissionReplay();
+  renderTrafficControl();
 }
 
 function populateOwners() {
@@ -6655,6 +7656,10 @@ function setActiveMode(mode) {
     renderLaunchImpact();
     initLaunchSequence();
     resizeLaunchSequence();
+  } else if (mode === "replay") {
+    renderMissionReplay();
+  } else if (mode === "traffic") {
+    renderTrafficControl();
   } else {
     renderOrbitScene();
   }
@@ -6967,6 +7972,95 @@ function wireMissionComparisonControls() {
   });
 }
 
+function wireMissionReplayControls() {
+  elements.missionReplayScenario?.addEventListener("change", () => {
+    state.missionReplay.scenarioId = elements.missionReplayScenario.value;
+    state.missionReplay.clock = 0;
+    state.missionReplay.playing = true;
+    renderMissionReplay();
+  });
+
+  elements.missionReplayCamera?.addEventListener("change", () => {
+    state.missionReplay.cameraMode = elements.missionReplayCamera.value;
+    renderMissionReplay();
+  });
+
+  elements.missionReplayPlayPause?.addEventListener("click", () => {
+    state.missionReplay.playing = !state.missionReplay.playing;
+    state.missionReplay.lastFrame = performance.now();
+    renderMissionReplay();
+  });
+
+  elements.missionReplayRestart?.addEventListener("click", () => {
+    state.missionReplay.clock = 0;
+    state.missionReplay.playing = true;
+    state.missionReplay.lastFrame = performance.now();
+    renderMissionReplay();
+  });
+
+  elements.missionReplayScrubber?.addEventListener("input", () => {
+    state.missionReplay.clock = (Number(elements.missionReplayScrubber.value) / 1000) * MISSION_REPLAY_DURATION;
+    state.missionReplay.playing = false;
+    renderMissionReplay();
+  });
+
+  elements.downloadMissionAutopsy?.addEventListener("click", exportMissionAutopsy);
+}
+
+function wireTrafficControls() {
+  elements.trafficAlertFeed?.addEventListener("click", (event) => {
+    const alertButton = event.target.closest("[data-alert-id]");
+
+    if (!alertButton) {
+      return;
+    }
+
+    state.traffic.selectedAlertId = alertButton.dataset.alertId;
+    addTrafficLog(`Alert ${state.traffic.selectedAlertId} selected for maneuver review.`);
+    renderTrafficControl();
+  });
+
+  elements.maneuverSelect?.addEventListener("change", () => {
+    state.traffic.maneuver = elements.maneuverSelect.value;
+    renderManeuverResult();
+  });
+
+  elements.simulateManeuver?.addEventListener("click", () => {
+    const alert = selectedTrafficAlert();
+    const assessment = maneuverAssessment(alert);
+    addTrafficLog(`${assessment.newSeverity} result after ${elements.maneuverSelect.options[elements.maneuverSelect.selectedIndex].text}. Miss distance ${decimal(assessment.newDistance, 2)} km.`);
+    renderTrafficControl();
+  });
+
+  elements.trafficForecastYears?.addEventListener("change", () => {
+    state.traffic.forecastYears = Number(elements.trafficForecastYears.value);
+    addTrafficLog(`Traffic forecast horizon changed to ${state.traffic.forecastYears} years.`);
+    renderTrafficControl();
+  });
+
+  elements.operatorSatelliteSelect?.addEventListener("change", () => {
+    const object = selectedOperatorObject();
+    addTrafficLog(`Operator view loaded for ${object?.name || "selected satellite"}.`);
+    renderOperatorView();
+  });
+
+  elements.triggerDebrisEvent?.addEventListener("click", () => {
+    state.traffic.emergencyActive = true;
+    state.traffic.emergencyFragments = 1200;
+    addTrafficLog("Emergency fragmentation event simulated in the 800-900 km shell.");
+    renderTrafficControl();
+  });
+
+  elements.resetTrafficEvent?.addEventListener("click", () => {
+    state.traffic.emergencyActive = false;
+    state.traffic.emergencyFragments = 0;
+    addTrafficLog("Traffic model reset to baseline catalog conditions.");
+    renderTrafficControl();
+  });
+
+  elements.downloadTrafficReport?.addEventListener("click", exportTrafficReport);
+}
+
 function wireControls() {
   wireModeTabs();
   wireDisplaySettings();
@@ -6975,6 +8069,8 @@ function wireControls() {
   wireEncyclopediaControls();
   wireLaunchSequenceControls();
   wireMissionComparisonControls();
+  wireMissionReplayControls();
+  wireTrafficControls();
 
   elements.orbitFilter.addEventListener("change", () => {
     state.filters.orbit = elements.orbitFilter.value;
@@ -7076,6 +8172,64 @@ function wireControls() {
   elements.downloadReport.addEventListener("click", exportReportJson);
   window.addEventListener("resize", resizeOrbitScene);
   window.addEventListener("resize", resizeLaunchSequence);
+  window.addEventListener("resize", () => {
+    renderMissionReplay();
+    renderTrafficControl();
+  });
+}
+
+function startMissionReplayLoop() {
+  if (state.missionReplay.animationId) {
+    return;
+  }
+
+  const frame = (now) => {
+    if (state.mode === "replay") {
+      if (state.missionReplay.playing && !state.display.reduceMotion) {
+        const previous = state.missionReplay.lastFrame || now;
+        const delta = Math.min(0.14, (now - previous) / 1000);
+        state.missionReplay.clock += delta;
+
+        if (state.missionReplay.clock > MISSION_REPLAY_DURATION) {
+          state.missionReplay.clock = MISSION_REPLAY_DURATION;
+          state.missionReplay.playing = false;
+        }
+      }
+
+      state.missionReplay.lastFrame = now;
+      const scenario = currentReplayScenario();
+      drawMissionReplayCanvas(scenario, missionReplayProgress(scenario), now);
+      if (now - state.missionReplay.lastDomRender > 120) {
+        state.missionReplay.lastDomRender = now;
+        renderMissionReplay();
+      }
+    } else {
+      state.missionReplay.lastFrame = now;
+    }
+
+    state.missionReplay.animationId = requestAnimationFrame(frame);
+  };
+
+  state.missionReplay.animationId = requestAnimationFrame(frame);
+}
+
+function startTrafficAnimationLoop() {
+  if (state.traffic.animationId) {
+    return;
+  }
+
+  const frame = (now) => {
+    if (state.mode === "traffic") {
+      const alerts = buildTrafficAlerts();
+      const shells = buildTrafficHealthShells();
+      drawTrafficMap(alerts, shells, now);
+      drawTrafficRadar(alerts, now);
+    }
+
+    state.traffic.animationId = requestAnimationFrame(frame);
+  };
+
+  state.traffic.animationId = requestAnimationFrame(frame);
 }
 
 function setupThemeControls() {
@@ -7381,9 +8535,12 @@ async function init() {
     await loadEncyclopediaTopics();
     wireControls();
     readLaunchInputs();
+    populateOperatorSelect();
     updateAll();
     renderTimeMachine();
     await initOrbitScene();
+    startMissionReplayLoop();
+    startTrafficAnimationLoop();
     loadWeatherData();
   } catch (error) {
     elements.dataSource.textContent = "Dataset unavailable";
