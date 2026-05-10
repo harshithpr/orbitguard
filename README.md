@@ -6,11 +6,17 @@ OrbitGuard is a space sustainability analyzer that tracks satellites and debris,
 
 Built by **Harshith Pranav Praveen**.
 
-It uses public CelesTrak SATCAT data plus live weather feeds and turns them into an eight-mode portfolio project:
+It uses public CelesTrak SATCAT data plus live weather feeds and turns them into a nine-mode portfolio project with a lightweight intro page before the full workspace.
 
 OrbitGuard also includes a customizable visual theme system that lets users switch between soft blue, deep space, light, high-contrast, and custom modes. The design improves accessibility, readability, and visual contrast while keeping sustainability colors meaningful instead of overwhelming.
 
-1. **Current Orbit Dashboard**
+1. **Autonomous Mission Design Studio**
+   - Mission goal builder with objective, target region, risk tolerance, and priority sliders
+   - Generates ranked satellite mission architectures from template families
+   - Scores coverage, cost efficiency, debris risk, deorbit compliance, space-weather sensitivity, launch complexity, and sustainability
+   - Includes a 3D-style orbit preview canvas, constraint warnings, autonomous redesign suggestions, saved scenarios, and JSON/TXT report exports
+
+2. **Current Orbit Dashboard**
    - Total tracked objects
    - Active satellites
    - Debris objects
@@ -23,14 +29,14 @@ OrbitGuard also includes a customizable visual theme system that lets users swit
    - Timeline of objects still in orbit by launch year
    - Softer display settings with theme, contrast, motion, chart color, and 3D object color controls
 
-2. **OrbitGuard Time Machine**
+3. **OrbitGuard Time Machine**
    - Year slider from the first space age launches through the current catalog year
    - Past-vs-today statistics for payloads, active satellites, debris, rocket bodies, and LEO objects
    - Moveable 3D Earth orbit view with rotate, pan, and zoom controls
    - Object-type toggles for payloads, debris, rocket bodies, and other hardware
    - Downloadable Time Machine comparison report
 
-3. **Launch Impact Simulator**
+4. **Launch Impact Simulator**
    - User enters satellites deployed, target altitude, inclination, lifetime, fragments, rocket-body disposal, and deorbit plan
    - App calculates objects added, affected altitude band, band-density increase, launch risk, and sustainability grade
    - Immersive procedural 3D launch sequence with ignition, liftoff, Max-Q, stage separation, fairing jettison, orbit insertion, and satellite deployment
@@ -38,26 +44,26 @@ OrbitGuard also includes a customizable visual theme system that lets users swit
    - Mission Comparison Arena ranks multiple launch scenarios side-by-side and generates a lifecycle report card for each mission
    - Preset profiles let users compare clean LEO missions, rideshare launches, high-persistence constellations, and relay profiles
 
-4. **Mission Replay Mode + Orbital Digital Twin**
+5. **Mission Replay Mode + Orbital Digital Twin**
    - Cinematic mission-control replay for the current launch scenario and major historical debris events
    - Animated Earth, ascent path, orbit insertion arc, risk heat shell, deployed satellites, and debris expansion
    - Live telemetry for mission time, altitude, velocity, inclination, payload deployment, risk level, and sustainability score
    - Mission autopsy report covering what went well, what increased risk, and how the mission could be redesigned
 
-5. **Space Traffic Control Center**
+6. **Space Traffic Control Center**
    - Command-center view for post-launch orbital traffic monitoring
    - Simulated conjunction alert feed with miss distance, relative speed, time to closest approach, and recommended action
    - Avoidance maneuver simulator comparing before/after miss distance, risk level, fuel cost, and mission impact
    - Orbital health map, radar scan, traffic forecast, operator snapshot, emergency fragmentation event mode, command log, and exportable traffic report
 
-6. **OrbitGuard Space Encyclopedia**
+7. **OrbitGuard Space Encyclopedia**
    - 200 curated topics across 10 aerospace and space-sustainability categories
    - Search, category filters, related-topic links, reading-time metadata, and downloadable topic index
    - Articles generate on demand through the OrbitGuard API, cache in the browser, and reload instantly after first generation
    - Built-in Fact Checker compares generated article drafts against live OrbitGuard catalog summaries, NOAA weather data when relevant, and selected historical incident facts
    - Transparent methodology note so the encyclopedia is useful without pretending generated text is a primary source
 
-7. **Weather Ops Monitor**
+8. **Weather Ops Monitor**
    - NOAA SWPC Kp index, F10.7 solar flux, solar wind, and alert messages
    - Educational LEO drag and deorbit-timeline scaling by altitude band
    - Solar Cycle 25 F10.7 timeline from public NOAA records
@@ -65,7 +71,7 @@ OrbitGuard also includes a customizable visual theme system that lets users swit
    - Ground station monitor for Goldstone, Canberra, Madrid, Svalbard, McMurdo, Diego Garcia, Wallops, and custom coordinates
    - Ka-band rain fade, optical tracking score, wind/antenna status, laser comm viability, and next clear-window estimate
 
-8. **Sustainability Report**
+9. **Sustainability Report**
    - Generates a short report explaining how the launch changes orbital congestion
    - Suggests mitigation steps such as deorbit planning, avoiding crowded bands, reducing deployment fragments, and disposing of upper stages
 
@@ -78,6 +84,8 @@ Users can download:
 - Encyclopedia topic index as JSON
 - Individual encyclopedia article as JSON
 - Weather operations snapshot as JSON
+- Mission design studio report as JSON
+- Mission design studio report as TXT
 - Launch simulation output as JSON
 - Launch simulation output as CSV
 - Mission comparison report as JSON

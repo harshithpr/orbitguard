@@ -18,6 +18,7 @@ const CREATOR = {
 };
 const ACTIVE_STATUS_CODES = new Set(["+", "P", "B", "S", "X"]);
 const THEME_STORAGE_KEY = "orbitguard-display-settings";
+const STUDIO_STORAGE_KEY = "orbitguard-mission-studio-scenarios";
 const DEFAULT_DISPLAY_SETTINGS = {
   theme: "soft-blue",
   baseTheme: "soft-blue",
@@ -208,6 +209,28 @@ const TRAFFIC_ALTITUDE_SHELLS = [
   { label: "800-900 km", min: 800, max: 900 },
   { label: "GEO belt", min: 33000, max: 41000 }
 ];
+const MISSION_TEMPLATES = {
+  internet: [
+    { id: "internet-low-risk", name: "Low-Risk LEO Network", satellites: 24, altitude: 500, inclination: 53, lifetime: 5, deorbitPlan: true, rocketBodyRemains: false, coverage: 65, cost: 60, summary: "Lower satellite count and a low LEO shell keep persistence and debris risk controlled." },
+    { id: "internet-balanced", name: "Balanced Broadband Network", satellites: 48, altitude: 550, inclination: 53, lifetime: 5, deorbitPlan: true, rocketBodyRemains: false, coverage: 82, cost: 75, summary: "More coverage while staying in a manageable LEO shell with planned deorbit." },
+    { id: "internet-high-coverage", name: "High-Coverage Persistent Network", satellites: 90, altitude: 1200, inclination: 60, lifetime: 12, deorbitPlan: false, rocketBodyRemains: true, coverage: 95, cost: 95, summary: "Strong coverage, but high persistence and leftover upper-stage risk make it harder to justify." }
+  ],
+  earthObservation: [
+    { id: "eo-sustainable", name: "Sustainable Imaging Mission", satellites: 8, altitude: 500, inclination: 97, lifetime: 4, deorbitPlan: true, rocketBodyRemains: false, coverage: 58, cost: 45, summary: "Small sun-synchronous style mission with short lifetime and strong disposal posture." },
+    { id: "eo-balanced", name: "Sun-Synchronous Imaging Network", satellites: 16, altitude: 650, inclination: 98, lifetime: 7, deorbitPlan: true, rocketBodyRemains: false, coverage: 78, cost: 68, summary: "Good revisit rate, useful coverage, and manageable deorbit compliance." },
+    { id: "eo-revisit", name: "High-Revisit Imaging Constellation", satellites: 40, altitude: 750, inclination: 98, lifetime: 10, deorbitPlan: false, rocketBodyRemains: true, coverage: 92, cost: 90, summary: "High imaging cadence, but more objects in debris-sensitive polar orbit." }
+  ],
+  communications: [
+    { id: "comms-clean-relay", name: "Clean Regional Relay", satellites: 12, altitude: 520, inclination: 45, lifetime: 5, deorbitPlan: true, rocketBodyRemains: false, coverage: 62, cost: 52, summary: "A compact regional relay architecture that emphasizes disposal and low persistence." },
+    { id: "comms-resilient", name: "Resilient Relay Mesh", satellites: 30, altitude: 780, inclination: 55, lifetime: 8, deorbitPlan: true, rocketBodyRemains: false, coverage: 84, cost: 78, summary: "More robust relay coverage with moderate altitude and strong deorbit planning." },
+    { id: "comms-persistent", name: "Persistent High-Relay Network", satellites: 64, altitude: 1400, inclination: 63, lifetime: 15, deorbitPlan: false, rocketBodyRemains: true, coverage: 96, cost: 96, summary: "Maximum relay persistence, but long orbital lifetime creates serious sustainability pressure." }
+  ],
+  science: [
+    { id: "science-cubesat", name: "Clean CubeSat Science Cluster", satellites: 6, altitude: 430, inclination: 51.6, lifetime: 3, deorbitPlan: true, rocketBodyRemains: false, coverage: 48, cost: 35, summary: "Low-cost mission with fast natural decay and minimal congestion impact." },
+    { id: "science-distributed", name: "Distributed Science Network", satellites: 18, altitude: 600, inclination: 72, lifetime: 6, deorbitPlan: true, rocketBodyRemains: false, coverage: 74, cost: 66, summary: "A broader measurement network with balanced risk and coverage." },
+    { id: "science-extended", name: "Extended Lifetime Science Web", satellites: 32, altitude: 1000, inclination: 82, lifetime: 12, deorbitPlan: false, rocketBodyRemains: false, coverage: 88, cost: 84, summary: "Long observation lifetime, but high altitude and weak disposal reduce sustainability." }
+  ]
+};
 const SOLAR_ENVIRONMENTS = {
   earth: {
     label: "Earth Orbit",
@@ -257,7 +280,7 @@ const SOLAR_ENVIRONMENTS = {
 };
 
 const state = {
-  mode: "dashboard",
+  mode: "home",
   objects: [],
   filtered: [],
   metadata: null,
@@ -274,6 +297,20 @@ const state = {
   },
   solarSystem: {
     environment: "earth"
+  },
+  studio: {
+    missionType: "internet",
+    targetRegion: "northAmerica",
+    riskTolerance: "low",
+    priorities: {
+      coverage: 70,
+      sustainability: 95,
+      cost: 60,
+      risk: 85
+    },
+    selectedId: "internet-low-risk",
+    savedScenarios: [],
+    previewFrame: 0
   },
   launch: {
     name: "Example rideshare mission",
@@ -558,6 +595,34 @@ const elements = {
   timelinePeak: document.querySelector("#timelinePeak"),
   hotspotRows: document.querySelector("#hotspotRows"),
   objectRows: document.querySelector("#objectRows"),
+  studioMissionType: document.querySelector("#studioMissionType"),
+  studioTargetRegion: document.querySelector("#studioTargetRegion"),
+  studioRiskTolerance: document.querySelector("#studioRiskTolerance"),
+  studioCoveragePriority: document.querySelector("#studioCoveragePriority"),
+  studioSustainabilityPriority: document.querySelector("#studioSustainabilityPriority"),
+  studioCostPriority: document.querySelector("#studioCostPriority"),
+  studioRiskPriority: document.querySelector("#studioRiskPriority"),
+  studioCoverageValue: document.querySelector("#studioCoverageValue"),
+  studioSustainabilityValue: document.querySelector("#studioSustainabilityValue"),
+  studioCostValue: document.querySelector("#studioCostValue"),
+  studioRiskValue: document.querySelector("#studioRiskValue"),
+  studioWarnings: document.querySelector("#studioWarnings"),
+  studioSaveScenario: document.querySelector("#studioSaveScenario"),
+  studioDownloadJson: document.querySelector("#studioDownloadJson"),
+  studioDownloadTxt: document.querySelector("#studioDownloadTxt"),
+  studioOptionCount: document.querySelector("#studioOptionCount"),
+  studioMissionOptions: document.querySelector("#studioMissionOptions"),
+  studioComparisonHead: document.querySelector("#studioComparisonHead"),
+  studioComparisonBody: document.querySelector("#studioComparisonBody"),
+  studioPreviewTitle: document.querySelector("#studioPreviewTitle"),
+  studioScoreRing: document.querySelector("#studioScoreRing"),
+  studioScoreValue: document.querySelector("#studioScoreValue"),
+  studioPreviewCanvas: document.querySelector("#studioPreviewCanvas"),
+  studioTradeoffs: document.querySelector("#studioTradeoffs"),
+  studioAutopsy: document.querySelector("#studioAutopsy"),
+  studioRedesignBox: document.querySelector("#studioRedesignBox"),
+  studioReportPreview: document.querySelector("#studioReportPreview"),
+  studioSavedScenarios: document.querySelector("#studioSavedScenarios"),
   launchName: document.querySelector("#launchName"),
   launchSatellites: document.querySelector("#launchSatellites"),
   launchAltitude: document.querySelector("#launchAltitude"),
@@ -2523,6 +2588,432 @@ function readLaunchInputs() {
     rocketBodyRemains: elements.rocketBodyRemains.checked,
     deorbitPlan: elements.deorbitPlan.checked
   };
+}
+
+function regionCoverageAdjustment(region) {
+  return { northAmerica: 0, global: 12, polar: -4, equatorial: 5 }[region] || 0;
+}
+
+function riskToleranceModifier(tolerance) {
+  return {
+    low: { riskWeight: 1.25, sustainabilityWeight: 1.12, scorePenalty: 5 },
+    medium: { riskWeight: 1, sustainabilityWeight: 1, scorePenalty: 0 },
+    high: { riskWeight: 0.76, sustainabilityWeight: 0.9, scorePenalty: -4 }
+  }[tolerance] || { riskWeight: 1, sustainabilityWeight: 1, scorePenalty: 0 };
+}
+
+function missionStudioInput() {
+  return {
+    missionType: state.studio.missionType,
+    targetRegion: state.studio.targetRegion,
+    riskTolerance: state.studio.riskTolerance,
+    priorities: { ...state.studio.priorities }
+  };
+}
+
+function scoreMissionDesign(template, input = missionStudioInput()) {
+  const mission = { ...template, fragments: 0 };
+  const impact = simulateLaunchImpact({
+    name: mission.name,
+    satellites: mission.satellites,
+    altitude: mission.altitude,
+    inclination: mission.inclination,
+    lifetime: mission.lifetime,
+    fragments: 0,
+    rocketBodyRemains: mission.rocketBodyRemains,
+    deorbitPlan: mission.deorbitPlan
+  });
+  const tolerance = riskToleranceModifier(input.riskTolerance);
+  const coverage = clamp(mission.coverage + regionCoverageAdjustment(input.targetRegion), 0, 100);
+  const costEfficiency = clamp(112 - mission.cost, 0, 100);
+  const compliance = mission.deorbitPlan ? 100 : 38;
+  const debrisRisk = clamp(100 - impact.riskIndex - (mission.rocketBodyRemains ? 12 : 0), 0, 100);
+  const spaceWeatherSensitivity = clamp(100 - Math.max(0, 650 - mission.altitude) / 8 - (mission.altitude > 1100 ? 12 : 0), 20, 96);
+  const launchComplexity = clamp(100 - mission.satellites * 0.55 - mission.cost * 0.16, 8, 100);
+  const sustainability = clamp(100 - impact.riskIndex + (mission.deorbitPlan ? 12 : -20) + (mission.rocketBodyRemains ? -14 : 6) - Math.max(0, mission.lifetime - 5) * 2, 0, 100);
+  const priorities = input.priorities;
+  const weights = {
+    coverage: priorities.coverage,
+    sustainability: priorities.sustainability * tolerance.sustainabilityWeight,
+    cost: priorities.cost,
+    risk: priorities.risk * tolerance.riskWeight
+  };
+  const totalWeight = weights.coverage + weights.sustainability + weights.cost + weights.risk;
+  const architectureBonus =
+    (mission.deorbitPlan ? 10 : -12) +
+    (mission.rocketBodyRemains ? -10 : 6) +
+    (mission.lifetime <= 5 ? 5 : 0) -
+    (mission.altitude > 1000 ? 12 : 0);
+  const finalScore = clamp(
+    ((coverage * weights.coverage) + (sustainability * weights.sustainability) + (costEfficiency * weights.cost) + (debrisRisk * weights.risk)) / Math.max(totalWeight, 1) +
+      architectureBonus -
+      tolerance.scorePenalty,
+    0,
+    100
+  );
+  const tradeoffs = {
+    Coverage: coverage,
+    "Cost Efficiency": costEfficiency,
+    "Debris Risk": debrisRisk,
+    "Deorbit Compliance": compliance,
+    "Space Weather": spaceWeatherSensitivity,
+    "Launch Complexity": launchComplexity,
+    Sustainability: sustainability
+  };
+
+  return {
+    ...mission,
+    impact,
+    coverage,
+    costEfficiency,
+    compliance,
+    debrisRisk,
+    tradeoffs,
+    finalScore: Math.round(finalScore),
+    riskLevel: riskLevel(100 - debrisRisk),
+    grade: sustainabilityGrade(100 - sustainability),
+    verdict: finalScore >= 82 ? "Best" : finalScore >= 68 ? "Good" : finalScore >= 52 ? "Watch" : "Risky"
+  };
+}
+
+function studioDesigns() {
+  const templates = MISSION_TEMPLATES[state.studio.missionType] || MISSION_TEMPLATES.internet;
+  const ranked = templates.map((template) => scoreMissionDesign(template)).sort((a, b) => b.finalScore - a.finalScore);
+
+  if (!ranked.some((design) => design.id === state.studio.selectedId)) {
+    state.studio.selectedId = ranked[0]?.id || null;
+  }
+
+  return ranked;
+}
+
+function selectedStudioDesign(designs = studioDesigns()) {
+  return designs.find((design) => design.id === state.studio.selectedId) || designs[0] || null;
+}
+
+function studioScoreColor(score) {
+  if (score >= 78) return readCssVar("--success", "#86efac");
+  if (score >= 58) return readCssVar("--warning", "#facc15");
+  return readCssVar("--danger", "#f87171");
+}
+
+function studioWarnings(designs = studioDesigns()) {
+  const p = state.studio.priorities;
+  const selected = selectedStudioDesign(designs);
+  const warnings = [];
+
+  if (p.coverage > 88 && p.sustainability > 88 && p.cost > 82) {
+    warnings.push("Constraint conflict detected: maximum coverage, maximum sustainability, and low cost usually cannot all be optimized at the same time.");
+  }
+  if (p.coverage > 85 && p.cost > 80) {
+    warnings.push("High coverage with strict cost pressure may be unrealistic without reducing redundancy or target region size.");
+  }
+  if (selected && selected.altitude >= 1000 && !selected.deorbitPlan) {
+    warnings.push("High altitude plus no deorbit plan creates long-term orbital persistence risk.");
+  }
+  if (selected && selected.satellites >= 60) {
+    warnings.push("Large satellite count increases conjunction-monitoring workload and traffic coordination needs.");
+  }
+
+  return warnings;
+}
+
+function renderStudioOptions(designs) {
+  elements.studioOptionCount.textContent = `${designs.length} options`;
+  elements.studioMissionOptions.innerHTML = designs.map((design, index) => {
+    const selected = design.id === state.studio.selectedId ? " selected" : "";
+    const badge = index === 0 ? `<span class="studio-badge">Recommended</span>` : design.debrisRisk >= 82 ? `<span class="studio-badge">Low debris risk</span>` : "";
+
+    return `
+      <article class="studio-option-card${selected}" data-studio-design="${design.id}">
+        <header>
+          <div>
+            <p class="eyebrow">Option ${String.fromCharCode(65 + index)}</p>
+            <h3>${escapeHTML(design.name)}</h3>
+          </div>
+          ${badge}
+        </header>
+        <p>${escapeHTML(design.summary)}</p>
+        <div class="studio-card-metrics">
+          <div><span>Satellites</span><strong>${numberFormat(design.satellites)}</strong></div>
+          <div><span>Altitude</span><strong>${numberFormat(design.altitude)} km</strong></div>
+          <div><span>Score</span><strong>${design.finalScore}/100</strong></div>
+          <div><span>Risk</span><strong>${design.riskLevel}</strong></div>
+        </div>
+        <div class="studio-card-actions">
+          <button type="button" data-studio-action="preview" data-design-id="${design.id}">Preview Orbit</button>
+          <button type="button" data-studio-action="report" data-design-id="${design.id}">Generate Report</button>
+          <button type="button" data-studio-action="use" data-design-id="${design.id}">Use In Simulator</button>
+          <button type="button" data-studio-action="improve" data-design-id="${design.id}">Improve This Mission</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderStudioComparison(designs) {
+  elements.studioComparisonHead.innerHTML = `
+    <tr>
+      <th>Feature</th>
+      ${designs.map((design, index) => `<th class="${index === 0 ? "recommended-column" : ""}">${escapeHTML(design.name)}</th>`).join("")}
+    </tr>
+  `;
+  const rows = [
+    ["Satellites", (design) => numberFormat(design.satellites)],
+    ["Altitude", (design) => `${numberFormat(design.altitude)} km`],
+    ["Coverage", (design) => `${Math.round(design.coverage)}/100`],
+    ["Sustainability", (design) => `${Math.round(design.tradeoffs.Sustainability)}/100`],
+    ["Risk", (design) => design.riskLevel],
+    ["Deorbit", (design) => design.deorbitPlan ? "Pass" : "Fail"]
+  ];
+  elements.studioComparisonBody.innerHTML = rows.map(([label, getter]) => `
+    <tr>
+      <td>${label}</td>
+      ${designs.map((design, index) => `<td class="${index === 0 ? "recommended-column" : ""}">${getter(design)}</td>`).join("")}
+    </tr>
+  `).join("");
+}
+
+function renderStudioTradeoffs(design) {
+  elements.studioTradeoffs.innerHTML = Object.entries(design.tradeoffs).map(([label, value]) => {
+    const color = studioScoreColor(value);
+    return `
+      <div class="tradeoff-row">
+        <span>${escapeHTML(label)}</span>
+        <div class="tradeoff-meter"><i style="--value: ${Math.round(value)}%; --meter-color: ${color}"></i></div>
+        <strong>${Math.round(value)}</strong>
+      </div>
+    `;
+  }).join("");
+}
+
+function improvedStudioDesign(design) {
+  const improved = {
+    ...design,
+    id: `${design.id}-improved`,
+    name: `${design.name} Redesign`,
+    satellites: Math.max(6, Math.round(design.satellites * 0.62)),
+    altitude: clamp(Math.min(design.altitude, 520), 420, 700),
+    lifetime: Math.min(design.lifetime, 5),
+    deorbitPlan: true,
+    rocketBodyRemains: false,
+    coverage: clamp(design.coverage - 8, 35, 100),
+    cost: clamp(design.cost - 14, 20, 100),
+    summary: "Rule-based redesign that lowers altitude, reduces object count, removes leftover rocket body risk, and adds a 5-year deorbit plan."
+  };
+
+  return scoreMissionDesign(improved);
+}
+
+function renderStudioAutopsy(design) {
+  const weakness = design.satellites > 50
+    ? "The large satellite count creates more traffic-management demand."
+    : design.coverage < 70
+      ? "Coverage is lower than the larger constellation option."
+      : "The main weakness is managing operations in an already active LEO environment.";
+  elements.studioAutopsy.innerHTML = `
+    <h3>Mission Autopsy</h3>
+    <div class="autopsy-grid">
+      <article class="autopsy-card"><strong>What went well</strong><p>${design.deorbitPlan ? "The design includes a deorbit plan and improves long-term compliance." : "The design meets the mission coverage goal, but disposal needs work."}</p></article>
+      <article class="autopsy-card"><strong>What increased risk</strong><p>${escapeHTML(weakness)}</p></article>
+      <article class="autopsy-card"><strong>What could improve</strong><p>Use fewer satellites, lower altitude, passivation, and no leftover upper stage whenever possible.</p></article>
+    </div>
+  `;
+  const improved = improvedStudioDesign(design);
+  elements.studioRedesignBox.innerHTML = `
+    <article class="studio-redesign-card">
+      <h3>Autonomous Redesign Suggestion</h3>
+      <p>${escapeHTML(improved.name)}: ${numberFormat(improved.satellites)} satellites at ${numberFormat(improved.altitude)} km with 5-year deorbit planning. Estimated score improves to ${improved.finalScore}/100.</p>
+      <button type="button" data-studio-action="apply-redesign" data-design-id="${design.id}">Apply Redesign To Simulator</button>
+    </article>
+  `;
+}
+
+function drawStudioPreview(design, now = performance.now()) {
+  const canvas = elements.studioPreviewCanvas;
+  if (!canvas || !design) return;
+
+  const { context, width, height } = setCanvasSize(canvas);
+  context.clearRect(0, 0, width, height);
+  context.fillStyle = "#020617";
+  context.fillRect(0, 0, width, height);
+
+  for (let index = 0; index < 130; index += 1) {
+    context.fillStyle = `rgb(226 242 255 / ${0.2 + seededUnit(index + 401) * 0.5})`;
+    context.beginPath();
+    context.arc(seededUnit(index + 421) * width, seededUnit(index + 431) * height, 0.6 + seededUnit(index + 441) * 1.2, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  const cx = width * 0.5;
+  const cy = height * 0.52;
+  const earthRadius = Math.min(width, height) * 0.16;
+  const orbitRadius = fallbackScaleAltitude(design.altitude, earthRadius, Math.min(width, height) * 0.44);
+  const scoreColor = studioScoreColor(design.finalScore);
+
+  context.save();
+  context.globalCompositeOperation = "lighter";
+  context.strokeStyle = hexToRgba(scoreColor, 0.32);
+  context.lineWidth = 10;
+  context.beginPath();
+  context.ellipse(cx, cy, orbitRadius, orbitRadius * 0.36, -0.28, 0, Math.PI * 2);
+  context.stroke();
+  context.restore();
+
+  drawDigitalTwinEarth(context, cx, cy, earthRadius, now);
+
+  context.strokeStyle = readCssVar("--simulated-color", "#a78bfa");
+  context.lineWidth = 2;
+  context.beginPath();
+  context.ellipse(cx, cy, orbitRadius, orbitRadius * 0.36, -0.28, 0, Math.PI * 2);
+  context.stroke();
+
+  const dots = Math.min(design.satellites, 54);
+  for (let index = 0; index < dots; index += 1) {
+    const angle = (index / dots) * Math.PI * 2 + now * 0.00018;
+    const x = cx + Math.cos(angle) * orbitRadius;
+    const y = cy + Math.sin(angle) * orbitRadius * 0.36;
+    context.fillStyle = readCssVar("--payload-color", "#93c5fd");
+    context.shadowColor = context.fillStyle;
+    context.shadowBlur = 8;
+    context.beginPath();
+    context.arc(x, y, 2.4, 0, Math.PI * 2);
+    context.fill();
+    context.shadowBlur = 0;
+  }
+
+  for (let index = 0; index < 40; index += 1) {
+    const angle = seededUnit(index + 621) * Math.PI * 2 + now * 0.00004;
+    const radius = earthRadius + seededUnit(index + 631) * (Math.min(width, height) * 0.32);
+    context.fillStyle = hexToRgba(readCssVar("--debris-color", "#f87171"), 0.62);
+    context.beginPath();
+    context.arc(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius * 0.36, 1.2, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  context.fillStyle = "rgb(203 213 225 / 0.86)";
+  context.font = "700 12px Space Grotesk, sans-serif";
+  context.fillText(`${numberFormat(design.altitude)} km selected mission orbit`, 16, 26);
+}
+
+function studioReportText(design = selectedStudioDesign()) {
+  if (!design) return "";
+  const missionType = elements.studioMissionType?.selectedOptions?.[0]?.textContent || state.studio.missionType;
+  const region = elements.studioTargetRegion?.selectedOptions?.[0]?.textContent || state.studio.targetRegion;
+  return `OrbitGuard Mission Design Report
+
+Objective:
+Design a ${missionType} mission for ${region} while balancing coverage, cost, risk, and long-term space sustainability.
+
+Recommended Design:
+${design.name} with ${design.satellites} satellites at ${design.altitude} km altitude and ${design.inclination} degrees inclination.
+
+Score:
+${design.finalScore}/100 overall, ${design.riskLevel} risk, sustainability grade ${design.grade}.
+
+Reason:
+${design.summary}
+
+Main Tradeoff:
+The design balances coverage (${Math.round(design.coverage)}/100) against debris risk (${Math.round(design.debrisRisk)}/100), cost efficiency (${Math.round(design.costEfficiency)}/100), and deorbit compliance (${design.deorbitPlan ? "pass" : "fail"}).
+
+Suggested Improvements:
+${improvedStudioDesign(design).summary}
+
+Limitation:
+This is an educational architecture screening model, not a flight-certified mission design or operational collision analysis.`;
+}
+
+function buildStudioReportPayload(design = selectedStudioDesign()) {
+  return {
+    project: "OrbitGuard",
+    creator: CREATOR.name,
+    generatedAt: new Date().toISOString(),
+    mode: "Autonomous Mission Design Studio",
+    objective: missionStudioInput(),
+    recommendedDesign: design,
+    reportText: studioReportText(design),
+    methodology: "Weighted mission scoring using coverage, cost efficiency, debris risk, deorbit planning, launch complexity, and long-term sustainability."
+  };
+}
+
+function renderSavedStudioScenarios() {
+  if (!elements.studioSavedScenarios) return;
+  const saved = state.studio.savedScenarios;
+  elements.studioSavedScenarios.innerHTML = saved.length
+    ? saved.map((item) => `
+      <article class="saved-scenario-card">
+        <strong>${escapeHTML(item.name)}</strong>
+        <span>${escapeHTML(item.createdAt)} - ${item.score}/100 - ${escapeHTML(item.region)}</span>
+      </article>
+    `).join("")
+    : `<p class="empty-state">No saved mission scenarios yet.</p>`;
+}
+
+function saveStudioScenario() {
+  const design = selectedStudioDesign();
+  if (!design) return;
+  const scenario = {
+    id: globalThis.crypto?.randomUUID ? crypto.randomUUID() : `studio-${Date.now()}`,
+    name: design.name,
+    createdAt: new Date().toLocaleString(),
+    objective: state.studio.missionType,
+    region: elements.studioTargetRegion?.selectedOptions?.[0]?.textContent || state.studio.targetRegion,
+    priorities: { ...state.studio.priorities },
+    recommendedMission: design,
+    score: design.finalScore
+  };
+  state.studio.savedScenarios = [scenario, ...state.studio.savedScenarios].slice(0, 6);
+  localStorage.setItem(STUDIO_STORAGE_KEY, JSON.stringify(state.studio.savedScenarios));
+  renderSavedStudioScenarios();
+}
+
+function loadStudioScenarios() {
+  try {
+    state.studio.savedScenarios = JSON.parse(localStorage.getItem(STUDIO_STORAGE_KEY) || "[]");
+  } catch {
+    state.studio.savedScenarios = [];
+  }
+}
+
+function renderMissionStudio() {
+  if (!elements.studioMissionOptions) return;
+
+  elements.studioMissionType.value = state.studio.missionType;
+  elements.studioTargetRegion.value = state.studio.targetRegion;
+  elements.studioRiskTolerance.value = state.studio.riskTolerance;
+  elements.studioCoveragePriority.value = String(state.studio.priorities.coverage);
+  elements.studioSustainabilityPriority.value = String(state.studio.priorities.sustainability);
+  elements.studioCostPriority.value = String(state.studio.priorities.cost);
+  elements.studioRiskPriority.value = String(state.studio.priorities.risk);
+  elements.studioCoverageValue.textContent = `${state.studio.priorities.coverage}%`;
+  elements.studioSustainabilityValue.textContent = `${state.studio.priorities.sustainability}%`;
+  elements.studioCostValue.textContent = `${state.studio.priorities.cost}%`;
+  elements.studioRiskValue.textContent = `${state.studio.priorities.risk}%`;
+
+  const designs = studioDesigns();
+  const selected = selectedStudioDesign(designs);
+  const warnings = studioWarnings(designs);
+  elements.studioWarnings.innerHTML = warnings.map((warning) => `<div class="constraint-warning">${escapeHTML(warning)}</div>`).join("");
+
+  renderStudioOptions(designs);
+  renderStudioComparison(designs);
+
+  if (selected) {
+    const color = studioScoreColor(selected.finalScore);
+    elements.studioPreviewTitle.textContent = selected.name;
+    elements.studioScoreRing.style.setProperty("--score", selected.finalScore);
+    elements.studioScoreRing.style.setProperty("--score-color", color);
+    elements.studioScoreValue.textContent = selected.finalScore;
+    renderStudioTradeoffs(selected);
+    renderStudioAutopsy(selected);
+    if (elements.studioReportPreview) {
+      elements.studioReportPreview.textContent = studioReportText(selected);
+    }
+    drawStudioPreview(selected);
+  }
+
+  renderSavedStudioScenarios();
 }
 
 function renderMetrics() {
@@ -7612,8 +8103,18 @@ function updateAll() {
   renderCharts();
   renderTables();
   renderLaunchImpact();
-  renderMissionReplay();
-  renderTrafficControl();
+
+  if (state.mode === "studio") {
+    renderMissionStudio();
+  }
+
+  if (state.mode === "replay") {
+    renderMissionReplay();
+  }
+
+  if (state.mode === "traffic") {
+    renderTrafficControl();
+  }
 }
 
 function populateOwners() {
@@ -7629,6 +8130,7 @@ function populateOwners() {
 
 function setActiveMode(mode) {
   state.mode = mode;
+  document.body.classList.toggle("home-active", mode === "home");
 
   for (const item of elements.modeTabs) {
     item.classList.toggle("active", item.dataset.mode === mode);
@@ -7642,12 +8144,18 @@ function setActiveMode(mode) {
     panel.classList.toggle("active", panel.id === `${mode}Mode`);
   }
 
-  if (mode === "time") {
+  if (mode === "home") {
+    window.scrollTo({ top: 0, behavior: state.display.reduceMotion ? "auto" : "smooth" });
+  } else if (mode === "studio") {
+    renderMissionStudio();
+  } else if (mode === "time") {
     renderTimeMachine();
-    resizeOrbitScene();
+    initOrbitScene().then(() => resizeOrbitScene());
   } else if (mode === "dashboard") {
-    renderOrbitScene();
-    resizeOrbitScene();
+    initOrbitScene().then(() => {
+      renderOrbitScene();
+      resizeOrbitScene();
+    });
   } else if (mode === "weather") {
     renderWeather();
   } else if (mode === "encyclopedia") {
@@ -7661,7 +8169,7 @@ function setActiveMode(mode) {
   } else if (mode === "traffic") {
     renderTrafficControl();
   } else {
-    renderOrbitScene();
+    initOrbitScene().then(() => renderOrbitScene());
   }
 }
 
@@ -8061,6 +8569,95 @@ function wireTrafficControls() {
   elements.downloadTrafficReport?.addEventListener("click", exportTrafficReport);
 }
 
+function wireMissionStudioControls() {
+  elements.studioMissionType?.addEventListener("change", () => {
+    state.studio.missionType = elements.studioMissionType.value;
+    state.studio.selectedId = (MISSION_TEMPLATES[state.studio.missionType] || MISSION_TEMPLATES.internet)[0].id;
+    renderMissionStudio();
+  });
+
+  elements.studioTargetRegion?.addEventListener("change", () => {
+    state.studio.targetRegion = elements.studioTargetRegion.value;
+    renderMissionStudio();
+  });
+
+  elements.studioRiskTolerance?.addEventListener("change", () => {
+    state.studio.riskTolerance = elements.studioRiskTolerance.value;
+    renderMissionStudio();
+  });
+
+  const priorityControls = [
+    [elements.studioCoveragePriority, "coverage"],
+    [elements.studioSustainabilityPriority, "sustainability"],
+    [elements.studioCostPriority, "cost"],
+    [elements.studioRiskPriority, "risk"]
+  ];
+
+  for (const [input, key] of priorityControls) {
+    input?.addEventListener("input", () => {
+      state.studio.priorities[key] = Number(input.value);
+      renderMissionStudio();
+    });
+  }
+
+  elements.studioMissionOptions?.addEventListener("click", (event) => {
+    const actionButton = event.target.closest("[data-studio-action]");
+    const card = event.target.closest("[data-studio-design]");
+    const id = actionButton?.dataset.designId || card?.dataset.studioDesign;
+
+    if (!id) {
+      return;
+    }
+
+    const designs = studioDesigns();
+    const design = designs.find((item) => item.id === id);
+
+    if (!design) {
+      return;
+    }
+
+    state.studio.selectedId = id;
+
+    if (actionButton?.dataset.studioAction === "use") {
+      setLaunchInputsFromMission({ ...design, fragments: 0 });
+      setActiveMode("simulator");
+      return;
+    }
+
+    if (actionButton?.dataset.studioAction === "improve") {
+      const improved = improvedStudioDesign(design);
+      setLaunchInputsFromMission({ ...improved, fragments: 0 });
+      setActiveMode("simulator");
+      return;
+    }
+
+    renderMissionStudio();
+  });
+
+  elements.studioRedesignBox?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-studio-action='apply-redesign']");
+
+    if (!button) {
+      return;
+    }
+
+    const design = selectedStudioDesign();
+    const improved = improvedStudioDesign(design);
+    setLaunchInputsFromMission({ ...improved, fragments: 0 });
+    setActiveMode("simulator");
+  });
+
+  elements.studioSaveScenario?.addEventListener("click", saveStudioScenario);
+  elements.studioDownloadJson?.addEventListener("click", () => {
+    const design = selectedStudioDesign();
+    downloadJSON(`${slugify(design?.name || "orbitguard-mission-design")}-mission-design.json`, buildStudioReportPayload(design));
+  });
+  elements.studioDownloadTxt?.addEventListener("click", () => {
+    const design = selectedStudioDesign();
+    downloadText(`${slugify(design?.name || "orbitguard-mission-design")}-mission-design.txt`, studioReportText(design), "text/plain");
+  });
+}
+
 function wireControls() {
   wireModeTabs();
   wireDisplaySettings();
@@ -8071,6 +8668,7 @@ function wireControls() {
   wireMissionComparisonControls();
   wireMissionReplayControls();
   wireTrafficControls();
+  wireMissionStudioControls();
 
   elements.orbitFilter.addEventListener("change", () => {
     state.filters.orbit = elements.orbitFilter.value;
@@ -8173,8 +8771,17 @@ function wireControls() {
   window.addEventListener("resize", resizeOrbitScene);
   window.addEventListener("resize", resizeLaunchSequence);
   window.addEventListener("resize", () => {
-    renderMissionReplay();
-    renderTrafficControl();
+    if (state.mode === "studio") {
+      renderMissionStudio();
+    }
+
+    if (state.mode === "replay") {
+      renderMissionReplay();
+    }
+
+    if (state.mode === "traffic") {
+      renderTrafficControl();
+    }
   });
 }
 
@@ -8219,6 +8826,10 @@ function startTrafficAnimationLoop() {
   }
 
   const frame = (now) => {
+    if (state.mode === "studio") {
+      drawStudioPreview(selectedStudioDesign(), now);
+    }
+
     if (state.mode === "traffic") {
       const alerts = buildTrafficAlerts();
       const shells = buildTrafficHealthShells();
@@ -8533,12 +9144,12 @@ async function init() {
     configureTimeMachineControls();
     populateOwners();
     await loadEncyclopediaTopics();
+    loadStudioScenarios();
     wireControls();
     readLaunchInputs();
     populateOperatorSelect();
     updateAll();
     renderTimeMachine();
-    await initOrbitScene();
     startMissionReplayLoop();
     startTrafficAnimationLoop();
     loadWeatherData();

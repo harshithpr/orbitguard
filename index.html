@@ -19,7 +19,7 @@
       }
     </script>
   </head>
-  <body>
+  <body class="home-active">
     <div class="space-backdrop" aria-hidden="true">
       <canvas id="spaceBackdropCanvas"></canvas>
     </div>
@@ -34,6 +34,7 @@
         </div>
       </div>
       <div class="topbar-actions">
+        <button class="top-link mode-jump" type="button" data-mode="home">Home</button>
         <button class="top-link settings-toggle" id="settingsToggle" type="button">Display</button>
         <a class="top-link" href="https://github.com/harshithpr/orbitguard" target="_blank" rel="noreferrer">GitHub</a>
         <div class="source-pill" id="dataSource">Loading catalog...</div>
@@ -41,22 +42,76 @@
     </header>
 
     <main>
-      <section class="hero-band" aria-label="OrbitGuard overview">
-        <div>
-          <p class="eyebrow">Space Sustainability Analyzer</p>
-          <h2>OrbitGuard</h2>
-          <p>Track orbital congestion, compare space debris growth over time, and simulate how new launches affect Earth orbit.</p>
-        </div>
-        <div class="hero-actions">
-          <button class="mode-jump" type="button" data-mode="dashboard">Open Dashboard</button>
-          <button class="mode-jump" type="button" data-mode="encyclopedia">Open Encyclopedia</button>
-          <button class="mode-jump" type="button" data-mode="simulator">Run Launch Simulator</button>
-          <button class="mode-jump" type="button" data-mode="replay">Mission Replay</button>
-          <button class="mode-jump" type="button" data-mode="traffic">Traffic Control</button>
-          <button class="mode-jump" type="button" data-mode="time">Use Time Machine</button>
-          <button class="mode-jump" type="button" data-mode="weather">Monitor Weather</button>
-          <button class="mode-jump" type="button" data-mode="report">Open Report</button>
-        </div>
+      <section class="mode-panel active home-mode" id="homeMode" aria-label="OrbitGuard intro page">
+        <section class="home-hero">
+          <div class="home-hero-copy">
+            <p class="eyebrow">Space Sustainability Analyzer</p>
+            <h2>OrbitGuard</h2>
+            <p>Design safer satellite missions, simulate launch impact, monitor orbital traffic, replay debris events, and understand how space sustainability affects the future of Earth orbit.</p>
+            <div class="hero-actions">
+              <button class="mode-jump primary-home-action" type="button" data-mode="studio">Open Mission Design Studio</button>
+              <button class="mode-jump" type="button" data-mode="dashboard">Explore Live Dashboard</button>
+              <button class="mode-jump" type="button" data-mode="simulator">Run Launch Simulator</button>
+            </div>
+          </div>
+          <div class="home-orbit-card" aria-label="OrbitGuard mission preview">
+            <div class="home-orbit-visual">
+              <span class="home-earth"></span>
+              <span class="home-orbit orbit-a"></span>
+              <span class="home-orbit orbit-b"></span>
+              <span class="home-sat sat-a"></span>
+              <span class="home-sat sat-b"></span>
+              <span class="home-sat sat-c"></span>
+            </div>
+            <div class="home-preview-metrics">
+              <article><span>Catalog</span><strong>33k+</strong></article>
+              <article><span>Mission score</span><strong>Live</strong></article>
+              <article><span>Reports</span><strong>Exportable</strong></article>
+            </div>
+          </div>
+        </section>
+
+        <section class="home-feature-grid" aria-label="What OrbitGuard does">
+          <article class="home-feature-card">
+            <span>01</span>
+            <h3>Design missions</h3>
+            <p>Generate satellite architectures, compare tradeoffs, preview orbit shells, and export mission design reports.</p>
+          </article>
+          <article class="home-feature-card">
+            <span>02</span>
+            <h3>Analyze orbital risk</h3>
+            <p>Use CelesTrak catalog data to inspect crowded altitude bands, debris-heavy shells, and long-term sustainability pressure.</p>
+          </article>
+          <article class="home-feature-card">
+            <span>03</span>
+            <h3>Operate like mission control</h3>
+            <p>Replay launches, review conjunction alerts, test avoidance maneuvers, and monitor space weather effects.</p>
+          </article>
+        </section>
+
+        <section class="home-about-grid">
+          <article class="panel creator-intro-card">
+            <p class="eyebrow">About the creator</p>
+            <h2>Built by Harshith Pranav Praveen</h2>
+            <p>Harshith is interested in aerospace engineering, hands-on design, manufacturing, mathematics, 3D modeling, Python, and future work with aerospace companies building flight and space systems.</p>
+            <p>He began engineering coursework at James Clemens High School in 2024, has taken PLTW engineering classes, and earned a Python credential in 2025.</p>
+            <a class="text-link" href="https://www.credly.com/badges/d74e2ecb-c57e-44fd-87ad-6acd2b58008c/public_url" target="_blank" rel="noreferrer">View Python credential</a>
+          </article>
+          <article class="panel home-tool-launcher">
+            <p class="eyebrow">Use OrbitGuard</p>
+            <h2>Choose a workspace</h2>
+            <div class="home-tool-list">
+              <button class="mode-jump" type="button" data-mode="studio">Autonomous Mission Design Studio</button>
+              <button class="mode-jump" type="button" data-mode="dashboard">Current Orbit Dashboard</button>
+              <button class="mode-jump" type="button" data-mode="replay">Mission Replay Mode</button>
+              <button class="mode-jump" type="button" data-mode="traffic">Space Traffic Control Center</button>
+              <button class="mode-jump" type="button" data-mode="time">Time Machine</button>
+              <button class="mode-jump" type="button" data-mode="weather">Weather Ops</button>
+              <button class="mode-jump" type="button" data-mode="encyclopedia">Space Encyclopedia</button>
+              <button class="mode-jump" type="button" data-mode="report">Sustainability Report</button>
+            </div>
+          </article>
+        </section>
       </section>
 
       <aside class="settings-drawer" id="settingsDrawer" aria-hidden="true" aria-label="Display customization drawer">
@@ -135,7 +190,171 @@
       </aside>
       <button class="settings-backdrop" id="settingsBackdrop" type="button" hidden aria-label="Close display settings"></button>
 
-      <section class="mode-panel active" id="dashboardMode">
+      <nav class="mode-tabs app-mode-nav" aria-label="OrbitGuard workspace navigation">
+        <button class="mode-tab" type="button" data-mode="studio">Design Studio</button>
+        <button class="mode-tab" type="button" data-mode="dashboard">Dashboard</button>
+        <button class="mode-tab" type="button" data-mode="simulator">Launch Sim</button>
+        <button class="mode-tab" type="button" data-mode="replay">Mission Replay</button>
+        <button class="mode-tab" type="button" data-mode="traffic">Traffic Control</button>
+        <button class="mode-tab" type="button" data-mode="time">Time Machine</button>
+        <button class="mode-tab" type="button" data-mode="weather">Weather Ops</button>
+        <button class="mode-tab" type="button" data-mode="encyclopedia">Encyclopedia</button>
+        <button class="mode-tab" type="button" data-mode="report">Report</button>
+      </nav>
+
+      <section class="mode-panel" id="studioMode">
+        <section class="panel command-hero studio-command-hero">
+          <div>
+            <p class="eyebrow">Autonomous Mission Design Studio</p>
+            <h2>Mission Design Studio</h2>
+            <p class="panel-note">Build a satellite mission goal, generate multiple orbit architectures, compare engineering tradeoffs, preview the selected orbit, and export a professional mission design report.</p>
+          </div>
+          <div class="command-actions">
+            <button id="studioSaveScenario" type="button">Save Scenario</button>
+            <button id="studioDownloadJson" type="button">Download JSON</button>
+            <button id="studioDownloadTxt" type="button">Download TXT</button>
+          </div>
+        </section>
+
+        <section class="mission-studio">
+          <aside class="panel studio-builder-panel glass-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Mission builder</p>
+                <h2>Define Goal</h2>
+              </div>
+            </div>
+
+            <div class="studio-form">
+              <label>
+                Mission objective
+                <select id="studioMissionType">
+                  <option value="internet">Internet Coverage</option>
+                  <option value="earthObservation">Earth Observation</option>
+                  <option value="communications">Communications Relay</option>
+                  <option value="science">Science Mission</option>
+                </select>
+              </label>
+
+              <label>
+                Target region
+                <select id="studioTargetRegion">
+                  <option value="northAmerica">North America</option>
+                  <option value="global">Global</option>
+                  <option value="polar">Polar Regions</option>
+                  <option value="equatorial">Equatorial Belt</option>
+                </select>
+              </label>
+
+              <label>
+                Risk tolerance
+                <select id="studioRiskTolerance">
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+
+              <label class="studio-slider">
+                <span>Coverage importance <strong id="studioCoverageValue">70%</strong></span>
+                <input id="studioCoveragePriority" type="range" min="10" max="100" value="70">
+              </label>
+
+              <label class="studio-slider">
+                <span>Sustainability importance <strong id="studioSustainabilityValue">95%</strong></span>
+                <input id="studioSustainabilityPriority" type="range" min="10" max="100" value="95">
+              </label>
+
+              <label class="studio-slider">
+                <span>Cost importance <strong id="studioCostValue">60%</strong></span>
+                <input id="studioCostPriority" type="range" min="10" max="100" value="60">
+              </label>
+
+              <label class="studio-slider">
+                <span>Risk control importance <strong id="studioRiskValue">85%</strong></span>
+                <input id="studioRiskPriority" type="range" min="10" max="100" value="85">
+              </label>
+            </div>
+
+            <div class="constraint-warnings" id="studioWarnings"></div>
+
+            <details class="studio-philosophy">
+              <summary>Why did OrbitGuard choose this design?</summary>
+              <p>OrbitGuard ranks mission designs using weighted tradeoffs between coverage, cost, orbital congestion, deorbit planning, and long-term sustainability. The recommended mission is not always the highest coverage option; it is the best balance based on the priorities selected.</p>
+            </details>
+          </aside>
+
+          <section class="studio-options-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Generated architectures</p>
+                <h2>Mission Options</h2>
+              </div>
+              <span class="panel-stat" id="studioOptionCount">3 options</span>
+            </div>
+            <div class="studio-option-grid" id="studioMissionOptions"></div>
+
+            <article class="panel studio-compare-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Compare designs</p>
+                  <h2>Architecture Trade Table</h2>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="comparison-table">
+                  <thead id="studioComparisonHead"></thead>
+                  <tbody id="studioComparisonBody"></tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+
+          <aside class="panel studio-preview-panel glass-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">3D orbit preview</p>
+                <h2 id="studioPreviewTitle">Selected Mission</h2>
+              </div>
+              <div class="score-ring" id="studioScoreRing" style="--score: 0; --score-color: var(--accent)">
+                <span id="studioScoreValue">0</span>
+              </div>
+            </div>
+
+            <div class="studio-preview-viewport">
+              <canvas id="studioPreviewCanvas" aria-label="Mission design orbit preview"></canvas>
+            </div>
+
+            <div class="tradeoff-list" id="studioTradeoffs"></div>
+
+            <div class="mission-autopsy studio-autopsy" id="studioAutopsy"></div>
+
+            <div class="studio-redesign-box" id="studioRedesignBox"></div>
+
+            <div class="studio-report-preview">
+              <div class="panel-heading compact-heading">
+                <div>
+                  <p class="eyebrow">Mission report</p>
+                  <h2>Preview</h2>
+                </div>
+              </div>
+              <pre id="studioReportPreview"></pre>
+            </div>
+
+            <div class="saved-scenarios">
+              <div class="panel-heading compact-heading">
+                <div>
+                  <p class="eyebrow">Mission memory</p>
+                  <h2>Saved Scenarios</h2>
+                </div>
+              </div>
+              <div id="studioSavedScenarios" class="saved-scenario-list"></div>
+            </div>
+          </aside>
+        </section>
+      </section>
+
+      <section class="mode-panel" id="dashboardMode">
         <section class="control-band" aria-label="Analyzer controls">
           <label>
             Orbit
