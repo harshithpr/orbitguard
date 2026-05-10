@@ -82,7 +82,7 @@ Useful official sources:
 
 ## Phase 6: Review And Community
 
-- Publish the project on GitHub
-- Add issues labeled `good-first-issue`, `orbital-mechanics`, `data-source`, and `frontend`
-- Ask for review from aerospace, astronomy, and open-source communities
-- Add a public demo link once deployed
+- Add a public demo link and short project overview
+- Add a mentor feedback checklist for science, UI, code quality, and data-source clarity
+- Track reviewer suggestions in a changelog so project impact is visible over time
+- Add a public limitations page explaining what is educational vs. operational
