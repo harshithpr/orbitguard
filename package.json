@@ -4,6 +4,7 @@
   "private": true,
   "description": "Space sustainability analyzer with a dashboard, launch impact simulator, and local API.",
   "author": "Harshith Pranav Praveen",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "start": "node server.mjs",

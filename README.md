@@ -1,126 +1,74 @@
 # OrbitGuard
 
-![OrbitGuard logo](public/logo.png)
+![Vercel](https://img.shields.io/badge/deployed%20on-Vercel-black)
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+![Made with JavaScript](https://img.shields.io/badge/made%20with-JavaScript-f7df1e)
+![Data](https://img.shields.io/badge/data-CelesTrak%20%2B%20NOAA-60a5fa)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-OrbitGuard is a space sustainability analyzer that tracks satellites and debris, measures orbital crowding, and shows how new launches can affect collision-risk pressure and long-term space safety.
+**OrbitGuard is a space sustainability web app that visualizes orbital congestion, simulates satellite launches, and analyzes debris risk using public orbital data.**
 
 Built by **Harshith Pranav Praveen**.
 
-It uses public CelesTrak SATCAT data plus live weather feeds and turns them into a nine-mode portfolio project with a lightweight intro page before the full workspace.
+[Live Demo](https://orbitguard.vercel.app) · [API Docs](docs/API.md) · [Roadmap](docs/ROADMAP.md) · [Testing Checklist](docs/TESTING.md) · [GitHub Launch Plan](docs/GITHUB_LAUNCH_PLAN.md)
 
-OrbitGuard also includes a customizable visual theme system that lets users switch between soft blue, deep space, light, high-contrast, and custom modes. The design improves accessibility, readability, and visual contrast while keeping sustainability colors meaningful instead of overwhelming.
+![OrbitGuard homepage](assets/homepage.png)
 
-1. **Autonomous Mission Design Studio**
-   - Mission goal builder with objective, target region, risk tolerance, and priority sliders
-   - Generates ranked satellite mission architectures from template families
-   - Scores coverage, cost efficiency, debris risk, deorbit compliance, space-weather sensitivity, launch complexity, and sustainability
-   - Includes a 3D-style orbit preview canvas, constraint warnings, autonomous redesign suggestions, saved scenarios, and JSON/TXT report exports
+## Why OrbitGuard Exists
 
-2. **Current Orbit Dashboard**
-   - Total tracked objects
-   - Active satellites
-   - Debris objects
-   - Rocket bodies
-   - LEO, MEO, GEO, and HEO orbit bands
-   - Most crowded altitude bands
-   - 3D Earth orbit visualizer with a textured Earth, cloud layer, orbit rings, density points, and representative object models
-   - OrbitGuard Solar System Mode with Earth, Moon, Mars, Solar Weather, and Solar System Overview environments
-   - Mission-environment cards for lunar relay coverage, Mars communication delay, solar-weather drag effects, and interplanetary sustainability planning
-   - Timeline of objects still in orbit by launch year
-   - Softer display settings with theme, contrast, motion, chart color, and 3D object color controls
+Earth orbit is becoming more crowded with satellites, debris fragments, and rocket bodies. OrbitGuard turns that problem into an interactive platform where users can inspect orbital traffic, design satellite missions, replay launch events, and understand how engineering decisions affect long-term space sustainability.
 
-3. **OrbitGuard Time Machine**
-   - Year slider from the first space age launches through the current catalog year
-   - Past-vs-today statistics for payloads, active satellites, debris, rocket bodies, and LEO objects
-   - Moveable 3D Earth orbit view with rotate, pan, and zoom controls
-   - Object-type toggles for payloads, debris, rocket bodies, and other hardware
-   - Downloadable Time Machine comparison report
+The project is not an operational collision prediction system. It is a transparent educational and portfolio-grade analyzer for learning about orbital congestion, launch impact, debris risk, and responsible mission design.
 
-4. **Launch Impact Simulator**
-   - User enters satellites deployed, target altitude, inclination, lifetime, fragments, rocket-body disposal, and deorbit plan
-   - App calculates objects added, affected altitude band, band-density increase, launch risk, and sustainability grade
-   - Immersive procedural 3D launch sequence with ignition, liftoff, Max-Q, stage separation, fairing jettison, orbit insertion, and satellite deployment
-   - Lightweight rendering uses generated geometry and particle systems instead of heavy model files
-   - Mission Comparison Arena ranks multiple launch scenarios side-by-side and generates a lifecycle report card for each mission
-   - Preset profiles let users compare clean LEO missions, rideshare launches, high-persistence constellations, and relay profiles
+## What It Does
 
-5. **Mission Replay Mode + Orbital Digital Twin**
-   - Cinematic mission-control replay for the current launch scenario and major historical debris events
-   - Animated Earth, ascent path, orbit insertion arc, risk heat shell, deployed satellites, and debris expansion
-   - Live telemetry for mission time, altitude, velocity, inclination, payload deployment, risk level, and sustainability score
-   - Mission autopsy report covering what went well, what increased risk, and how the mission could be redesigned
+- **Autonomous Mission Design Studio**: generate satellite mission architectures, compare tradeoffs, preview orbit designs, save scenarios, and export reports.
+- **Live Orbit Dashboard**: explore CelesTrak catalog summaries, altitude bands, object types, crowded shells, and a 3D Earth orbit viewer.
+- **Launch Impact Simulator**: test satellite count, altitude, inclination, lifetime, fragments, deorbit planning, and rocket-body disposal.
+- **Mission Replay Mode**: watch simulated launch phases, orbit insertion, payload deployment, risk changes, and mission autopsy summaries.
+- **Space Traffic Control Center**: inspect simulated conjunction alerts, avoidance maneuvers, traffic forecasts, operator status, and command logs.
+- **Time Machine**: compare historical launch-year reconstructions against today's orbital catalog.
+- **Weather Ops**: show NOAA space-weather conditions and ground-station weather effects on communications and tracking.
+- **Space Encyclopedia**: browse 200 curated aerospace and space-sustainability topics with search, filters, article generation, and fact-checking.
+- **Reports and Exports**: download JSON, CSV, KML, and TXT reports from major app modes.
 
-6. **Space Traffic Control Center**
-   - Command-center view for post-launch orbital traffic monitoring
-   - Simulated conjunction alert feed with miss distance, relative speed, time to closest approach, and recommended action
-   - Avoidance maneuver simulator comparing before/after miss distance, risk level, fuel cost, and mission impact
-   - Orbital health map, radar scan, traffic forecast, operator snapshot, emergency fragmentation event mode, command log, and exportable traffic report
+## Screenshots
 
-7. **OrbitGuard Space Encyclopedia**
-   - 200 curated topics across 10 aerospace and space-sustainability categories
-   - Search, category filters, related-topic links, reading-time metadata, and downloadable topic index
-   - Articles generate on demand through the OrbitGuard API, cache in the browser, and reload instantly after first generation
-   - Built-in Fact Checker compares generated article drafts against live OrbitGuard catalog summaries, NOAA weather data when relevant, and selected historical incident facts
-   - Transparent methodology note so the encyclopedia is useful without pretending generated text is a primary source
+| Mission Design Studio | Orbit Dashboard |
+| --- | --- |
+| ![Mission Design Studio](assets/mission-design-studio.png) | ![Orbit dashboard](assets/dashboard.png) |
 
-8. **Weather Ops Monitor**
-   - NOAA SWPC Kp index, F10.7 solar flux, solar wind, and alert messages
-   - Educational LEO drag and deorbit-timeline scaling by altitude band
-   - Solar Cycle 25 F10.7 timeline from public NOAA records
-   - 2022 Starlink geomagnetic storm incident case study
-   - Ground station monitor for Goldstone, Canberra, Madrid, Svalbard, McMurdo, Diego Garcia, Wallops, and custom coordinates
-   - Ka-band rain fade, optical tracking score, wind/antenna status, laser comm viability, and next clear-window estimate
+| Launch Simulator | Space Traffic Control |
+| --- | --- |
+| ![Launch simulator](assets/launch-simulator.png) | ![Space Traffic Control](assets/traffic-control.png) |
 
-9. **Sustainability Report**
-   - Generates a short report explaining how the launch changes orbital congestion
-   - Suggests mitigation steps such as deorbit planning, avoiding crowded bands, reducing deployment fragments, and disposing of upper stages
+## What Makes It Impressive
 
-Users can download:
+OrbitGuard combines several ideas that are usually separate:
 
-- Current orbit data as CSV
-- Current orbit data as JSON
-- Google Earth KML exports for the dashboard and Time Machine views
-- Time Machine comparison report as JSON
-- Encyclopedia topic index as JSON
-- Individual encyclopedia article as JSON
-- Weather operations snapshot as JSON
-- Mission design studio report as JSON
-- Mission design studio report as TXT
-- Launch simulation output as JSON
-- Launch simulation output as CSV
-- Mission comparison report as JSON
-- Mission autopsy report as JSON
-- Space Traffic Control report as JSON
-- Sustainability report as JSON
+- Public aerospace data from CelesTrak and NOAA
+- A browser-based mission design and launch-impact simulator
+- 3D-style orbit and mission visualizations built without heavy model downloads
+- Downloadable reports for missions, traffic simulations, weather snapshots, and sustainability summaries
+- Honest limitations so the app does not pretend to be flight-certified software
+- A polished public demo, API structure, documentation, roadmap, testing checklist, and contribution guide
 
-## About The Creator
+## Tech Stack
 
-**Harshith Pranav Praveen** is interested in aerospace engineering and excited to explore the field through hands-on engineering, design, manufacturing, and future work with aerospace companies such as Boeing, Lockheed Martin, and other organizations building advanced flight and space systems.
+- **Frontend:** HTML, CSS, JavaScript
+- **Backend/local API:** Node.js
+- **Data:** CelesTrak SATCAT, NOAA SWPC, educational weather/mission models
+- **Deployment:** Vercel static hosting with lightweight API structure
+- **Exports:** JSON, CSV, KML, TXT
 
-Harshith began formal engineering coursework at James Clemens High School in 2024 and has taken PLTW engineering classes. After moving from Tucson to Texas and then to Madison, he spent significant time studying mathematics and advanced coursework, which led him to appreciate engineering as a combination of math, design, modeling, and problem solving.
-
-In Introduction to Engineering Design, Harshith earned a certification connected to 3D modeling, engineering drawing, and the fundamentals of creating precise engineering models. During his sophomore year in 2025, he also earned a Python credential after studying programming fundamentals and more advanced topics.
-
-Python credential: https://www.credly.com/badges/d74e2ecb-c57e-44fd-87ad-6acd2b58008c/public_url
-
-## Run The App
-
-On macOS, the easiest option is to double-click:
-
-```text
-Run OrbitGuard.command
-```
-
-That opens the local website at:
-
-```text
-http://localhost:4173
-```
-
-Manual option:
+## Run Locally
 
 ```bash
-node server.mjs
+git clone https://github.com/harshithpr/orbitguard.git
+cd orbitguard
+npm install
+npm run build
+npm start
 ```
 
 Then open:
@@ -129,35 +77,27 @@ Then open:
 http://localhost:4173
 ```
 
-You can also use npm-compatible hosting platforms because the project includes a `package.json`:
+On macOS, you can also double-click:
 
-```bash
-npm install
-npm start
+```text
+Run OrbitGuard.command
 ```
 
-The project has no required third-party npm packages right now, so `node server.mjs` works directly after Node.js is installed.
-
-## Update Live Data
+## Update The Orbital Dataset
 
 ```bash
-node scripts/update-data.mjs
+npm run update-data
 ```
 
-The updater downloads CelesTrak SATCAT CSV data from:
-
-- https://celestrak.org/pub/satcat.csv
-- https://celestrak.org/satcat/satcat-format.php
-
-It keeps non-decayed Earth-orbiting objects with usable apogee/perigee data and writes them to:
+This downloads public CelesTrak SATCAT data, filters non-decayed Earth-orbiting objects with usable apogee/perigee data, and writes:
 
 ```text
 data/orbitguard-data.json
 ```
 
-## API Platform
+## API Preview
 
-OrbitGuard now includes local API endpoints:
+OrbitGuard includes local API endpoints for platform-style use:
 
 ```text
 GET  /api/v1/health
@@ -165,87 +105,41 @@ GET  /api/v1/summary
 GET  /api/v1/objects?band=500-600&type=debris
 GET  /api/v1/bands?size=100
 GET  /api/v1/time-machine?year=2005
-GET  /api/v1/encyclopedia/topics
-GET  /api/v1/encyclopedia/article?id=kessler-syndrome
-POST /api/v1/encyclopedia/fact-check
 GET  /api/v1/weather/space
-GET  /api/v1/weather/ground?station=goldstone
-GET  /api/v1/weather/ground?station=all
 GET  /api/v1/sustainability?satellites=24&altitude=550&inclination=53
 POST /api/v1/simulate
 ```
 
-API docs:
+See [docs/API.md](docs/API.md) for the full API documentation.
 
-```text
-docs/API.md
-```
+## Roadmap
 
-Architecture docs:
+- Add SGP4 propagation from live TLE/GP data
+- Add PDF exports for mission reports
+- Improve the 3D orbit viewer with more efficient level-of-detail rendering
+- Add historical debris event replay datasets
+- Add a Kessler cascade simulator
+- Add satellite pass prediction by user location
+- Expand the Space Traffic Control Center with more maneuver scenarios
+- Replace educational drag scaling with a full atmospheric-density model
 
-```text
-docs/ARCHITECTURE.md
-```
+## Contributing
 
-Creator bio:
+Contributions are welcome. Good first areas:
 
-```text
-docs/ABOUT_CREATOR.md
-```
+- Improve mobile layout
+- Add screenshots or demo GIFs
+- Improve API examples
+- Add tests for `src/engines/orbitguard-core.js`
+- Improve 3D labels and accessibility
+- Suggest aerospace features with clear sources and limitations
 
-Roadmap:
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before making a large change.
 
-```text
-docs/ROADMAP.md
-```
+## Project Status
 
-Testing checklist:
+OrbitGuard is actively maintained as a high school aerospace engineering portfolio project. The current version is designed for public education, data visualization, and mission-design exploration.
 
-```text
-docs/TESTING.md
-```
+## License
 
-Deployment guide:
-
-```text
-docs/DEPLOYMENT.md
-```
-
-## How The Launch Simulator Works
-
-For a new launch, OrbitGuard estimates:
-
-- **Objects added:** payloads, optional rocket body, and deployment fragments
-- **Affected altitude band:** based on target altitude
-- **Band share:** objects in that altitude band divided by all tracked objects
-- **Crowding score:** how dense that band is compared with the densest band in the catalog
-- **Launch risk:** a 0-100 educational index combining crowding, orbital persistence, mission lifetime, debris/rocket-body presence, and deorbit planning
-
-The simulator also includes a browser-based procedural launch visualization. The rocket, exhaust plume, Earth horizon, orbit ring, and satellites are generated with code, so users get a high-quality mission sequence without large 3D asset downloads. The sequence follows 11 mission phases from ignition through payload deployment and updates the same telemetry shown in the launch impact model.
-
-The Mission Comparison Arena turns the same model into a decision tool. Users can add the current mission, load realistic presets, rank scenarios by sustainability, inspect category scores for orbital congestion, debris risk, deorbit compliance, space-weather sensitivity, ground-station reliability, collision-avoidance readiness, and long-term sustainability, then export the comparison as JSON.
-
-Example output:
-
-> This launch adds 24 objects into LEO. The 500-600 km band changes from 7,241 to 7,265 objects, increasing local band share and producing a medium launch-impact rating.
-
-## Important Note
-
-OrbitGuard is not an operational collision prediction system. It is a transparent educational screening model for student research and aerospace portfolio work.
-
-The project intentionally does not claim true conjunction probability yet. Real conjunction assessment needs TLE/GP data, SGP4 propagation, covariance assumptions, and a documented collision-probability method.
-
-## Deployment Options
-
-- **Vercel:** recommended first public deployment. Use https://vercel.com/new after pushing to GitHub. The project includes Vercel-compatible API functions in `api/v1/`.
-- **Render / Railway / Fly.io:** good for running `node server.mjs` as a persistent Node server.
-- **GitHub Pages:** works for static frontend files only, not the API.
-
-## Strong Next Improvements
-
-- Add SGP4 propagation from live TLEs
-- Add launch provider presets
-- Compare altitude bands against NASA debris-mitigation rules
-- Save multiple launch scenarios and rank them
-- Export the sustainability report as PDF
-- Replace the educational drag scaling with a full NRLMSISE-00 atmospheric-density model
+MIT License. See [LICENSE](LICENSE).

@@ -1,22 +1,36 @@
 # Contributing To OrbitGuard
 
-OrbitGuard is meant to be understandable, honest, and useful. Contributions should keep the distinction clear between educational screening and operational spaceflight analysis.
+Thanks for helping improve OrbitGuard.
 
-## Good First Issues
+OrbitGuard is meant to be understandable, honest, and useful. Contributions should keep the difference clear between an educational screening model and operational spaceflight analysis.
 
+## Good First Contributions
+
+- Fix UI bugs
 - Improve mobile layout
-- Add more API examples
-- Add unit tests for `src/engines/orbitguard-core.js`
-- Add launch scenario presets
-- Improve the 3D visualizer labels
+- Add screenshots, demo GIFs, or clearer examples
+- Improve API examples and docs
+- Add tests for `src/engines/orbitguard-core.js`
+- Improve accessibility labels, contrast, and keyboard support
+- Suggest aerospace features with reliable sources
 
-## Advanced Issues
+## Advanced Contributions
 
 - Add SGP4 propagation from TLE/GP data
-- Add NOAA SWPC space-weather ingestion
-- Add educational covariance/Pc calculations
-- Add historical TLE snapshots for time-machine mode
+- Add historical TLE snapshots for Time Machine mode
+- Add PDF export for mission reports
 - Add Kessler shell simulation
+- Improve atmospheric drag modeling
+- Add more realistic launch-provider presets
+- Expand Space Traffic Control maneuver scenarios
+
+## Contribution Guidelines
+
+- Open an issue before making a large change.
+- Keep changes focused and easy to review.
+- Explain the data source or model behind aerospace logic.
+- Do not claim operational precision unless the model actually supports it.
+- Test desktop and mobile layouts when changing UI.
 
 ## Review Checklist
 
