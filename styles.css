@@ -262,6 +262,12 @@ main {
   min-width: 11rem;
 }
 
+.hero-actions button.active {
+  background: color-mix(in srgb, var(--accent) 82%, white);
+  color: var(--bg-main);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 .settings-drawer {
   position: fixed;
   top: 0;

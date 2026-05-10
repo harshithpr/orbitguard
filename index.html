@@ -31,21 +31,11 @@
       <div class="topbar-actions">
         <button class="top-link settings-toggle" id="settingsToggle" type="button">Display</button>
         <a class="top-link" href="https://github.com/harshithpr/orbitguard" target="_blank" rel="noreferrer">GitHub</a>
-        <a class="top-link" href="https://vercel.com/new" target="_blank" rel="noreferrer">Deploy</a>
         <div class="source-pill" id="dataSource">Loading catalog...</div>
       </div>
     </header>
 
     <main>
-      <nav class="mode-tabs" aria-label="Project modes">
-        <button class="mode-tab active" type="button" data-mode="dashboard">Current Orbit Dashboard</button>
-        <button class="mode-tab" type="button" data-mode="time">Time Machine</button>
-        <button class="mode-tab" type="button" data-mode="encyclopedia">Encyclopedia</button>
-        <button class="mode-tab" type="button" data-mode="weather">Weather Ops</button>
-        <button class="mode-tab" type="button" data-mode="simulator">Launch Impact Simulator</button>
-        <button class="mode-tab" type="button" data-mode="report">Sustainability Report</button>
-      </nav>
-
       <section class="hero-band" aria-label="OrbitGuard overview">
         <div>
           <p class="eyebrow">Space Sustainability Analyzer</p>
@@ -58,6 +48,7 @@
           <button class="mode-jump" type="button" data-mode="simulator">Run Launch Simulator</button>
           <button class="mode-jump" type="button" data-mode="time">Use Time Machine</button>
           <button class="mode-jump" type="button" data-mode="weather">Monitor Weather</button>
+          <button class="mode-jump" type="button" data-mode="report">Open Report</button>
         </div>
       </section>
 
@@ -616,9 +607,9 @@
                 <h2 id="articleTitle">Choose an encyclopedia entry</h2>
               </div>
               <div class="download-actions">
-                <button id="generateArticle" type="button">Generate / Load Article</button>
+                <button id="generateArticle" type="button">Load Article</button>
                 <button id="factCheckArticle" type="button">Run Fact Checker</button>
-                <button id="downloadArticle" type="button">Download Article</button>
+                <button id="downloadArticle" type="button">Export Article</button>
               </div>
             </div>
             <div class="article-meta" id="articleMeta">

@@ -1355,6 +1355,12 @@ async function fetchJsonEndpoint(url) {
     throw new Error(`${url} returned ${response.status}`);
   }
 
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(`${url} returned ${contentType || "non-JSON content"}`);
+  }
+
   return response.json();
 }
 
@@ -1791,7 +1797,12 @@ function readCachedArticle(topicId) {
 }
 
 function writeCachedArticle(article) {
-  localStorage.setItem(articleCacheKey(article.id), JSON.stringify(article));
+  try {
+    localStorage.setItem(articleCacheKey(article.id), JSON.stringify(article));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function cachedArticleStats() {
@@ -1930,7 +1941,13 @@ function renderEncyclopediaTopics() {
 function renderArticleMeta(article, topic) {
   const cached = readCachedArticle(topic.id);
   const generatedAt = article?.generatedAt ? observedTime(article.generatedAt) : "not generated yet";
-  const mode = article?.generationMode === "anthropic" ? "AI generated" : article ? "local generated" : "preview";
+  const modeLabels = {
+    anthropic: "AI generated",
+    "browser-fallback": "browser fallback",
+    "local-template": "local generated",
+    error: "error fallback"
+  };
+  const mode = article ? (modeLabels[article.generationMode] || "local generated") : "preview";
   elements.articleMeta.innerHTML = `
     <span>${escapeHtml(topic.category)}</span>
     <span>${escapeHtml(topic.depth)}</span>
@@ -1946,7 +1963,7 @@ function renderArticleBody(article, topic) {
   if (!article) {
     elements.articleBody.innerHTML = `
       <p><strong>${escapeHtml(topic.title)}</strong> is ready to generate. The article will be cached in this browser and can be checked against live OrbitGuard data.</p>
-      <p class="empty-state">Click Generate / Load Article to create the encyclopedia entry.</p>
+      <p class="empty-state">Click Load Article to create the encyclopedia entry.</p>
     `;
     return;
   }
@@ -1988,6 +2005,52 @@ function renderSelectedArticle() {
   renderEncyclopediaStats();
 }
 
+function articleWordCount(text) {
+  return String(text).trim().split(/\s+/).filter(Boolean).length;
+}
+
+function buildClientFallbackArticle(topic, error = null) {
+  const summary = summarize(state.objects);
+  const [crowdedBand] = buildHotspots(state.objects);
+  const relatedTitles = topic.related
+    .map((id) => state.encyclopedia.topics.find((candidate) => candidate.id === id)?.title)
+    .filter(Boolean)
+    .slice(0, 3);
+  const relatedText = relatedTitles.length ? relatedTitles.join(", ") : "orbital debris mitigation, space traffic coordination, and mission disposal planning";
+  const crowdedText = crowdedBand ? `${crowdedBand.band} km` : "the most crowded LEO shells";
+  const content = `${topic.title} is an OrbitGuard Space Encyclopedia topic that connects aerospace engineering decisions to the long-term safety of orbital environments. In the ${topic.category} category, the key question is how this subject changes tracking uncertainty, debris persistence, collision exposure, mission design, or public policy.
+
+OrbitGuard evaluates the topic against the current catalog baseline of ${numberFormat(summary.total)} tracked objects, including ${numberFormat(summary.active)} active payloads, ${numberFormat(summary.debris)} debris objects, and ${numberFormat(summary.rocketBodies)} rocket bodies. That live context matters because space sustainability is not only a definition problem; it is a systems problem where every payload, upper stage, failed spacecraft, and fragment changes how operators plan maneuvers and disposal.
+
+For ${topic.title.toLowerCase()}, the most important engineering link is mission lifecycle responsibility. Objects placed into low Earth orbit can sometimes naturally decay if they are low enough, but higher LEO, MEO, GEO, and cislunar environments can keep hardware in place for many years. When a mission uses crowded regions such as ${crowdedText}, the design needs stronger deorbit planning, passivation, collision-avoidance readiness, and transparent tracking data.
+
+This topic should be studied alongside ${relatedText}, because no single concept explains orbital sustainability by itself. OrbitGuard treats encyclopedia articles as educational working notes: they should be compared with live catalog statistics, NOAA space-weather conditions, and documented mission rules before being used in a formal report.
+
+This topic matters for the future of space sustainability because durable access to space depends on turning aerospace knowledge into measurable design choices before congestion becomes harder to reverse.${error ? `\n\nGeneration note: OrbitGuard used its built-in browser article generator because the live article API was unavailable or returned an invalid response: ${error.message}` : ""}`;
+
+  const words = articleWordCount(content);
+
+  return {
+    id: topic.id,
+    topic,
+    content,
+    wordCount: words,
+    readingMinutes: Math.max(1, Math.ceil(words / 220)),
+    generatedAt: new Date().toISOString(),
+    generationMode: "browser-fallback",
+    cacheKey: articleCacheKey(topic.id),
+    sourceSuggestions: [
+      "NASA Orbital Debris Program Office",
+      "CelesTrak SATCAT",
+      "NOAA Space Weather Prediction Center",
+      "ESA Space Debris Office",
+      "Secure World Foundation"
+    ],
+    transparencyNote:
+      "This article was generated locally in the browser because the live article API was unavailable. Use the fact checker and source suggestions before citing it."
+  };
+}
+
 function selectEncyclopediaTopic(topicId, { scroll = true } = {}) {
   const topic = state.encyclopedia.topics.find((item) => item.id === topicId);
 
@@ -2021,25 +2084,22 @@ async function generateSelectedArticle() {
   }
 
   state.encyclopedia.loading = true;
-  elements.articleBody.innerHTML = "<p class=\"empty-state\">Generating article and preparing local cache...</p>";
+  elements.generateArticle.disabled = true;
+  elements.generateArticle.textContent = "Loading...";
+  elements.articleBody.innerHTML = "<p class=\"empty-state\">Loading article and preparing local cache...</p>";
 
   try {
     const article = await fetchJsonEndpoint(`/api/v1/encyclopedia/article?id=${encodeURIComponent(topic.id)}`);
     writeCachedArticle(article);
     state.encyclopedia.selectedArticle = article;
   } catch (error) {
-    state.encyclopedia.selectedArticle = {
-      id: topic.id,
-      topic,
-      content: `${topic.title} is currently unavailable because the article generator could not be reached. Try again after restarting the OrbitGuard server.`,
-      wordCount: 24,
-      readingMinutes: 1,
-      generatedAt: new Date().toISOString(),
-      generationMode: "error",
-      transparencyNote: error.message
-    };
+    const article = buildClientFallbackArticle(topic, error);
+    writeCachedArticle(article);
+    state.encyclopedia.selectedArticle = article;
   } finally {
     state.encyclopedia.loading = false;
+    elements.generateArticle.disabled = false;
+    elements.generateArticle.textContent = "Load Article";
     renderSelectedArticle();
   }
 }
@@ -6237,6 +6297,10 @@ function setActiveMode(mode) {
   state.mode = mode;
 
   for (const item of elements.modeTabs) {
+    item.classList.toggle("active", item.dataset.mode === mode);
+  }
+
+  for (const item of elements.modeJumps) {
     item.classList.toggle("active", item.dataset.mode === mode);
   }
 
