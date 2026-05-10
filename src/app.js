@@ -27,6 +27,7 @@ const DEFAULT_DISPLAY_SETTINGS = {
   chartPalette: "balanced",
   reduceMotion: false,
   largeText: false,
+  showOrbitTrails: false,
   payloadColor: "#93c5fd",
   debrisColor: "#f87171",
   rocketColor: "#fbbf24",
@@ -310,6 +311,7 @@ const elements = {
   downloadOrbitJson: document.querySelector("#downloadOrbitJson"),
   downloadGoogleEarthKml: document.querySelector("#downloadGoogleEarthKml"),
   environmentSelect: document.querySelector("#environmentSelect"),
+  orbitTrailToggles: document.querySelectorAll(".orbit-trails-toggle"),
   orbitViewerTitle: document.querySelector("#orbitViewerTitle"),
   solarSystemPanel: document.querySelector("#solarSystemPanel"),
   metricObjects: document.querySelector("#metricObjects"),
@@ -859,6 +861,13 @@ function setDisplayControls() {
   elements.reduceMotion.checked = state.display.reduceMotion;
   elements.largeText.checked = state.display.largeText;
   elements.highContrastToggle.checked = state.display.theme === "high-contrast";
+  syncOrbitTrailControls();
+}
+
+function syncOrbitTrailControls() {
+  for (const toggle of elements.orbitTrailToggles) {
+    toggle.checked = Boolean(state.display.showOrbitTrails);
+  }
 }
 
 function clearCustomSurfaceVariables() {
@@ -4116,11 +4125,15 @@ function renderOrbitScene() {
   const catalogObjects = sceneCatalogObjects();
   const launchObjects = sceneLaunchObjects();
 
-  state.three.orbitTrailGroup = createOrbitTrailGroup(THREE, catalogObjects, launchObjects);
   state.three.objectPoints = createPointCloud(THREE, catalogObjects, state.mode === "time" ? 3200 : 2200, 0.028, false);
   state.three.launchPoints = launchObjects.length ? createPointCloud(THREE, launchObjects, 700, 0.056, true) : null;
   state.three.modelGroup = createObjectModelGroup(THREE, catalogObjects, launchObjects);
-  state.three.root.add(state.three.orbitTrailGroup);
+
+  if (state.display.showOrbitTrails) {
+    state.three.orbitTrailGroup = createOrbitTrailGroup(THREE, catalogObjects, launchObjects);
+    state.three.root.add(state.three.orbitTrailGroup);
+  }
+
   state.three.root.add(state.three.objectPoints);
 
   if (state.three.launchPoints) {
@@ -6925,6 +6938,15 @@ function wireControls() {
     renderOrbitScene();
     resizeOrbitScene();
   });
+
+  for (const toggle of elements.orbitTrailToggles) {
+    toggle.addEventListener("change", () => {
+      state.display.showOrbitTrails = toggle.checked;
+      syncOrbitTrailControls();
+      saveDisplaySettings();
+      renderOrbitScene();
+    });
+  }
 
   elements.deorbitSlider.addEventListener("input", () => {
     state.scenario.deorbitCompliance = Number(elements.deorbitSlider.value);
