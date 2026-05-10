@@ -182,6 +182,11 @@ const state = {
     deorbitPlan: true
   },
   impact: null,
+  comparison: {
+    seeded: false,
+    selectedId: null,
+    missions: []
+  },
   display: { ...DEFAULT_DISPLAY_SETTINGS },
   timeMachine: {
     selectedYear: 2010,
@@ -451,6 +456,14 @@ const elements = {
   launchVizVelocity: document.querySelector("#launchVizVelocity"),
   launchVizSatellites: document.querySelector("#launchVizSatellites"),
   launchVizStage: document.querySelector("#launchVizStage"),
+  addCurrentMission: document.querySelector("#addCurrentMission"),
+  loadComparisonPresets: document.querySelector("#loadComparisonPresets"),
+  clearComparisonMissions: document.querySelector("#clearComparisonMissions"),
+  downloadComparisonReport: document.querySelector("#downloadComparisonReport"),
+  missionComparisonSummary: document.querySelector("#missionComparisonSummary"),
+  missionPresetButtons: document.querySelector("#missionPresetButtons"),
+  missionComparisonRows: document.querySelector("#missionComparisonRows"),
+  missionReportCard: document.querySelector("#missionReportCard"),
   downloadSimulationJson: document.querySelector("#downloadSimulationJson"),
   downloadSimulationCsv: document.querySelector("#downloadSimulationCsv"),
   reportGrade: document.querySelector("#reportGrade"),
@@ -473,6 +486,19 @@ function slugify(value) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 64);
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, (character) => {
+    const entities = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    };
+    return entities[character];
+  });
 }
 
 function downloadJSON(filename, data) {
@@ -2151,8 +2177,17 @@ function maxBandCount(size) {
   return Math.max(1, ...counts.values());
 }
 
-function simulateLaunchImpact() {
-  const launch = state.launch;
+function simulateLaunchImpact(launchInput = state.launch) {
+  const launch = {
+    name: launchInput.name || "Untitled mission",
+    satellites: clamp(Number(launchInput.satellites || 1), 1, 500),
+    altitude: clamp(Number(launchInput.altitude || 550), 160, 42000),
+    inclination: clamp(Number(launchInput.inclination || 0), 0, 180),
+    lifetime: clamp(Number(launchInput.lifetime || 1), 1, 50),
+    fragments: clamp(Number(launchInput.fragments || 0), 0, 1000),
+    rocketBodyRemains: Boolean(launchInput.rocketBodyRemains),
+    deorbitPlan: Boolean(launchInput.deorbitPlan)
+  };
   const size = bandSizeForAltitude(launch.altitude);
   const band = altitudeBand({ altitude: launch.altitude }, size);
   const [bandStart, bandEnd] = band.split("-").map(Number);
@@ -2267,6 +2302,7 @@ function renderLaunchImpact() {
 
   renderScoreCompare(impact);
   renderReport();
+  renderMissionComparison();
   refreshLaunchSatellites();
 
   if (state.mode === "dashboard" || state.mode === "time") {
@@ -2341,6 +2377,439 @@ function renderReport() {
       `
     )
     .join("");
+}
+
+function missionComparisonPresets() {
+  return [
+    {
+      name: "Clean LEO demonstrator",
+      satellites: 12,
+      altitude: 500,
+      inclination: 53,
+      lifetime: 4,
+      fragments: 0,
+      rocketBodyRemains: false,
+      deorbitPlan: true,
+      source: "preset"
+    },
+    {
+      name: "Falcon 9 rideshare profile",
+      satellites: 40,
+      altitude: 550,
+      inclination: 53,
+      lifetime: 7,
+      fragments: 0,
+      rocketBodyRemains: false,
+      deorbitPlan: true,
+      source: "preset"
+    },
+    {
+      name: "High-persistence constellation",
+      satellites: 80,
+      altitude: 900,
+      inclination: 97,
+      lifetime: 20,
+      fragments: 6,
+      rocketBodyRemains: true,
+      deorbitPlan: false,
+      source: "preset"
+    },
+    {
+      name: "MEO relay mission",
+      satellites: 24,
+      altitude: 1200,
+      inclination: 70,
+      lifetime: 15,
+      fragments: 2,
+      rocketBodyRemains: true,
+      deorbitPlan: true,
+      source: "preset"
+    }
+  ];
+}
+
+function normalizeComparisonMission(launch, source = "custom") {
+  return {
+    id: `mission-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name: launch.name || "Untitled mission",
+    satellites: clamp(Number(launch.satellites || 1), 1, 500),
+    altitude: clamp(Number(launch.altitude || 550), 160, 42000),
+    inclination: clamp(Number(launch.inclination || 0), 0, 180),
+    lifetime: clamp(Number(launch.lifetime || 1), 1, 50),
+    fragments: clamp(Number(launch.fragments || 0), 0, 1000),
+    rocketBodyRemains: Boolean(launch.rocketBodyRemains),
+    deorbitPlan: Boolean(launch.deorbitPlan),
+    source
+  };
+}
+
+function seedComparisonMissions(force = false) {
+  if (!elements.missionComparisonRows) {
+    return;
+  }
+
+  if (state.comparison.seeded && !force) {
+    return;
+  }
+
+  const current = normalizeComparisonMission({ ...state.launch, name: `${state.launch.name} (current)` }, "current");
+  const presets = missionComparisonPresets().map((mission) => normalizeComparisonMission(mission, mission.source));
+  state.comparison.missions = [current, ...presets].slice(0, 8);
+  state.comparison.selectedId = state.comparison.missions[0]?.id || null;
+  state.comparison.seeded = true;
+}
+
+function addComparisonMission(launch = state.launch, source = "custom") {
+  const mission = normalizeComparisonMission(launch, source);
+  state.comparison.missions = [mission, ...state.comparison.missions].slice(0, 8);
+  state.comparison.selectedId = mission.id;
+  state.comparison.seeded = true;
+  renderMissionComparison();
+}
+
+function comparisonImpacts() {
+  return state.comparison.missions
+    .map((mission) => ({
+      id: mission.id,
+      source: mission.source,
+      impact: simulateLaunchImpact(mission)
+    }))
+    .sort((a, b) => missionScoreFromImpact(b.impact) - missionScoreFromImpact(a.impact) || a.impact.riskIndex - b.impact.riskIndex);
+}
+
+function missionScoreFromImpact(impact) {
+  const deorbitScore = impact.deorbitPlan ? (impact.lifetime <= 5 ? 95 : impact.lifetime <= 10 ? 84 : 72) : 32;
+  const debrisScore = clamp(100 - (impact.debris * 3 + impact.rocketBodies * 18), 5, 100);
+  const congestionScore = clamp(100 - impact.newCongestion * 0.72 - impact.bandIncrease * 0.08, 0, 100);
+  const lifetimeScore = clamp(100 - Math.max(0, impact.lifetime - 5) * 4, 15, 100);
+  const persistenceScoreValue = clamp(100 - persistenceScore({ altitude: impact.altitude, orbitClass: impact.orbitClass, activePayload: true }) * 70, 18, 100);
+
+  return Math.round(
+    0.26 * congestionScore +
+      0.22 * deorbitScore +
+      0.18 * debrisScore +
+      0.16 * lifetimeScore +
+      0.1 * persistenceScoreValue +
+      0.08 * clamp(100 - impact.riskIndex, 0, 100)
+  );
+}
+
+function letterGradeFromMissionScore(score) {
+  if (score >= 92) return "A";
+  if (score >= 84) return "B+";
+  if (score >= 76) return "B";
+  if (score >= 68) return "C+";
+  if (score >= 58) return "C";
+  if (score >= 46) return "D";
+  return "F";
+}
+
+function reportCardCategories(impact) {
+  return [
+    {
+      label: "Orbital congestion",
+      score: clamp(100 - impact.newCongestion * 0.78 - impact.bandIncrease * 0.06, 0, 100)
+    },
+    {
+      label: "Debris risk",
+      score: clamp(100 - impact.debris * 3 - impact.rocketBodies * 22, 0, 100)
+    },
+    {
+      label: "Deorbit compliance",
+      score: impact.deorbitPlan ? (impact.lifetime <= 5 ? 96 : impact.lifetime <= 25 ? 78 : 52) : 28
+    },
+    {
+      label: "Space-weather resilience",
+      score: impact.altitude < 380 ? 54 : impact.altitude < 700 ? 78 : impact.altitude < 2000 ? 64 : 82
+    },
+    {
+      label: "Ground-station reliability",
+      score: impact.inclination >= 80 ? 82 : impact.inclination >= 45 ? 76 : 70
+    },
+    {
+      label: "Collision avoidance readiness",
+      score: impact.deorbitPlan && !impact.rocketBodies ? 90 : impact.deorbitPlan ? 72 : 42
+    },
+    {
+      label: "Long-term sustainability",
+      score: clamp(100 - impact.riskIndex, 0, 100)
+    }
+  ].map((category) => ({ ...category, score: Math.round(category.score) }));
+}
+
+function missionBadges(impact, score) {
+  const badges = [];
+
+  if (score >= 82) {
+    badges.push(["Clean Orbit Candidate", "success"]);
+  }
+
+  if (impact.deorbitPlan) {
+    badges.push(["Good Deorbit Plan", "success"]);
+  } else {
+    badges.push(["Missing Deorbit Plan", "danger"]);
+  }
+
+  if (impact.newCongestion >= 72) {
+    badges.push(["Crowded Orbit Warning", "warning"]);
+  }
+
+  if (impact.rocketBodies) {
+    badges.push(["Rocket Body Risk", "warning"]);
+  }
+
+  if (impact.altitude < 400) {
+    badges.push(["Space Weather Sensitive", "warning"]);
+  }
+
+  if (impact.debris === 0 && !impact.rocketBodies) {
+    badges.push(["Low Debris Impact", "success"]);
+  }
+
+  return badges.slice(0, 5);
+}
+
+function missionStrengthsAndWeaknesses(impact) {
+  const strengths = [];
+  const weaknesses = [];
+
+  if (impact.deorbitPlan) {
+    strengths.push("Includes an end-of-life disposal plan.");
+  } else {
+    weaknesses.push("No planned deorbit strategy is included.");
+  }
+
+  if (!impact.rocketBodies) {
+    strengths.push("Avoids leaving a rocket body in orbit.");
+  } else {
+    weaknesses.push("Leaves upper-stage hardware in the orbital environment.");
+  }
+
+  if (impact.debris === 0) {
+    strengths.push("No deployment fragments are modeled.");
+  } else {
+    weaknesses.push(`${numberFormat(impact.debris)} deployment fragments increase tracking difficulty.`);
+  }
+
+  if (impact.lifetime <= 5) {
+    strengths.push("Mission lifetime aligns with the stricter 5-year deorbit direction.");
+  } else if (impact.lifetime > 15) {
+    weaknesses.push("Long orbital lifetime keeps objects in the environment for many years.");
+  }
+
+  if (impact.newCongestion >= 72) {
+    weaknesses.push(`The ${impact.band} km band is already highly crowded.`);
+  } else {
+    strengths.push("Target altitude avoids the highest local congestion penalty.");
+  }
+
+  return {
+    strengths: strengths.slice(0, 4),
+    weaknesses: weaknesses.slice(0, 4)
+  };
+}
+
+function buildMissionReportCard(impact, rank, count) {
+  const score = missionScoreFromImpact(impact);
+  const grade = letterGradeFromMissionScore(score);
+  const categories = reportCardCategories(impact);
+  const badges = missionBadges(impact, score);
+  const notes = missionStrengthsAndWeaknesses(impact);
+
+  return {
+    mission: impact.name,
+    rank,
+    comparedMissions: count,
+    score,
+    grade,
+    riskLevel: impact.riskLevel,
+    categories,
+    badges,
+    strengths: notes.strengths,
+    weaknesses: notes.weaknesses,
+    impact
+  };
+}
+
+function renderMissionComparison() {
+  if (!elements.missionComparisonRows || !elements.missionComparisonSummary || !elements.missionReportCard) {
+    return;
+  }
+
+  seedComparisonMissions();
+
+  const ranked = comparisonImpacts();
+
+  if (ranked.length === 0) {
+    elements.missionComparisonSummary.innerHTML = `<article class="compare-card"><p>Add the current launch plan or load presets to compare mission designs.</p></article>`;
+    elements.missionComparisonRows.innerHTML = "";
+    elements.missionReportCard.innerHTML = "";
+    return;
+  }
+
+  if (!state.comparison.selectedId || !ranked.some((entry) => entry.id === state.comparison.selectedId)) {
+    state.comparison.selectedId = ranked[0].id;
+  }
+
+  const best = ranked[0].impact;
+  const worst = [...ranked].sort((a, b) => b.impact.riskIndex - a.impact.riskIndex)[0].impact;
+  const mostCrowded = [...ranked].sort((a, b) => b.impact.newCongestion - a.impact.newCongestion)[0].impact;
+  const averageScore = ranked.reduce((sum, entry) => sum + missionScoreFromImpact(entry.impact), 0) / ranked.length;
+
+  elements.missionComparisonSummary.innerHTML = [
+    ["Best sustainability", `${escapeHTML(best.name)}`, `Grade ${letterGradeFromMissionScore(missionScoreFromImpact(best))}`],
+    ["Highest long-term risk", `${escapeHTML(worst.name)}`, `${worst.riskLevel} risk, index ${Math.round(worst.riskIndex)}`],
+    ["Most crowded band", `${mostCrowded.band} km`, `${Math.round(mostCrowded.newCongestion)} local crowding score`],
+    ["Average report score", `${Math.round(averageScore)}/100`, `${ranked.length} missions compared`]
+  ]
+    .map(
+      ([label, value, note]) => `
+        <article class="compare-card comparison-summary-card">
+          <p class="eyebrow">${label}</p>
+          <h3>${value}</h3>
+          <p>${note}</p>
+        </article>
+      `
+    )
+    .join("");
+
+  elements.missionPresetButtons.innerHTML = missionComparisonPresets()
+    .map(
+      (mission, index) => `
+        <button type="button" data-preset-index="${index}">
+          ${escapeHTML(mission.name)}
+        </button>
+      `
+    )
+    .join("");
+
+  elements.missionComparisonRows.innerHTML = ranked
+    .map((entry, index) => {
+      const impact = entry.impact;
+      const score = missionScoreFromImpact(impact);
+      const grade = letterGradeFromMissionScore(score);
+      const selected = entry.id === state.comparison.selectedId ? " selected" : "";
+
+      return `
+        <tr class="mission-row${selected}">
+          <td>#${index + 1}</td>
+          <td>
+            <strong>${escapeHTML(impact.name)}</strong>
+            <span>${entry.source === "current" ? "Current input snapshot" : entry.source === "preset" ? "Preset profile" : "Custom scenario"}</span>
+          </td>
+          <td>${impact.orbitClass}</td>
+          <td>${numberFormat(impact.satellites)}</td>
+          <td>${numberFormat(impact.altitude)} km</td>
+          <td>${impact.deorbitPlan ? "Yes" : "No"}</td>
+          <td><span class="risk-chip" style="--chip-color: ${riskColor(impact.riskIndex)}">${impact.riskLevel}</span></td>
+          <td><strong>${grade}</strong> <span>${score}/100</span></td>
+          <td>
+            <div class="row-actions">
+              <button type="button" data-action="report" data-id="${entry.id}">Report</button>
+              <button type="button" data-action="use" data-id="${entry.id}">Use</button>
+              <button type="button" data-action="remove" data-id="${entry.id}">Remove</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const selectedIndex = ranked.findIndex((entry) => entry.id === state.comparison.selectedId);
+  const selectedEntry = ranked[selectedIndex >= 0 ? selectedIndex : 0];
+  renderMissionReportCard(buildMissionReportCard(selectedEntry.impact, selectedIndex + 1 || 1, ranked.length));
+}
+
+function renderMissionReportCard(card) {
+  const badgeMarkup = card.badges
+    .map(([label, tone]) => `<span class="mission-badge ${tone}">${escapeHTML(label)}</span>`)
+    .join("");
+
+  const categoryMarkup = card.categories
+    .map(
+      (category) => `
+        <div class="report-meter">
+          <span>${escapeHTML(category.label)}</span>
+          <div class="compare-track"><div class="compare-fill" style="--value: ${category.score}%; --bar-color: ${riskColor(100 - category.score)}"></div></div>
+          <strong>${category.score}</strong>
+        </div>
+      `
+    )
+    .join("");
+
+  elements.missionReportCard.innerHTML = `
+    <article class="report-card-summary">
+      <div>
+        <p class="eyebrow">Selected mission report card</p>
+        <h3>${escapeHTML(card.mission)}</h3>
+        <p>Ranked #${card.rank} of ${card.comparedMissions}. This report card translates the launch-impact model into lifecycle categories used for mission design review.</p>
+      </div>
+      <div class="grade-meter">
+        <span>Overall Grade</span>
+        <strong>${card.grade}</strong>
+        <em>${card.score}/100</em>
+      </div>
+    </article>
+
+    <div class="badge-row">${badgeMarkup}</div>
+
+    <div class="report-card-grid">
+      <section>
+        <h4>Category scores</h4>
+        <div class="report-meter-list">${categoryMarkup}</div>
+      </section>
+      <section>
+        <h4>Strong points</h4>
+        <ul>${card.strengths.map((item) => `<li>${escapeHTML(item)}</li>`).join("")}</ul>
+      </section>
+      <section>
+        <h4>Weak points</h4>
+        <ul>${card.weaknesses.map((item) => `<li>${escapeHTML(item)}</li>`).join("")}</ul>
+      </section>
+    </div>
+  `;
+}
+
+function setLaunchInputsFromMission(mission) {
+  elements.launchName.value = mission.name;
+  elements.launchSatellites.value = String(mission.satellites);
+  elements.launchAltitude.value = String(mission.altitude);
+  elements.launchInclination.value = String(mission.inclination);
+  elements.launchLifetime.value = String(mission.lifetime);
+  elements.launchFragments.value = String(mission.fragments);
+  elements.rocketBodyRemains.checked = mission.rocketBodyRemains;
+  elements.deorbitPlan.checked = mission.deorbitPlan;
+  readLaunchInputs();
+  renderLaunchImpact();
+  setActiveMode("simulator");
+}
+
+function buildMissionComparisonPayload() {
+  const ranked = comparisonImpacts();
+  const highestRisk = [...ranked].sort((a, b) => b.impact.riskIndex - a.impact.riskIndex)[0]?.impact || null;
+
+  return {
+    project: "OrbitGuard",
+    creator: CREATOR.name,
+    generatedAt: new Date().toISOString(),
+    purpose: "Mission Comparison Arena and Space Sustainability Report Card",
+    summary: {
+      comparedMissions: ranked.length,
+      bestMission: ranked[0]?.impact.name || null,
+      highestRiskMission: highestRisk?.name || null
+    },
+    rankings: ranked.map((entry, index) => ({
+      rank: index + 1,
+      reportCard: buildMissionReportCard(entry.impact, index + 1, ranked.length)
+    })),
+    methodology:
+      "Educational scenario ranking using orbital congestion, debris contribution, rocket-body disposal, deorbit planning, mission lifetime, persistence, space-weather sensitivity, and collision-avoidance readiness."
+  };
+}
+
+function exportMissionComparisonReport() {
+  const payload = buildMissionComparisonPayload();
+  downloadJSON("orbitguard-mission-comparison-report.json", payload);
 }
 
 function buildRecommendations(impact) {
@@ -5261,6 +5730,72 @@ function wireLaunchSequenceControls() {
   });
 }
 
+function wireMissionComparisonControls() {
+  elements.addCurrentMission?.addEventListener("click", () => {
+    readLaunchInputs();
+    addComparisonMission({ ...state.launch, name: `${state.launch.name} scenario` }, "custom");
+  });
+
+  elements.loadComparisonPresets?.addEventListener("click", () => {
+    state.comparison.seeded = false;
+    seedComparisonMissions(true);
+    renderMissionComparison();
+  });
+
+  elements.clearComparisonMissions?.addEventListener("click", () => {
+    state.comparison.missions = [];
+    state.comparison.selectedId = null;
+    state.comparison.seeded = true;
+    renderMissionComparison();
+  });
+
+  elements.downloadComparisonReport?.addEventListener("click", exportMissionComparisonReport);
+
+  elements.missionPresetButtons?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-preset-index]");
+
+    if (!button) {
+      return;
+    }
+
+    const preset = missionComparisonPresets()[Number(button.dataset.presetIndex)];
+
+    if (preset) {
+      addComparisonMission(preset, "preset");
+    }
+  });
+
+  elements.missionComparisonRows?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-action][data-id]");
+
+    if (!button) {
+      return;
+    }
+
+    const mission = state.comparison.missions.find((item) => item.id === button.dataset.id);
+
+    if (!mission) {
+      return;
+    }
+
+    if (button.dataset.action === "remove") {
+      state.comparison.missions = state.comparison.missions.filter((item) => item.id !== mission.id);
+      state.comparison.selectedId = state.comparison.missions[0]?.id || null;
+      renderMissionComparison();
+      return;
+    }
+
+    if (button.dataset.action === "use") {
+      state.comparison.selectedId = mission.id;
+      setLaunchInputsFromMission(mission);
+      return;
+    }
+
+    state.comparison.selectedId = mission.id;
+    renderMissionComparison();
+  });
+}
+
 function wireControls() {
   wireModeTabs();
   wireDisplaySettings();
@@ -5268,6 +5803,7 @@ function wireControls() {
   wireWeatherControls();
   wireEncyclopediaControls();
   wireLaunchSequenceControls();
+  wireMissionComparisonControls();
 
   elements.orbitFilter.addEventListener("change", () => {
     state.filters.orbit = elements.orbitFilter.value;

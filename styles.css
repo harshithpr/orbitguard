@@ -1397,6 +1397,233 @@ button:hover {
   flex: 1 1 13rem;
 }
 
+.mission-compare-panel {
+  margin-top: 1rem;
+}
+
+.mission-compare-heading {
+  align-items: start;
+}
+
+.comparison-actions,
+.mission-preset-row,
+.row-actions,
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.comparison-actions {
+  justify-content: end;
+  max-width: 38rem;
+}
+
+.comparison-actions button,
+.mission-preset-row button,
+.row-actions button {
+  min-height: 2.2rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-card) 82%, transparent);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.comparison-actions button:first-child,
+.comparison-actions button:last-child {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+  background: var(--accent-soft);
+}
+
+.comparison-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.comparison-summary-card h3 {
+  margin: 0;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+}
+
+.comparison-summary-card p:last-child {
+  margin-bottom: 0;
+}
+
+.mission-preset-row {
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.mission-table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-panel) 74%, transparent);
+}
+
+.mission-table {
+  min-width: 940px;
+}
+
+.mission-row.selected {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.mission-row td:first-child {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.mission-row td strong,
+.mission-row td span {
+  display: block;
+}
+
+.mission-row td span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.row-actions {
+  flex-wrap: nowrap;
+}
+
+.row-actions button {
+  min-height: 1.9rem;
+  padding-inline: 0.55rem;
+  font-size: 0.72rem;
+}
+
+.mission-report-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-card) 78%, var(--bg-panel));
+}
+
+.report-card-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+}
+
+.report-card-summary h3 {
+  margin: 0 0 0.45rem;
+  font-size: clamp(1.25rem, 3vw, 1.8rem);
+}
+
+.report-card-summary p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.grade-meter {
+  min-width: 9rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ink);
+}
+
+.grade-meter span,
+.grade-meter em {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 720;
+}
+
+.grade-meter strong {
+  color: var(--accent);
+  font-size: 2.7rem;
+  line-height: 1;
+}
+
+.mission-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 780;
+}
+
+.mission-badge.success {
+  border-color: color-mix(in srgb, var(--success) 52%, transparent);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+}
+
+.mission-badge.warning {
+  border-color: color-mix(in srgb, var(--warning) 52%, transparent);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning);
+}
+
+.mission-badge.danger {
+  border-color: color-mix(in srgb, var(--danger) 52%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.report-card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+  gap: 1rem;
+}
+
+.report-card-grid section {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-panel) 70%, transparent);
+}
+
+.report-card-grid h4 {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+}
+
+.report-card-grid ul {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.report-meter-list {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.report-meter {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) minmax(0, 1.15fr) 2.5rem;
+  gap: 0.65rem;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 720;
+}
+
 .impact-summary {
   color: var(--text);
   line-height: 1.5;
@@ -1846,12 +2073,15 @@ footer a {
   .compare-grid,
   .encyclopedia-shell,
   .weather-detail-grid,
-  .report-layout {
+  .report-layout,
+  .report-card-grid,
+  .report-card-summary {
     grid-template-columns: 1fr;
   }
 
   .dashboard-metrics,
   .impact-metrics,
+  .comparison-summary-grid,
   .encyclopedia-stats,
   .solar-system-panel,
   .topic-card-grid,
@@ -1866,6 +2096,11 @@ footer a {
 
   .ground-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .comparison-actions {
+    justify-content: start;
+    max-width: none;
   }
 
   .encyclopedia-sidebar {
@@ -1894,6 +2129,7 @@ footer a {
   .control-band,
   .dashboard-metrics,
   .impact-metrics,
+  .comparison-summary-grid,
   .encyclopedia-stats,
   .topic-card-grid,
   .fact-check-grid,
@@ -1910,6 +2146,15 @@ footer a {
   .solar-system-panel,
   .launch-telemetry-grid,
   .incident-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-actions,
+  .row-actions {
+    justify-content: start;
+  }
+
+  .report-meter {
     grid-template-columns: 1fr;
   }
 

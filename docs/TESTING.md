@@ -131,6 +131,7 @@ Expected:
 - Report mentions deorbit planning as a positive factor
 - Immersive Launch Sequence starts at ignition, advances through liftoff, and updates altitude, velocity, stage, and deployed-satellite telemetry
 - Restart returns the sequence to T+00:00, and the mission-time slider scrubs through all 11 phases
+- Mission Comparison Arena shows ranked missions, summary cards, preset buttons, and a selected mission report card
 
 ## Weather Ops Test
 
@@ -168,6 +169,21 @@ Expected:
 - Lower sustainability grade
 - Warnings or recommendations about long lifetime, fragments, missing deorbit plan, and rocket body disposal
 - Launch visualization updates the deployed-satellite count to match the scenario input while still limiting visual objects for performance
+- Clicking `Add Current Mission` adds the bad scenario to the arena and ranks it below cleaner alternatives
+
+## Mission Comparison Arena Test
+
+Open the `Launch Impact Simulator` tab.
+
+Expected:
+
+- `Load Presets` restores clean LEO, rideshare, high-persistence, and relay profiles
+- `Add Current Mission` snapshots the current form inputs into the comparison table
+- The table ranks lower-risk missions above higher-risk missions
+- `Report` changes the selected report card without changing the form
+- `Use` loads that scenario into the launch simulator form and updates launch results
+- `Remove` deletes one row without breaking the ranking
+- `Download Comparison Report` saves a JSON file with rankings, category scores, badges, strengths, weaknesses, and methodology
 
 ## Download Checks
 
@@ -180,6 +196,7 @@ Click:
 - Download Comparison
 - Download Topic Index
 - Download Article
+- Download Comparison Report
 - Download Launch Simulation
 - Download Simulation CSV
 - Download Sustainability Report

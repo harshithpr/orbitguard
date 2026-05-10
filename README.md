@@ -35,6 +35,8 @@ OrbitGuard also includes a customizable visual theme system that lets users swit
    - App calculates objects added, affected altitude band, band-density increase, launch risk, and sustainability grade
    - Immersive procedural 3D launch sequence with ignition, liftoff, Max-Q, stage separation, fairing jettison, orbit insertion, and satellite deployment
    - Lightweight rendering uses generated geometry and particle systems instead of heavy model files
+   - Mission Comparison Arena ranks multiple launch scenarios side-by-side and generates a lifecycle report card for each mission
+   - Preset profiles let users compare clean LEO missions, rideshare launches, high-persistence constellations, and relay profiles
 
 4. **OrbitGuard Space Encyclopedia**
    - 200 curated topics across 10 aerospace and space-sustainability categories
@@ -66,6 +68,7 @@ Users can download:
 - Weather operations snapshot as JSON
 - Launch simulation output as JSON
 - Launch simulation output as CSV
+- Mission comparison report as JSON
 - Sustainability report as JSON
 
 ## About The Creator
@@ -197,6 +200,8 @@ For a new launch, OrbitGuard estimates:
 - **Launch risk:** a 0-100 educational index combining crowding, orbital persistence, mission lifetime, debris/rocket-body presence, and deorbit planning
 
 The simulator also includes a browser-based procedural launch visualization. The rocket, exhaust plume, Earth horizon, orbit ring, and satellites are generated with code, so users get a high-quality mission sequence without large 3D asset downloads. The sequence follows 11 mission phases from ignition through payload deployment and updates the same telemetry shown in the launch impact model.
+
+The Mission Comparison Arena turns the same model into a decision tool. Users can add the current mission, load realistic presets, rank scenarios by sustainability, inspect category scores for orbital congestion, debris risk, deorbit compliance, space-weather sensitivity, ground-station reliability, collision-avoidance readiness, and long-term sustainability, then export the comparison as JSON.
 
 Example output:
 

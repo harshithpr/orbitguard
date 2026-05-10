@@ -991,6 +991,47 @@
 
           <p class="time-note">Performance note: the vehicle, exhaust, stars, orbital ring, and satellites are generated in code. There are no heavy model downloads, so the scene stays responsive on laptops and phones.</p>
         </section>
+
+        <section class="panel mission-compare-panel">
+          <div class="panel-heading mission-compare-heading">
+            <div>
+              <p class="eyebrow">Decision tool</p>
+              <h2>Mission Comparison Arena</h2>
+              <p class="panel-note">Create multiple launch plans, compare sustainability scores, rank the safest design, and export a professional scenario report.</p>
+            </div>
+            <div class="comparison-actions">
+              <button id="addCurrentMission" type="button">Add Current Mission</button>
+              <button id="loadComparisonPresets" type="button">Load Presets</button>
+              <button id="clearComparisonMissions" type="button">Clear</button>
+              <button id="downloadComparisonReport" type="button">Download Comparison Report</button>
+            </div>
+          </div>
+
+          <div class="comparison-summary-grid" id="missionComparisonSummary"></div>
+
+          <div class="mission-preset-row" id="missionPresetButtons" aria-label="Mission comparison presets"></div>
+
+          <div class="table-wrap mission-table-wrap">
+            <table class="mission-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Mission</th>
+                  <th>Orbit</th>
+                  <th>Satellites</th>
+                  <th>Altitude</th>
+                  <th>Deorbit</th>
+                  <th>Risk</th>
+                  <th>Grade</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="missionComparisonRows"></tbody>
+            </table>
+          </div>
+
+          <div class="mission-report-card" id="missionReportCard"></div>
+        </section>
       </section>
 
       <section class="mode-panel" id="reportMode">
