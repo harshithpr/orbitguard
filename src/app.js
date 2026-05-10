@@ -8191,12 +8191,18 @@ function setSettingsDrawer(open) {
   elements.settingsDrawer.classList.toggle("open", open);
   elements.settingsDrawer.setAttribute("aria-hidden", open ? "false" : "true");
   elements.settingsBackdrop.hidden = !open;
+  document.body.classList.toggle("settings-drawer-open", open);
 }
 
 function wireDisplaySettings() {
   elements.settingsToggle.addEventListener("click", () => setSettingsDrawer(true));
   elements.settingsClose.addEventListener("click", () => setSettingsDrawer(false));
   elements.settingsBackdrop.addEventListener("click", () => setSettingsDrawer(false));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && elements.settingsDrawer.classList.contains("open")) {
+      setSettingsDrawer(false);
+    }
+  });
 
   elements.themeSelect.addEventListener("change", () => {
     state.display.theme = elements.themeSelect.value;
