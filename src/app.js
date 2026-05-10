@@ -3688,7 +3688,7 @@ function drawEarthPlaceMarkers(ctx, width, height) {
   ];
 
   ctx.save();
-  ctx.font = "12px Inter, Arial, sans-serif";
+  ctx.font = "600 14px Space Grotesk, Arial, sans-serif";
   ctx.textBaseline = "middle";
 
   for (const [name, lon, lat] of places) {
@@ -3797,8 +3797,8 @@ function createEarthSurfaceMarkers(THREE) {
     const glow = new THREE.Mesh(new THREE.SphereGeometry(0.042, 16, 10), glowMaterial.clone());
     glow.position.copy(marker.position);
     const labelPoint = lonLatToSpherePoint(lon, lat, 0.86);
-    const label = createBodyLabel(THREE, name, labelPoint.x, labelPoint.y, labelPoint.z);
-    label.scale.set(0.28, 0.074, 1);
+    const label = createBodyLabel(THREE, name, labelPoint.x, labelPoint.y, labelPoint.z, { depthTest: true });
+    label.scale.set(0.5, 0.145, 1);
     group.add(glow, marker, label);
   }
 
@@ -4901,26 +4901,86 @@ function createGasGiantTexture(THREE, kind) {
   return createTextureFromCanvas(THREE, canvas);
 }
 
-function createBodyLabel(THREE, text, x, y, z) {
+function createBodyLabel(THREE, text, x, y, z, options = {}) {
+  const labelText = String(text);
+  const fontSize = 54;
+  const paddingX = 56;
+  const probe = document.createElement("canvas").getContext("2d");
+  probe.font = `700 ${fontSize}px Space Grotesk, Arial, sans-serif`;
+  const measuredWidth = Math.ceil(probe.measureText(labelText).width);
+  const canvasWidth = Math.min(1536, Math.max(512, measuredWidth + paddingX * 2));
+  const canvasHeight = 160;
   const canvas = document.createElement("canvas");
-  canvas.width = 384;
-  canvas.height = 96;
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "rgb(15 23 42 / 0.72)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = "rgb(147 197 253 / 0.6)";
-  ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.shadowColor = "rgb(0 0 0 / 0.55)";
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = "rgb(7 13 30 / 0.86)";
+  roundedRect(ctx, 10, 12, canvas.width - 20, canvas.height - 24, 30);
+  ctx.fill();
+  ctx.restore();
+
+  const edgeGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+  edgeGradient.addColorStop(0, "rgb(96 165 250 / 0.25)");
+  edgeGradient.addColorStop(0.5, "rgb(226 232 240 / 0.6)");
+  edgeGradient.addColorStop(1, "rgb(167 139 250 / 0.25)");
+  ctx.strokeStyle = edgeGradient;
+  ctx.lineWidth = 3;
+  roundedRect(ctx, 11.5, 13.5, canvas.width - 23, canvas.height - 27, 28);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgb(147 197 253 / 0.34)";
+  ctx.fillRect(34, canvas.height - 31, canvas.width - 68, 2);
   ctx.fillStyle = "#f8fafc";
-  ctx.font = "700 30px Inter, Arial, sans-serif";
+  ctx.font = `700 ${fontSize}px Space Grotesk, Arial, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  ctx.shadowColor = "rgb(0 0 0 / 0.82)";
+  ctx.shadowBlur = 5;
+  ctx.lineWidth = 7;
+  ctx.strokeStyle = "rgb(2 6 23 / 0.78)";
+  ctx.strokeText(labelText, canvas.width / 2, canvas.height / 2 + 1);
+  ctx.fillText(labelText, canvas.width / 2, canvas.height / 2);
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.92 }));
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  texture.anisotropy = 16;
+  texture.needsUpdate = true;
+
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    opacity: options.opacity ?? 0.98,
+    depthWrite: false,
+    depthTest: options.depthTest ?? false
+  }));
+  const baseWidth = clamp(canvas.width / 560, 0.78, 2.45);
   sprite.position.set(x, y, z);
-  sprite.scale.set(0.78, 0.2, 1);
+  sprite.scale.set(baseWidth, baseWidth * (canvas.height / canvas.width), 1);
+  sprite.renderOrder = options.depthTest ? 4 : 20;
   return sprite;
+}
+
+function roundedRect(ctx, x, y, width, height, radius) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + safeRadius, y);
+  ctx.lineTo(x + width - safeRadius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  ctx.lineTo(x + width, y + height - safeRadius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  ctx.lineTo(x + safeRadius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  ctx.lineTo(x, y + safeRadius);
+  ctx.quadraticCurveTo(x, y, x + safeRadius, y);
+  ctx.closePath();
 }
 
 function addMissionArc(THREE, group, color, width, offsetX, height) {
@@ -5581,7 +5641,7 @@ function createLaunchIssReference(THREE) {
   const iss = createIssReferenceModel(THREE);
   iss.scale.setScalar(2.15);
   const label = createBodyLabel(THREE, "ISS at ~420 km", 0, 0.24, 0);
-  label.scale.set(0.62, 0.16, 1);
+  label.scale.set(0.9, 0.26, 1);
   const orbit = new THREE.Mesh(
     new THREE.TorusGeometry(0.42, 0.003, 8, 80),
     new THREE.MeshBasicMaterial({
@@ -6090,7 +6150,7 @@ function createObjectModelGroup(THREE, catalogObjects, launchObjects) {
   group.add(iss);
 
   const label = createBodyLabel(THREE, "ISS reference orbit", issX, issY + 0.22, issZ);
-  label.scale.set(0.56, 0.145, 1);
+  label.scale.set(0.9, 0.26, 1);
   group.add(label);
 
   return group;
