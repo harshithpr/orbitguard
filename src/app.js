@@ -230,6 +230,7 @@ const state = {
     earthMarkers: null,
     atmosphere: null,
     clouds: null,
+    orbitTrailGroup: null,
     objectPoints: null,
     launchPoints: null,
     modelGroup: null,
@@ -261,6 +262,7 @@ const state = {
     plumeLife: null,
     plumeColors: null,
     earth: null,
+    earthClouds: null,
     atmosphere: null,
     orbitRing: null,
     horizon: null,
@@ -3308,28 +3310,31 @@ function syncRendererTarget() {
 }
 
 function createEarthTexture(THREE) {
-  const width = 1024;
-  const height = 512;
+  const width = 2048;
+  const height = 1024;
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   const ocean = ctx.createLinearGradient(0, 0, 0, height);
-  ocean.addColorStop(0, "#0f4f8a");
-  ocean.addColorStop(0.5, "#0b6aa4");
-  ocean.addColorStop(1, "#08345e");
+  ocean.addColorStop(0, "#0b2f5f");
+  ocean.addColorStop(0.18, "#0f5f9e");
+  ocean.addColorStop(0.5, "#0875aa");
+  ocean.addColorStop(0.78, "#0a4a82");
+  ocean.addColorStop(1, "#061f43");
   ctx.fillStyle = ocean;
   ctx.fillRect(0, 0, width, height);
 
   for (let y = 0; y < height; y += 1) {
     const latitude = Math.abs((y / height) * 2 - 1);
-    ctx.fillStyle = `rgb(255 255 255 / ${latitude * 0.06})`;
+    ctx.fillStyle = `rgb(255 255 255 / ${latitude * 0.095})`;
     ctx.fillRect(0, y, width, 1);
   }
 
   drawDetailedEarthMap(ctx, width, height);
+  drawEarthCoastGlow(ctx, width, height);
 
-  ctx.strokeStyle = "rgb(255 255 255 / 0.08)";
+  ctx.strokeStyle = "rgb(255 255 255 / 0.06)";
   ctx.lineWidth = 1;
   for (let x = 0; x <= width; x += width / 12) {
     ctx.beginPath();
@@ -3343,6 +3348,120 @@ function createEarthTexture(THREE) {
     ctx.lineTo(width, y);
     ctx.stroke();
   }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
+function createEarthBumpTexture(THREE) {
+  const width = 2048;
+  const height = 1024;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#111827";
+  ctx.fillRect(0, 0, width, height);
+
+  const regions = [
+    [[-168, 68], [-145, 61], [-124, 50], [-126, 38], [-116, 31], [-100, 21], [-83, 25], [-72, 40], [-53, 48], [-61, 58], [-83, 66], [-116, 72]],
+    [[-86, 21], [-72, 18], [-62, 10], [-55, -2], [-48, -18], [-54, -36], [-69, -55], [-78, -35], [-81, -8]],
+    [[-12, 60], [8, 62], [32, 58], [45, 47], [30, 38], [10, 42], [-8, 50]],
+    [[-18, 35], [10, 38], [34, 31], [50, 12], [43, -16], [30, -35], [14, -35], [-5, -18], [-17, 7]],
+    [[36, 58], [67, 68], [104, 64], [142, 54], [158, 41], [143, 24], [118, 20], [100, 7], [78, 20], [56, 25], [42, 39]],
+    [[113, -12], [136, -10], [153, -24], [146, -39], [120, -35], [111, -22]],
+    [[-180, -70], [-120, -74], [-60, -69], [0, -73], [60, -69], [120, -74], [180, -70], [180, -90], [-180, -90]]
+  ];
+
+  for (const points of regions) {
+    ctx.beginPath();
+    points.forEach(([lon, lat], index) => {
+      const [x, y] = lonLatToCanvas(width, height, lon, lat);
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+    ctx.closePath();
+    ctx.fillStyle = "#a6b080";
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = "#f8fafc";
+  ctx.lineWidth = 4;
+  const mountainChains = [
+    [[-122, 55], [-112, 42], [-106, 31], [-100, 19]],
+    [[-78, 7], [-73, -10], [-70, -25], [-68, -45]],
+    [[7, 43], [16, 46], [27, 44], [38, 39]],
+    [[68, 35], [82, 32], [95, 29]]
+  ];
+  for (const chain of mountainChains) {
+    ctx.beginPath();
+    chain.forEach(([lon, lat], index) => {
+      const [x, y] = lonLatToCanvas(width, height, lon, lat);
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
+function createEarthLightsTexture(THREE) {
+  const width = 2048;
+  const height = 1024;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, width, height);
+
+  const clusters = [
+    [-74, 40.7, 28, 1.0],
+    [-118.2, 34.05, 20, 0.8],
+    [-95.37, 29.76, 18, 0.7],
+    [-0.12, 51.5, 28, 0.95],
+    [2.35, 48.85, 22, 0.75],
+    [31.24, 30.04, 18, 0.62],
+    [77.2, 28.6, 20, 0.7],
+    [116.4, 39.9, 26, 0.82],
+    [139.7, 35.7, 30, 0.95],
+    [151.2, -33.9, 16, 0.65],
+    [18.4, -33.9, 14, 0.5],
+    [-46.6, -23.55, 20, 0.75]
+  ];
+
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const [lon, lat, count, intensity] of clusters) {
+    const [cx, cy] = lonLatToCanvas(width, height, lon, lat);
+    for (let index = 0; index < count; index += 1) {
+      const angle = seededUnit(lon * 31 + lat * 17 + index) * Math.PI * 2;
+      const distance = seededUnit(lon * 47 + lat * 29 + index) ** 1.8 * 44;
+      const x = cx + Math.cos(angle) * distance;
+      const y = cy + Math.sin(angle) * distance * 0.56;
+      const radius = 1.1 + seededUnit(lon * 53 + index) * 2.8;
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius * 5);
+      gradient.addColorStop(0, `rgb(255 226 143 / ${0.42 * intensity})`);
+      gradient.addColorStop(1, "rgb(255 226 143 / 0)");
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -3418,6 +3537,40 @@ function drawDetailedEarthMap(ctx, width, height) {
   drawEarthOceanDetail(ctx, width, height);
   drawEarthMountainChains(ctx, width, height);
   drawEarthPlaceMarkers(ctx, width, height);
+}
+
+function drawEarthCoastGlow(ctx, width, height) {
+  const coastlines = [
+    [[-168, 68], [-145, 61], [-124, 50], [-126, 38], [-116, 31], [-100, 21], [-83, 25], [-72, 40], [-53, 48], [-61, 58], [-83, 66], [-116, 72]],
+    [[-86, 21], [-72, 18], [-62, 10], [-55, -2], [-48, -18], [-54, -36], [-69, -55], [-78, -35], [-81, -8]],
+    [[-12, 60], [8, 62], [32, 58], [45, 47], [30, 38], [10, 42], [-8, 50]],
+    [[-18, 35], [10, 38], [34, 31], [50, 12], [43, -16], [30, -35], [14, -35], [-5, -18], [-17, 7]],
+    [[36, 58], [67, 68], [104, 64], [142, 54], [158, 41], [143, 24], [118, 20], [100, 7], [78, 20], [56, 25], [42, 39]],
+    [[113, -12], [136, -10], [153, -24], [146, -39], [120, -35], [111, -22]],
+    [[-180, -70], [-120, -74], [-60, -69], [0, -73], [60, -69], [120, -74], [180, -70]]
+  ];
+
+  ctx.save();
+  ctx.shadowColor = "rgb(147 197 253 / 0.72)";
+  ctx.shadowBlur = 7;
+  ctx.strokeStyle = "rgb(226 232 240 / 0.38)";
+  ctx.lineWidth = 2.2;
+
+  for (const coastline of coastlines) {
+    ctx.beginPath();
+    coastline.forEach(([lon, lat], index) => {
+      const [x, y] = lonLatToCanvas(width, height, lon, lat);
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  ctx.restore();
 }
 
 function drawEarthOceanDetail(ctx, width, height) {
@@ -3622,18 +3775,21 @@ function createEarthSurfaceMarkers(THREE) {
     ["Houston", -95.37, 29.76],
     ["Madison", -86.75, 34.7],
     ["Goldstone", -116.79, 35.25],
-    ["Svalbard", 15.4, 78.2]
+    ["Svalbard", 15.4, 78.2],
+    ["Madrid", -3.7, 40.4],
+    ["Canberra", 149.1, -35.3],
+    ["Wallops", -75.48, 37.94]
   ];
 
   for (const [name, lon, lat] of places) {
     const point = lonLatToSpherePoint(lon, lat, 0.754);
-    const marker = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 8), markerMaterial.clone());
+    const marker = new THREE.Mesh(new THREE.SphereGeometry(0.017, 12, 8), markerMaterial.clone());
     marker.position.set(point.x, point.y, point.z);
-    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.026, 16, 10), glowMaterial.clone());
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.042, 16, 10), glowMaterial.clone());
     glow.position.copy(marker.position);
     const labelPoint = lonLatToSpherePoint(lon, lat, 0.86);
     const label = createBodyLabel(THREE, name, labelPoint.x, labelPoint.y, labelPoint.z);
-    label.scale.set(0.24, 0.062, 1);
+    label.scale.set(0.28, 0.074, 1);
     group.add(glow, marker, label);
   }
 
@@ -3705,14 +3861,19 @@ async function initOrbitScene() {
     root.add(earthSystem);
 
     const earthTexture = createEarthTexture(THREE);
+    const earthBumpTexture = createEarthBumpTexture(THREE);
+    const earthLightsTexture = createEarthLightsTexture(THREE);
     const cloudTexture = createCloudTexture(THREE);
     const earth = new THREE.Mesh(
-      new THREE.SphereGeometry(0.72, 96, 96),
+      new THREE.SphereGeometry(0.72, 128, 128),
       new THREE.MeshStandardMaterial({
         map: earthTexture,
-        emissive: hexToNumber(readCssVar("--bg-card", "#172033")),
-        emissiveIntensity: 0.12,
-        roughness: 0.82,
+        bumpMap: earthBumpTexture,
+        bumpScale: 0.045,
+        emissive: 0xffd98a,
+        emissiveMap: earthLightsTexture,
+        emissiveIntensity: 0.22,
+        roughness: 0.74,
         metalness: 0.05
       })
     );
@@ -3720,16 +3881,22 @@ async function initOrbitScene() {
 
     const atmosphere = new THREE.Mesh(
       new THREE.SphereGeometry(0.79, 64, 64),
-      new THREE.MeshBasicMaterial({ color: hexToNumber(readCssVar("--accent", "#60a5fa")), transparent: true, opacity: 0.13 })
+      new THREE.MeshBasicMaterial({
+        color: hexToNumber(readCssVar("--accent", "#60a5fa")),
+        transparent: true,
+        opacity: 0.18,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      })
     );
     earthSystem.add(atmosphere);
 
     const clouds = new THREE.Mesh(
-      new THREE.SphereGeometry(0.742, 96, 96),
+      new THREE.SphereGeometry(0.748, 128, 128),
       new THREE.MeshBasicMaterial({
         map: cloudTexture,
         transparent: true,
-        opacity: 0.42,
+        opacity: 0.52,
         depthWrite: false
       })
     );
@@ -3825,6 +3992,14 @@ function animateOrbitScene() {
         }
       });
     }
+
+    if (state.three.orbitTrailGroup) {
+      state.three.orbitTrailGroup.traverse((child) => {
+        if (child.userData?.rotateSpeed) {
+          child.rotation.y += child.userData.rotateSpeed;
+        }
+      });
+    }
   }
 
   state.three.controls.update();
@@ -3908,9 +4083,15 @@ function renderOrbitScene() {
     disposeObject3D(state.three.modelGroup);
   }
 
+  if (state.three.orbitTrailGroup) {
+    state.three.root.remove(state.three.orbitTrailGroup);
+    disposeObject3D(state.three.orbitTrailGroup);
+  }
+
   state.three.objectPoints = null;
   state.three.launchPoints = null;
   state.three.modelGroup = null;
+  state.three.orbitTrailGroup = null;
 
   if (state.three.environmentGroup) {
     state.three.root.remove(state.three.environmentGroup);
@@ -3935,9 +4116,11 @@ function renderOrbitScene() {
   const catalogObjects = sceneCatalogObjects();
   const launchObjects = sceneLaunchObjects();
 
-  state.three.objectPoints = createPointCloud(THREE, catalogObjects, state.mode === "time" ? 3200 : 2200, 0.018, false);
-  state.three.launchPoints = launchObjects.length ? createPointCloud(THREE, launchObjects, 700, 0.038, true) : null;
+  state.three.orbitTrailGroup = createOrbitTrailGroup(THREE, catalogObjects, launchObjects);
+  state.three.objectPoints = createPointCloud(THREE, catalogObjects, state.mode === "time" ? 3200 : 2200, 0.028, false);
+  state.three.launchPoints = launchObjects.length ? createPointCloud(THREE, launchObjects, 700, 0.056, true) : null;
   state.three.modelGroup = createObjectModelGroup(THREE, catalogObjects, launchObjects);
+  state.three.root.add(state.three.orbitTrailGroup);
   state.three.root.add(state.three.objectPoints);
 
   if (state.three.launchPoints) {
@@ -5019,20 +5202,38 @@ async function initLaunchSequence() {
     scene.add(starField);
 
     const earthTexture = createEarthTexture(THREE);
+    const earthBumpTexture = createEarthBumpTexture(THREE);
+    const earthLightsTexture = createEarthLightsTexture(THREE);
+    const earthCloudTexture = createCloudTexture(THREE);
     const earth = new THREE.Mesh(
-      new THREE.SphereGeometry(5.6, 96, 96),
+      new THREE.SphereGeometry(5.6, 128, 128),
       new THREE.MeshStandardMaterial({
         map: earthTexture,
-        roughness: 0.8,
+        bumpMap: earthBumpTexture,
+        bumpScale: 0.075,
+        emissive: 0xffd98a,
+        emissiveMap: earthLightsTexture,
+        emissiveIntensity: 0.18,
+        roughness: 0.74,
         metalness: 0.03,
-        emissive: 0x0b1738,
-        emissiveIntensity: 0.22,
         transparent: true,
         opacity: 0
       })
     );
     earth.position.set(0, -6.8, -2.3);
     root.add(earth);
+
+    const earthClouds = new THREE.Mesh(
+      new THREE.SphereGeometry(5.68, 128, 128),
+      new THREE.MeshBasicMaterial({
+        map: earthCloudTexture,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false
+      })
+    );
+    earthClouds.position.copy(earth.position);
+    root.add(earthClouds);
 
     const atmosphere = new THREE.Mesh(
       new THREE.SphereGeometry(5.85, 96, 96),
@@ -5079,6 +5280,7 @@ async function initLaunchSequence() {
       plumeLife: plume.userData.life,
       plumeColors: plume.geometry.getAttribute("color").array,
       earth,
+      earthClouds,
       atmosphere,
       orbitRing,
       ready: true,
@@ -5305,21 +5507,23 @@ function createLaunchOrbitRing(THREE) {
   const radius = 3.35;
   const segments = 256;
 
-  for (let index = 0; index <= segments; index += 1) {
+  for (let index = 0; index < segments; index += 1) {
     const angle = (index / segments) * Math.PI * 2;
     points.push(new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius * 0.38));
   }
 
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const ring = new THREE.LineLoop(
-    geometry,
-    new THREE.LineBasicMaterial({
+  const curve = new THREE.CatmullRomCurve3(points, true);
+  const ring = new THREE.Mesh(
+    new THREE.TubeGeometry(curve, segments, 0.012, 8, true),
+    new THREE.MeshBasicMaterial({
       color: hexToNumber(readCssVar("--simulated-color", "#a78bfa")),
       transparent: true,
-      opacity: 0
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
     })
   );
-  ring.position.set(0, 0.65, -1.25);
+  ring.position.set(-1.72, 0.75, -1.2);
   return ring;
 }
 
@@ -5470,6 +5674,10 @@ function setLaunchSequenceTime(time, deltaSeconds = 0.016) {
 
   const earthOpacity = clamp((clampedTime - 20) / 5, 0, 1);
   viz.earth.material.opacity = earthOpacity;
+  if (viz.earthClouds) {
+    viz.earthClouds.material.opacity = earthOpacity * 0.5;
+    viz.earthClouds.rotation.y += state.display.reduceMotion ? 0 : 0.0009 + orbital * 0.0008;
+  }
   viz.atmosphere.material.opacity = earthOpacity * 0.19;
   viz.earth.rotation.y += state.display.reduceMotion ? 0 : 0.0006 + orbital * 0.001;
   viz.orbitRing.material.opacity = clamp((clampedTime - 24) / 3, 0, 1) * 0.85;
@@ -5561,7 +5769,7 @@ function updateLaunchSatellites(time, spreadProgress) {
     satellite.position.set(-1.72 + Math.cos(angle) * radius, 0.75 + Math.sin(angle) * radius * 0.38, -1.2 + Math.sin(angle) * radius * 0.11);
     satellite.rotation.y += state.display.reduceMotion ? 0 : 0.018 + index * 0.0007;
     satellite.rotation.z = angle + Math.PI / 2;
-    satellite.scale.setScalar(lerp(0.25, 1, localDeploy || spreadProgress));
+    satellite.scale.setScalar(lerp(0.5, 1.72, localDeploy || spreadProgress));
   }
 }
 
@@ -5748,7 +5956,7 @@ function disposeObject3D(object) {
     if (child.material) {
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       for (const material of materials) {
-        for (const key of ["map", "alphaMap", "emissiveMap", "roughnessMap", "metalnessMap"]) {
+        for (const key of ["map", "alphaMap", "bumpMap", "emissiveMap", "roughnessMap", "metalnessMap"]) {
           if (material[key]) {
             material[key].dispose();
           }
@@ -5757,6 +5965,52 @@ function disposeObject3D(object) {
       }
     }
   });
+}
+
+function orbitalPathPoints(THREE, object, radius, segments = 192) {
+  const points = [];
+  const seed = object.norad || object.altitude || 1;
+  const raan = seededUnit(seed + 91) * Math.PI * 2;
+  const inclination = ((object.inclination || 0) * Math.PI) / 180;
+
+  for (let index = 0; index < segments; index += 1) {
+    const theta = (index / segments) * Math.PI * 2;
+    const x0 = radius * Math.cos(theta);
+    const y0 = 0;
+    const z0 = radius * Math.sin(theta);
+    const y1 = y0 * Math.cos(inclination) - z0 * Math.sin(inclination);
+    const z1 = y0 * Math.sin(inclination) + z0 * Math.cos(inclination);
+    const x2 = x0 * Math.cos(raan) + z1 * Math.sin(raan);
+    const z2 = -x0 * Math.sin(raan) + z1 * Math.cos(raan);
+    points.push(new THREE.Vector3(x2, y1, z2));
+  }
+
+  return points;
+}
+
+function createOrbitTrailGroup(THREE, catalogObjects, launchObjects) {
+  const group = new THREE.Group();
+  const trailObjects = representativeObjects(catalogObjects, launchObjects, state.mode === "time" ? 44 : 58);
+
+  for (let index = 0; index < trailObjects.length; index += 1) {
+    const object = trailObjects[index];
+    const radius = altitudeToSceneRadius(object.altitude) + 0.018;
+    const color = hexToNumber(getObjectColor(object, object.simulated));
+    const opacity = object.simulated ? 0.58 : object.type === "PAY" ? 0.23 : object.type === "R/B" ? 0.2 : 0.15;
+    const geometry = new THREE.BufferGeometry().setFromPoints(orbitalPathPoints(THREE, object, radius, 216));
+    const material = new THREE.LineBasicMaterial({
+      color,
+      transparent: true,
+      opacity,
+      blending: object.simulated ? THREE.AdditiveBlending : THREE.NormalBlending,
+      depthWrite: false
+    });
+    const trail = new THREE.LineLoop(geometry, material);
+    trail.userData.rotateSpeed = (object.simulated ? 0.0007 : 0.00022) * (index % 2 === 0 ? 1 : -1);
+    group.add(trail);
+  }
+
+  return group;
 }
 
 function createPointCloud(THREE, objects, limit, pointSize, forceLaunchColor) {
@@ -5788,7 +6042,9 @@ function createPointCloud(THREE, objects, limit, pointSize, forceLaunchColor) {
       size: pointSize,
       vertexColors: true,
       transparent: true,
-      opacity: forceLaunchColor ? 0.96 : 0.72
+      opacity: forceLaunchColor ? 0.98 : 0.86,
+      sizeAttenuation: true,
+      depthWrite: false
     })
   );
 }
@@ -5802,7 +6058,7 @@ function createObjectModelGroup(THREE, catalogObjects, launchObjects) {
     const radius = altitudeToSceneRadius(object.altitude) + 0.035;
     const [x, y, z] = orbitalPosition(object, radius);
     const model = createOrbitObjectModel(THREE, object);
-    const scale = object.simulated ? 1.25 : object.riskScore > 72 ? 1.08 : 0.92;
+    const scale = object.simulated ? 2.55 : object.riskScore > 72 ? 2.18 : 1.82;
     model.position.set(x, y, z);
     model.lookAt(0, 0, 0);
     model.rotateY(Math.PI / 2);
@@ -5817,7 +6073,7 @@ function createObjectModelGroup(THREE, catalogObjects, launchObjects) {
   iss.position.set(issX, issY, issZ);
   iss.lookAt(0, 0, 0);
   iss.rotateY(Math.PI / 2);
-  iss.scale.setScalar(1.55);
+  iss.scale.setScalar(2.85);
   group.add(iss);
 
   const label = createBodyLabel(THREE, "ISS reference orbit", issX, issY + 0.22, issZ);
