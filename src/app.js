@@ -27,6 +27,7 @@ const DEFAULT_DISPLAY_SETTINGS = {
   chartPalette: "balanced",
   reduceMotion: false,
   largeText: false,
+  gravityCursor: true,
   showOrbitTrails: false,
   payloadColor: "#93c5fd",
   debrisColor: "#f87171",
@@ -297,6 +298,7 @@ const elements = {
   rocketColor: document.querySelector("#rocket-color"),
   simulatedColor: document.querySelector("#simulated-color"),
   otherColor: document.querySelector("#other-color"),
+  gravityCursor: document.querySelector("#gravity-cursor"),
   reduceMotion: document.querySelector("#reduce-motion"),
   largeText: document.querySelector("#large-text"),
   highContrastToggle: document.querySelector("#high-contrast-toggle"),
@@ -858,6 +860,7 @@ function setDisplayControls() {
   elements.rocketColor.value = state.display.rocketColor;
   elements.simulatedColor.value = state.display.simulatedColor;
   elements.otherColor.value = state.display.otherColor;
+  elements.gravityCursor.checked = Boolean(state.display.gravityCursor);
   elements.reduceMotion.checked = state.display.reduceMotion;
   elements.largeText.checked = state.display.largeText;
   elements.highContrastToggle.checked = state.display.theme === "high-contrast";
@@ -912,6 +915,7 @@ function applyDisplaySettings({ persist = true, rerender = true } = {}) {
   document.documentElement.dataset.theme = state.display.theme;
   document.documentElement.classList.toggle("reduce-motion", state.display.reduceMotion);
   document.documentElement.classList.toggle("large-text", state.display.largeText);
+  document.documentElement.classList.toggle("gravity-cursor-disabled", !state.display.gravityCursor);
 
   if (state.display.theme === "custom") {
     applyCustomSurfaceVariables();
@@ -6734,6 +6738,11 @@ function wireDisplaySettings() {
     applyDisplaySettings();
   });
 
+  elements.gravityCursor.addEventListener("change", () => {
+    state.display.gravityCursor = elements.gravityCursor.checked;
+    applyDisplaySettings({ rerender: false });
+  });
+
   elements.largeText.addEventListener("change", () => {
     state.display.largeText = elements.largeText.checked;
     applyDisplaySettings();
@@ -7103,7 +7112,7 @@ function setupInteractiveSpaceEffects() {
   let stars = [];
 
   function canUseCursorEffects() {
-    return pointerFine.matches && !state.display.reduceMotion;
+    return pointerFine.matches && state.display.gravityCursor && !state.display.reduceMotion;
   }
 
   function setCursorState() {
@@ -7140,8 +7149,8 @@ function setupInteractiveSpaceEffects() {
     const accent = readCssVar("--accent", "#93c5fd");
     const violet = readCssVar("--simulated-color", "#a78bfa");
     const glow = context.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, Math.max(width, height) * 0.72);
-    glow.addColorStop(0, hexToRgba(accent, interactive && pointer.active ? 0.16 : 0.07));
-    glow.addColorStop(0.32, hexToRgba(violet, interactive && pointer.active ? 0.08 : 0.04));
+    glow.addColorStop(0, hexToRgba(accent, interactive && pointer.active ? 0.1 : 0.07));
+    glow.addColorStop(0.32, hexToRgba(violet, interactive && pointer.active ? 0.052 : 0.04));
     glow.addColorStop(1, "rgb(0 0 0 / 0)");
 
     context.fillStyle = glow;
@@ -7166,7 +7175,7 @@ function setupInteractiveSpaceEffects() {
   }
 
   function drawStars(time, interactive) {
-    const lensRadius = Math.min(240, Math.max(150, width * 0.13));
+    const lensRadius = Math.min(84, Math.max(56, width * 0.052));
 
     context.save();
     context.globalCompositeOperation = "lighter";
@@ -7188,15 +7197,15 @@ function setupInteractiveSpaceEffects() {
         if (distance < lensRadius) {
           const falloff = (1 - distance / lensRadius) ** 2;
           const invDistance = 1 / Math.max(distance, 1);
-          const tangent = falloff * 72 * star.depth;
-          const pull = falloff * 18 * star.depth;
+          const tangent = falloff * 22 * star.depth;
+          const pull = falloff * 5.5 * star.depth;
           drawX = x + -dy * invDistance * tangent - dx * invDistance * pull;
           drawY = y + dx * invDistance * tangent - dy * invDistance * pull;
-          twinkle += falloff * 0.42;
+          twinkle += falloff * 0.22;
 
           if (distance > 18) {
-            context.strokeStyle = star.warmth > 0.82 ? "rgb(253 230 138 / 0.12)" : hexToRgba(readCssVar("--accent", "#93c5fd"), 0.11);
-            context.lineWidth = Math.max(0.45, star.radius * 0.42);
+            context.strokeStyle = star.warmth > 0.82 ? "rgb(253 230 138 / 0.065)" : hexToRgba(readCssVar("--accent", "#93c5fd"), 0.06);
+            context.lineWidth = Math.max(0.35, star.radius * 0.28);
             context.beginPath();
             context.moveTo(x, y);
             context.lineTo(drawX, drawY);
@@ -7223,11 +7232,11 @@ function setupInteractiveSpaceEffects() {
 
     const accent = readCssVar("--accent", "#93c5fd");
     const violet = readCssVar("--simulated-color", "#a78bfa");
-    const radius = 108 + Math.sin(time * 0.003) * 8;
-    const halo = context.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, radius * 1.75);
-    halo.addColorStop(0, "rgb(0 0 0 / 0.24)");
-    halo.addColorStop(0.18, "rgb(0 0 0 / 0.18)");
-    halo.addColorStop(0.45, hexToRgba(accent, 0.1));
+    const radius = 48 + Math.sin(time * 0.003) * 3;
+    const halo = context.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, radius * 1.82);
+    halo.addColorStop(0, "rgb(0 0 0 / 0.12)");
+    halo.addColorStop(0.22, "rgb(0 0 0 / 0.08)");
+    halo.addColorStop(0.5, hexToRgba(accent, 0.055));
     halo.addColorStop(1, "rgb(0 0 0 / 0)");
 
     context.save();
@@ -7238,10 +7247,10 @@ function setupInteractiveSpaceEffects() {
     context.fill();
 
     context.globalCompositeOperation = "lighter";
-    for (let ring = 0; ring < 3; ring += 1) {
-      const ringRadius = radius * (0.48 + ring * 0.23);
-      context.strokeStyle = ring % 2 === 0 ? hexToRgba(accent, 0.25 - ring * 0.04) : hexToRgba(violet, 0.22);
-      context.lineWidth = 1.5 - ring * 0.2;
+    for (let ring = 0; ring < 2; ring += 1) {
+      const ringRadius = radius * (0.64 + ring * 0.28);
+      context.strokeStyle = ring % 2 === 0 ? hexToRgba(accent, 0.16) : hexToRgba(violet, 0.13);
+      context.lineWidth = 1.05 - ring * 0.18;
       context.beginPath();
       context.ellipse(
         pointer.x,
