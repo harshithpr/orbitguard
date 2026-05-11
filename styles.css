@@ -138,6 +138,165 @@ body {
   text-rendering: geometricPrecision;
 }
 
+body.intro-active .topbar,
+body.intro-active main,
+body.intro-active footer {
+  opacity: 0;
+  filter: blur(8px);
+  transform: scale(1.025);
+}
+
+body:not(.intro-active) .topbar,
+body:not(.intro-active) main,
+body:not(.intro-active) footer {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+  transition: opacity 900ms ease, transform 900ms ease, filter 900ms ease;
+}
+
+#intro-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgb(2 6 23) 0%, rgb(8 13 31) 48%, rgb(2 6 23) 100%),
+    #020617;
+  transition: opacity 900ms ease, visibility 900ms ease;
+}
+
+#intro-screen.intro-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#intro-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.intro-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: #f8fafc;
+  pointer-events: none;
+}
+
+.intro-lockup {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  opacity: 0;
+  transform: translateY(18px) scale(0.96);
+  filter: blur(10px);
+  animation: introTitle 1.15s ease 3.2s forwards;
+}
+
+.intro-logo-mark {
+  width: clamp(4rem, 10vw, 6.5rem);
+  height: clamp(4rem, 10vw, 6.5rem);
+  filter: drop-shadow(0 0 28px rgb(96 165 250 / 0.35));
+}
+
+.intro-overlay h1 {
+  margin: 0;
+  color: transparent;
+  background: linear-gradient(90deg, #e0f2fe, #93c5fd, #c4b5fd);
+  -webkit-background-clip: text;
+  background-clip: text;
+  font-size: clamp(3rem, 8vw, 7rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  text-shadow: 0 0 40px rgb(96 165 250 / 0.18);
+}
+
+.intro-overlay p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: clamp(0.95rem, 2vw, 1.35rem);
+  font-weight: 760;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.intro-overlay strong {
+  color: #bfdbfe;
+  font-size: clamp(0.95rem, 1.6vw, 1.12rem);
+}
+
+.intro-status {
+  position: absolute;
+  bottom: 8%;
+  width: min(430px, 80vw);
+}
+
+#intro-status-text {
+  display: block;
+  min-height: 1.4rem;
+  margin-bottom: 0.75rem;
+  color: #bfdbfe;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.intro-progress {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(148 163 184 / 0.22);
+}
+
+.intro-progress-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #a78bfa);
+  box-shadow: 0 0 22px rgb(96 165 250 / 0.48);
+  animation: introProgress 4.9s ease forwards;
+}
+
+#skip-intro {
+  pointer-events: auto;
+  position: absolute;
+  right: 2rem;
+  bottom: 2rem;
+  min-height: 2.6rem;
+  border: 1px solid rgb(148 163 184 / 0.28);
+  border-radius: 999px;
+  background: rgb(15 23 42 / 0.62);
+  color: #cbd5e1;
+  padding: 0 1rem;
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+}
+
+#skip-intro:hover {
+  border-color: rgb(96 165 250 / 0.65);
+  color: #ffffff;
+}
+
+@keyframes introProgress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+@keyframes introTitle {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
 button,
 input,
 select,
@@ -258,6 +417,18 @@ html.gravity-cursor-disabled .cursor-singularity {
 
 html.reduce-motion .space-backdrop canvas {
   opacity: 0.38;
+}
+
+html.reduce-motion .intro-lockup {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  animation: none !important;
+}
+
+html.reduce-motion .intro-progress-fill {
+  width: 100%;
+  animation: none !important;
 }
 
 .topbar {
@@ -2902,6 +3073,8 @@ td {
 .studio-preview-panel {
   display: grid;
   gap: 1rem;
+  align-self: start;
+  overflow: hidden;
 }
 
 .score-ring {
@@ -2928,16 +3101,22 @@ td {
 }
 
 .studio-preview-viewport {
-  min-height: 300px;
+  position: relative;
+  height: clamp(320px, 42dvh, 430px);
+  min-height: 320px;
+  max-height: 430px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
   border-radius: 8px;
   background: #020617;
+  contain: layout paint size;
 }
 
 .studio-preview-viewport canvas {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
   display: block;
 }
 
@@ -3125,6 +3304,11 @@ footer a {
 }
 
 @media (max-width: 720px) {
+  #skip-intro {
+    right: 1rem;
+    bottom: 1rem;
+  }
+
   .topbar {
     position: static;
     align-items: flex-start;

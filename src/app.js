@@ -347,6 +347,10 @@ const state = {
     animationId: null
   },
   display: { ...DEFAULT_DISPLAY_SETTINGS },
+  intro: {
+    animationId: null,
+    closing: false
+  },
   timeMachine: {
     selectedYear: 2010,
     currentYear: new Date().getFullYear(),
@@ -437,6 +441,10 @@ const state = {
 };
 
 const elements = {
+  introScreen: document.querySelector("#intro-screen"),
+  introCanvas: document.querySelector("#intro-canvas"),
+  introStatusText: document.querySelector("#intro-status-text"),
+  skipIntro: document.querySelector("#skip-intro"),
   dataSource: document.querySelector("#dataSource"),
   modeTabs: document.querySelectorAll(".mode-tab"),
   modeJumps: document.querySelectorAll(".mode-jump"),
@@ -806,6 +814,11 @@ function lerp(start, end, amount) {
 function easeInOut(amount) {
   const t = clamp(amount, 0, 1);
   return t * t * (3 - 2 * t);
+}
+
+function easeInOutCubic(amount) {
+  const t = clamp(amount, 0, 1);
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
 function phaseProgress(time, phaseName) {
@@ -8849,6 +8862,187 @@ function startTrafficAnimationLoop() {
   state.traffic.animationId = requestAnimationFrame(frame);
 }
 
+function introSeenThisSession() {
+  try {
+    return sessionStorage.getItem("orbitguard-intro-seen") === "true";
+  } catch {
+    return false;
+  }
+}
+
+function rememberIntroSeen() {
+  try {
+    sessionStorage.setItem("orbitguard-intro-seen", "true");
+  } catch {
+    // Storage can be blocked in some privacy modes; the intro still closes normally.
+  }
+}
+
+function drawOrbitGuardIntroFrame(now, progress) {
+  const canvas = elements.introCanvas;
+  if (!canvas) return;
+
+  const { context, width, height } = setCanvasSize(canvas);
+  const eased = easeInOutCubic(progress);
+  context.clearRect(0, 0, width, height);
+
+  const backdrop = context.createLinearGradient(0, 0, width, height);
+  backdrop.addColorStop(0, "#020617");
+  backdrop.addColorStop(0.48, "#0b1128");
+  backdrop.addColorStop(1, "#020617");
+  context.fillStyle = backdrop;
+  context.fillRect(0, 0, width, height);
+
+  context.save();
+  context.globalCompositeOperation = "lighter";
+  const softGlow = context.createRadialGradient(width * 0.5, height * 0.48, 20, width * 0.5, height * 0.48, Math.min(width, height) * 0.46);
+  softGlow.addColorStop(0, `rgb(96 165 250 / ${0.12 + eased * 0.08})`);
+  softGlow.addColorStop(0.55, "rgb(129 140 248 / 0.06)");
+  softGlow.addColorStop(1, "rgb(2 6 23 / 0)");
+  context.fillStyle = softGlow;
+  context.fillRect(0, 0, width, height);
+  context.restore();
+
+  const starDrift = eased * 18;
+  for (let index = 0; index < 190; index += 1) {
+    const depth = 0.25 + seededUnit(index + 12) * 0.75;
+    const x = (seededUnit(index + 22) * width + starDrift * depth) % width;
+    const y = seededUnit(index + 32) * height;
+    const twinkle = 0.24 + Math.sin(now * 0.0012 + index) * 0.18 + depth * 0.38;
+    context.fillStyle = `rgb(226 242 255 / ${clamp(twinkle, 0.12, 0.88)})`;
+    context.beginPath();
+    context.arc(x, y, 0.45 + depth * 1.15, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  const earthFade = clamp((progress - 0.18) / 0.24, 0, 1);
+  if (earthFade > 0) {
+    const earthProgress = easeInOutCubic(earthFade);
+    const earthRadius = Math.min(width, height) * (0.075 + earthProgress * 0.115);
+    const centerX = width * 0.5;
+    const centerY = height * (0.47 + (1 - earthProgress) * 0.05);
+    context.save();
+    context.globalAlpha = earthFade;
+    context.shadowColor = "rgb(96 165 250 / 0.35)";
+    context.shadowBlur = 38;
+    drawDigitalTwinEarth(context, centerX, centerY, earthRadius, now);
+    context.restore();
+
+    const ringProgress = clamp((progress - 0.48) / 0.28, 0, 1);
+    if (ringProgress > 0) {
+      const ringLabels = [
+        ["LEO", 1.42, -0.2, "#93c5fd"],
+        ["MEO", 1.86, 0.16, "#c4b5fd"],
+        ["GEO", 2.32, 0.38, "#fbbf24"]
+      ];
+
+      context.save();
+      context.globalAlpha = ringProgress;
+      ringLabels.forEach(([label, scale, rotation, color], index) => {
+        context.strokeStyle = hexToRgba(color, 0.34);
+        context.lineWidth = 1.4;
+        context.beginPath();
+        context.ellipse(centerX, centerY, earthRadius * scale, earthRadius * scale * 0.34, rotation, 0, Math.PI * 2 * ringProgress);
+        context.stroke();
+
+        if (ringProgress > 0.72) {
+          context.fillStyle = hexToRgba(color, 0.9);
+          context.font = "700 11px Space Grotesk, sans-serif";
+          context.fillText(label, centerX + earthRadius * (scale + 0.18), centerY - earthRadius * 0.35 + index * 18);
+        }
+      });
+
+      const scanAngle = -Math.PI * 0.85 + progress * Math.PI * 2.2;
+      context.strokeStyle = "rgb(56 189 248 / 0.34)";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(centerX, centerY, earthRadius * 1.18, scanAngle, scanAngle + Math.PI * 0.72);
+      context.stroke();
+      context.restore();
+
+      const pointFade = clamp((progress - 0.63) / 0.2, 0, 1);
+      context.save();
+      context.globalAlpha = pointFade;
+      const colors = ["#93c5fd", "#93c5fd", "#f87171", "#fbbf24", "#a78bfa"];
+      for (let index = 0; index < 38; index += 1) {
+        const orbitScale = 1.4 + seededUnit(index + 72) * 0.95;
+        const angle = seededUnit(index + 82) * Math.PI * 2 + now * 0.00035 * (0.6 + seededUnit(index + 92));
+        const x = centerX + Math.cos(angle) * earthRadius * orbitScale;
+        const y = centerY + Math.sin(angle) * earthRadius * orbitScale * 0.34;
+        const color = colors[index % colors.length];
+        context.fillStyle = color;
+        context.shadowColor = color;
+        context.shadowBlur = 8;
+        context.beginPath();
+        context.arc(x, y, 1.4 + seededUnit(index + 102) * 1.3, 0, Math.PI * 2);
+        context.fill();
+      }
+      context.restore();
+    }
+  }
+}
+
+function setupOrbitGuardIntro() {
+  const intro = elements.introScreen;
+  const skipButton = elements.skipIntro;
+  const statusText = elements.introStatusText;
+  const duration = 5200;
+
+  if (!intro) {
+    document.body.classList.remove("intro-active");
+    return;
+  }
+
+  document.body.classList.add("intro-active");
+
+  const closeIntro = () => {
+    if (state.intro.closing) return;
+    state.intro.closing = true;
+    if (state.intro.animationId) {
+      cancelAnimationFrame(state.intro.animationId);
+      state.intro.animationId = null;
+    }
+    intro.classList.add("intro-hidden");
+    document.body.classList.remove("intro-active");
+    rememberIntroSeen();
+  };
+
+  if (introSeenThisSession()) {
+    intro.classList.add("intro-hidden");
+    document.body.classList.remove("intro-active");
+    return;
+  }
+
+  const messages = [
+    "Scanning orbital environment...",
+    "Tracking active payloads...",
+    "Detecting debris fields...",
+    "Calculating sustainability risk...",
+    "OrbitGuard online."
+  ];
+
+  messages.forEach((message, index) => {
+    setTimeout(() => {
+      if (!state.intro.closing && statusText) {
+        statusText.textContent = message;
+      }
+    }, index * 880);
+  });
+
+  const startedAt = performance.now();
+  const frame = (now) => {
+    const progress = clamp((now - startedAt) / duration, 0, 1);
+    drawOrbitGuardIntroFrame(now, progress);
+    if (progress < 1 && !state.intro.closing) {
+      state.intro.animationId = requestAnimationFrame(frame);
+    }
+  };
+
+  state.intro.animationId = requestAnimationFrame(frame);
+  setTimeout(closeIntro, duration);
+  skipButton?.addEventListener("click", closeIntro);
+}
+
 function setupThemeControls() {
   loadDisplaySettings();
   setDisplayControls();
@@ -9170,6 +9364,7 @@ async function init() {
   }
 }
 
+setupOrbitGuardIntro();
 setupThemeControls();
 setupInteractiveSpaceEffects();
 init();

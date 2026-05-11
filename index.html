@@ -19,7 +19,26 @@
       }
     </script>
   </head>
-  <body class="home-active">
+  <body class="home-active intro-active">
+    <div id="intro-screen" aria-label="OrbitGuard intro sequence">
+      <canvas id="intro-canvas" aria-hidden="true"></canvas>
+      <div class="intro-overlay">
+        <div class="intro-lockup">
+          <img src="/public/logo.svg" alt="" class="intro-logo-mark">
+          <h1>OrbitGuard</h1>
+          <p>Space Sustainability Analyzer</p>
+          <strong>Tracking the future of Earth orbit.</strong>
+        </div>
+        <div class="intro-status">
+          <span id="intro-status-text">Initializing orbital environment...</span>
+          <div class="intro-progress" aria-hidden="true">
+            <div class="intro-progress-fill"></div>
+          </div>
+        </div>
+        <button id="skip-intro" type="button">Skip Intro</button>
+      </div>
+    </div>
+
     <div class="space-backdrop" aria-hidden="true">
       <canvas id="spaceBackdropCanvas"></canvas>
     </div>
