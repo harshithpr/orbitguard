@@ -349,6 +349,7 @@ const state = {
   display: { ...DEFAULT_DISPLAY_SETTINGS },
   intro: {
     animationId: null,
+    timers: [],
     closing: false
   },
   timeMachine: {
@@ -3110,7 +3111,7 @@ function renderReport() {
   elements.reportBody.innerHTML = `
     <section class="report-section">
       <h3>Project framing</h3>
-      <p>OrbitGuard was built by ${CREATOR.name} as a space sustainability analyzer that uses public orbital catalog data to evaluate how satellite launches affect congestion, debris exposure, and long-term safety in Earth orbit.</p>
+      <p>OrbitGuard was built by ${CREATOR.name} as an orbital risk intelligence platform that uses public orbital catalog data to evaluate how satellite launches affect congestion, debris exposure, and long-term safety in Earth orbit.</p>
     </section>
     <section class="report-section">
       <h3>Current orbital environment</h3>
@@ -4454,7 +4455,7 @@ function buildReportPayload() {
 
   return {
     project: "OrbitGuard",
-    mission: "Space Sustainability Analyzer",
+    mission: "Orbital Risk Intelligence Platform",
     creator: CREATOR,
     generatedAt: new Date().toISOString(),
     dataSource: state.metadata?.source || DATA_URL,
@@ -5463,7 +5464,7 @@ async function initOrbitScene() {
     syncRendererTarget();
     resizeOrbitScene();
     renderOrbitScene();
-    animateOrbitScene();
+    startOrbitSceneAnimation();
   } catch (error) {
     console.warn("OrbitGuard 3D renderer unavailable; using canvas fallback.", error);
     state.three.fallback = true;
@@ -5488,7 +5489,13 @@ function addThreeRing(THREE, root, radius, color) {
 }
 
 function animateOrbitScene() {
+  state.three.animationId = null;
+
   if (!state.three.ready) {
+    return;
+  }
+
+  if (!["dashboard", "time"].includes(state.mode)) {
     return;
   }
 
@@ -5521,6 +5528,21 @@ function animateOrbitScene() {
   state.three.controls.update();
   state.three.renderer.render(state.three.scene, state.three.camera);
   state.three.animationId = window.requestAnimationFrame(animateOrbitScene);
+}
+
+function startOrbitSceneAnimation() {
+  if (!state.three.ready || state.three.animationId || !["dashboard", "time"].includes(state.mode)) {
+    return;
+  }
+
+  state.three.animationId = window.requestAnimationFrame(animateOrbitScene);
+}
+
+function stopOrbitSceneAnimation() {
+  if (state.three.animationId) {
+    window.cancelAnimationFrame(state.three.animationId);
+    state.three.animationId = null;
+  }
 }
 
 function resizeOrbitScene() {
@@ -6874,7 +6896,7 @@ async function initLaunchSequence() {
     refreshLaunchSatellites();
     resizeLaunchSequence();
     setLaunchSequenceTime(state.launchSequence.clock || 0, 0);
-    animateLaunchSequence();
+    startLaunchSequenceAnimation();
   } catch (error) {
     console.warn("OrbitGuard launch renderer unavailable; using canvas fallback.", error);
     state.launchSequence.initializing = false;
@@ -7414,8 +7436,13 @@ function setObjectOpacity(object, opacity) {
 
 function animateLaunchSequence(now = performance.now()) {
   const viz = state.launchSequence;
+  viz.animationId = null;
 
   if (!viz.ready) {
+    return;
+  }
+
+  if (state.mode !== "simulator") {
     return;
   }
 
@@ -7433,6 +7460,26 @@ function animateLaunchSequence(now = performance.now()) {
 
   setLaunchSequenceTime(viz.clock, deltaSeconds);
   viz.animationId = window.requestAnimationFrame(animateLaunchSequence);
+}
+
+function startLaunchSequenceAnimation() {
+  const viz = state.launchSequence;
+
+  if (!viz.ready || viz.animationId || state.mode !== "simulator") {
+    return;
+  }
+
+  viz.lastFrame = performance.now();
+  viz.animationId = window.requestAnimationFrame(animateLaunchSequence);
+}
+
+function stopLaunchSequenceAnimation() {
+  const viz = state.launchSequence;
+
+  if (viz.animationId) {
+    window.cancelAnimationFrame(viz.animationId);
+    viz.animationId = null;
+  }
 }
 
 function resizeLaunchSequence() {
@@ -8145,6 +8192,22 @@ function setActiveMode(mode) {
   state.mode = mode;
   document.body.classList.toggle("home-active", mode === "home");
 
+  if (!["dashboard", "time"].includes(mode)) {
+    stopOrbitSceneAnimation();
+  }
+
+  if (mode !== "simulator") {
+    stopLaunchSequenceAnimation();
+  }
+
+  if (mode !== "replay") {
+    stopMissionReplayLoop();
+  }
+
+  if (!["studio", "traffic"].includes(mode)) {
+    stopTrafficAnimationLoop();
+  }
+
   for (const item of elements.modeTabs) {
     item.classList.toggle("active", item.dataset.mode === mode);
   }
@@ -8161,13 +8224,18 @@ function setActiveMode(mode) {
     window.scrollTo({ top: 0, behavior: state.display.reduceMotion ? "auto" : "smooth" });
   } else if (mode === "studio") {
     renderMissionStudio();
+    startTrafficAnimationLoop();
   } else if (mode === "time") {
     renderTimeMachine();
-    initOrbitScene().then(() => resizeOrbitScene());
+    initOrbitScene().then(() => {
+      resizeOrbitScene();
+      startOrbitSceneAnimation();
+    });
   } else if (mode === "dashboard") {
     initOrbitScene().then(() => {
       renderOrbitScene();
       resizeOrbitScene();
+      startOrbitSceneAnimation();
     });
   } else if (mode === "weather") {
     renderWeather();
@@ -8175,16 +8243,23 @@ function setActiveMode(mode) {
     renderEncyclopedia();
   } else if (mode === "simulator") {
     renderLaunchImpact();
-    initLaunchSequence();
-    resizeLaunchSequence();
+    initLaunchSequence().then(() => {
+      resizeLaunchSequence();
+      startLaunchSequenceAnimation();
+    });
   } else if (mode === "replay") {
     renderMissionReplay();
+    startMissionReplayLoop();
   } else if (mode === "traffic") {
     renderTrafficControl();
+    startTrafficAnimationLoop();
   } else if (mode === "about") {
     window.scrollTo({ top: 0, behavior: state.display.reduceMotion ? "auto" : "smooth" });
   } else {
-    initOrbitScene().then(() => renderOrbitScene());
+    initOrbitScene().then(() => {
+      renderOrbitScene();
+      startOrbitSceneAnimation();
+    });
   }
 }
 
@@ -8808,32 +8883,35 @@ function wireControls() {
 }
 
 function startMissionReplayLoop() {
-  if (state.missionReplay.animationId) {
+  if (state.missionReplay.animationId || state.mode !== "replay") {
     return;
   }
 
   const frame = (now) => {
-    if (state.mode === "replay") {
-      if (state.missionReplay.playing && !state.display.reduceMotion) {
-        const previous = state.missionReplay.lastFrame || now;
-        const delta = Math.min(0.14, (now - previous) / 1000);
-        state.missionReplay.clock += delta;
+    state.missionReplay.animationId = null;
 
-        if (state.missionReplay.clock > MISSION_REPLAY_DURATION) {
-          state.missionReplay.clock = MISSION_REPLAY_DURATION;
-          state.missionReplay.playing = false;
-        }
-      }
+    if (state.mode !== "replay") {
+      state.missionReplay.lastFrame = now;
+      return;
+    }
 
-      state.missionReplay.lastFrame = now;
-      const scenario = currentReplayScenario();
-      drawMissionReplayCanvas(scenario, missionReplayProgress(scenario), now);
-      if (now - state.missionReplay.lastDomRender > 120) {
-        state.missionReplay.lastDomRender = now;
-        renderMissionReplay();
+    if (state.missionReplay.playing && !state.display.reduceMotion) {
+      const previous = state.missionReplay.lastFrame || now;
+      const delta = Math.min(0.14, (now - previous) / 1000);
+      state.missionReplay.clock += delta;
+
+      if (state.missionReplay.clock > MISSION_REPLAY_DURATION) {
+        state.missionReplay.clock = MISSION_REPLAY_DURATION;
+        state.missionReplay.playing = false;
       }
-    } else {
-      state.missionReplay.lastFrame = now;
+    }
+
+    state.missionReplay.lastFrame = now;
+    const scenario = currentReplayScenario();
+    drawMissionReplayCanvas(scenario, missionReplayProgress(scenario), now);
+    if (now - state.missionReplay.lastDomRender > 120) {
+      state.missionReplay.lastDomRender = now;
+      renderMissionReplay();
     }
 
     state.missionReplay.animationId = requestAnimationFrame(frame);
@@ -8842,12 +8920,25 @@ function startMissionReplayLoop() {
   state.missionReplay.animationId = requestAnimationFrame(frame);
 }
 
+function stopMissionReplayLoop() {
+  if (state.missionReplay.animationId) {
+    cancelAnimationFrame(state.missionReplay.animationId);
+    state.missionReplay.animationId = null;
+  }
+}
+
 function startTrafficAnimationLoop() {
-  if (state.traffic.animationId) {
+  if (state.traffic.animationId || !["studio", "traffic"].includes(state.mode)) {
     return;
   }
 
   const frame = (now) => {
+    state.traffic.animationId = null;
+
+    if (!["studio", "traffic"].includes(state.mode)) {
+      return;
+    }
+
     if (state.mode === "studio") {
       drawStudioPreview(selectedStudioDesign(), now);
     }
@@ -8863,6 +8954,13 @@ function startTrafficAnimationLoop() {
   };
 
   state.traffic.animationId = requestAnimationFrame(frame);
+}
+
+function stopTrafficAnimationLoop() {
+  if (state.traffic.animationId) {
+    cancelAnimationFrame(state.traffic.animationId);
+    state.traffic.animationId = null;
+  }
 }
 
 function introSeenThisSession() {
@@ -9063,14 +9161,25 @@ function setupOrbitGuardIntro() {
   const closeIntro = () => {
     if (state.intro.closing) return;
     state.intro.closing = true;
+
+    for (const timer of state.intro.timers) {
+      clearTimeout(timer);
+    }
+    state.intro.timers = [];
+    window.orbitGuardClearIntroFallback?.();
+
     if (state.intro.animationId) {
       cancelAnimationFrame(state.intro.animationId);
       state.intro.animationId = null;
     }
+
+    skipButton?.removeEventListener("click", closeIntro);
     intro.classList.add("intro-hidden");
     document.body.classList.remove("intro-active");
     rememberIntroSeen();
   };
+
+  window.orbitGuardCloseIntro = closeIntro;
 
   if (introSeenThisSession()) {
     intro.classList.add("intro-hidden");
@@ -9087,11 +9196,12 @@ function setupOrbitGuardIntro() {
   ];
 
   messages.forEach((message, index) => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       if (!state.intro.closing && statusText) {
         statusText.textContent = message;
       }
     }, index * 760);
+    state.intro.timers.push(timer);
   });
 
   const startedAt = performance.now();
@@ -9104,7 +9214,7 @@ function setupOrbitGuardIntro() {
   };
 
   state.intro.animationId = requestAnimationFrame(frame);
-  setTimeout(closeIntro, duration);
+  state.intro.timers.push(setTimeout(closeIntro, duration));
   skipButton?.addEventListener("click", closeIntro);
 }
 
@@ -9415,8 +9525,6 @@ async function init() {
     populateOperatorSelect();
     updateAll();
     renderTimeMachine();
-    startMissionReplayLoop();
-    startTrafficAnimationLoop();
     loadWeatherData();
   } catch (error) {
     elements.dataSource.textContent = "Dataset unavailable";

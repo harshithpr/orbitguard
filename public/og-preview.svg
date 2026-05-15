@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">OrbitGuard preview</title>
+  <desc id="desc">OrbitGuard orbital risk intelligence platform brand preview.</desc>
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="48%" r="58%">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.3"/>
+      <stop offset="54%" stop-color="#1d4ed8" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="titleGrad" x1="160" x2="1020" y1="0" y2="0">
+      <stop stop-color="#e0f2fe"/>
+      <stop offset="0.5" stop-color="#93c5fd"/>
+      <stop offset="1" stop-color="#c4b5fd"/>
+    </linearGradient>
+    <filter id="softShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000814" flood-opacity="0.5"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="18" flood-color="#60a5fa" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="#020617"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <g opacity="0.45">
+    <circle cx="106" cy="88" r="2" fill="#dbeafe"/>
+    <circle cx="205" cy="312" r="1.5" fill="#93c5fd"/>
+    <circle cx="992" cy="126" r="2.2" fill="#e0f2fe"/>
+    <circle cx="1088" cy="430" r="1.4" fill="#fde68a"/>
+    <circle cx="782" cy="512" r="1.8" fill="#bfdbfe"/>
+    <circle cx="482" cy="105" r="1.4" fill="#bfdbfe"/>
+    <circle cx="70" cy="520" r="1.6" fill="#bfdbfe"/>
+  </g>
+  <g transform="translate(178 122)" filter="url(#softShadow)">
+    <rect x="0" y="0" width="150" height="150" rx="32" fill="#07111f"/>
+    <circle cx="75" cy="75" r="32" fill="#60a5fa"/>
+    <path d="M55 65c22-22 58-20 79 1-17 33-49 49-85 39-7-15-5-29 6-40z" fill="#86efac" opacity="0.82"/>
+    <path d="M44 84c14 18 37 25 62 20" fill="none" stroke="#0f172a" stroke-width="7" opacity="0.6"/>
+    <ellipse cx="75" cy="75" rx="70" ry="24" fill="none" stroke="#93c5fd" stroke-width="5" transform="rotate(-14 75 75)"/>
+    <ellipse cx="75" cy="75" rx="53" ry="18" fill="none" stroke="#67e8f9" stroke-width="4" transform="rotate(16 75 75)"/>
+    <circle cx="134" cy="58" r="8" fill="#c4b5fd"/>
+  </g>
+  <g opacity="0.62" fill="none" stroke-linecap="round">
+    <ellipse cx="690" cy="324" rx="405" ry="118" stroke="#93c5fd" stroke-width="2" transform="rotate(-13 690 324)"/>
+    <ellipse cx="690" cy="324" rx="510" ry="154" stroke="#a78bfa" stroke-width="2" transform="rotate(14 690 324)"/>
+    <ellipse cx="690" cy="324" rx="610" ry="190" stroke="#fbbf24" stroke-opacity="0.42" stroke-width="2" transform="rotate(-28 690 324)"/>
+  </g>
+  <text x="374" y="258" fill="url(#titleGrad)" font-family="Orbitron, Space Grotesk, Arial, sans-serif" font-size="92" font-weight="900" letter-spacing="8">ORBITGUARD</text>
+  <text x="380" y="318" fill="#dbeafe" font-family="Space Grotesk, Arial, sans-serif" font-size="30" font-weight="700" letter-spacing="7">ORBITAL RISK INTELLIGENCE PLATFORM</text>
+  <text x="382" y="390" fill="#93c5fd" font-family="JetBrains Mono, Menlo, monospace" font-size="24" font-weight="700">Satellite tracking concepts · debris awareness · mission design</text>
+  <rect x="380" y="438" width="510" height="4" rx="2" fill="#1e293b"/>
+  <rect x="380" y="438" width="385" height="4" rx="2" fill="#93c5fd"/>
+</svg>

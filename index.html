@@ -3,11 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="OrbitGuard is a space sustainability analyzer for satellite catalog data, launch impact simulation, and orbital congestion risk.">
+    <meta name="description" content="OrbitGuard is an orbital risk intelligence platform for satellite catalog data, launch impact simulation, mission design, debris awareness, and space sustainability.">
     <meta name="author" content="Harshith Pranav Praveen">
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>OrbitGuard | Space Sustainability Analyzer</title>
+    <meta property="og:title" content="OrbitGuard | Orbital Risk Intelligence Platform">
+    <meta property="og:description" content="Design satellite missions, inspect orbital congestion, simulate launch impact, and understand space sustainability with OrbitGuard.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://orbitguard.vercel.app">
+    <meta property="og:image" content="https://orbitguard.vercel.app/public/og-preview.svg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="OrbitGuard | Orbital Risk Intelligence Platform">
+    <meta name="twitter:description" content="A cinematic aerospace dashboard for orbital risk, mission design, debris awareness, and space sustainability.">
+    <meta name="twitter:image" content="https://orbitguard.vercel.app/public/og-preview.svg">
+    <title>OrbitGuard | Orbital Risk Intelligence Platform</title>
     <link rel="icon" type="image/png" href="public/favicon.png">
     <link rel="apple-touch-icon" href="public/favicon.png">
     <link rel="stylesheet" href="styles.css">
@@ -49,7 +58,17 @@
         const skip = document.getElementById("skip-intro");
         if (!intro) return;
 
+        let fallbackTimer = null;
+        const clearFallback = () => {
+          if (fallbackTimer) {
+            window.clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+          }
+          skip?.removeEventListener("click", closeIntro);
+        };
+
         const closeIntro = () => {
+          clearFallback();
           intro.classList.add("intro-hidden");
           document.body.classList.remove("intro-active");
           try {
@@ -68,8 +87,9 @@
         }
 
         skip?.addEventListener("click", closeIntro);
+        window.orbitGuardClearIntroFallback = clearFallback;
         window.orbitGuardCloseIntro = closeIntro;
-        window.setTimeout(() => {
+        fallbackTimer = window.setTimeout(() => {
           if (!intro.classList.contains("intro-hidden")) closeIntro();
         }, 5000);
       })();
@@ -85,7 +105,7 @@
       <div class="brand">
         <img src="public/logo.svg" alt="OrbitGuard logo" class="logo">
         <div>
-          <p class="eyebrow">Space Sustainability Analyzer</p>
+          <p class="eyebrow">Orbital Risk Intelligence Platform</p>
           <h1>OrbitGuard</h1>
         </div>
       </div>
@@ -101,7 +121,8 @@
       <section class="mode-panel active home-mode" id="homeMode" aria-label="OrbitGuard intro page">
         <section class="home-hero">
           <div class="home-hero-copy">
-            <p class="eyebrow">Space Sustainability Analyzer</p>
+            <img src="public/logo.svg" alt="OrbitGuard logo" class="home-brand-mark">
+            <p class="eyebrow">Orbital Risk Intelligence Platform</p>
             <h2>OrbitGuard</h2>
             <p>Design safer satellite missions, simulate launch impact, monitor orbital traffic, replay debris events, and understand how space sustainability affects the future of Earth orbit.</p>
             <div class="hero-actions">
@@ -1634,8 +1655,10 @@
             </div>
             <aside class="founder-card">
               <span class="founder-orbit" aria-hidden="true"></span>
+              <img src="public/logo.svg" alt="OrbitGuard logo" class="founder-logo-mark">
               <p class="eyebrow">Founder card</p>
               <h3>Harshith Pranav Praveen</h3>
+              <p class="founder-signature">Harshith Praveen</p>
               <p>High School Student • Future Aerospace Engineer</p>
               <p>Building OrbitGuard to make orbital sustainability understandable.</p>
               <div class="about-actions">
