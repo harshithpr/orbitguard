@@ -25,12 +25,17 @@
       <div class="intro-overlay">
         <div class="intro-lockup">
           <img src="public/logo.svg" alt="" class="intro-logo-mark">
-          <h1>OrbitGuard</h1>
-          <p>Space Sustainability Analyzer</p>
-          <strong>Tracking the future of Earth orbit.</strong>
+          <h1>ORBITGUARD</h1>
+          <p>Orbital Risk Intelligence Platform</p>
+          <strong>Initializing Mission Systems...</strong>
+          <div class="intro-mission-steps" aria-hidden="true">
+            <span>Scanning Orbital Paths</span>
+            <span>Mapping Debris Fields</span>
+            <span>Loading Mission Dashboard</span>
+          </div>
         </div>
         <div class="intro-status">
-          <span id="intro-status-text">Initializing orbital environment...</span>
+          <span id="intro-status-text">Initializing Mission Systems...</span>
           <div class="intro-progress" aria-hidden="true">
             <div class="intro-progress-fill"></div>
           </div>
@@ -48,14 +53,14 @@
           intro.classList.add("intro-hidden");
           document.body.classList.remove("intro-active");
           try {
-            sessionStorage.setItem("orbitguard-intro-seen", "true");
+            sessionStorage.setItem("orbitguard-intro-seen-v2", "true");
           } catch (error) {
             // If storage is blocked, still let the page continue.
           }
         };
 
         try {
-          if (sessionStorage.getItem("orbitguard-intro-seen") === "true") {
+          if (sessionStorage.getItem("orbitguard-intro-seen-v2") === "true") {
             closeIntro();
           }
         } catch (error) {
@@ -66,7 +71,7 @@
         window.orbitGuardCloseIntro = closeIntro;
         window.setTimeout(() => {
           if (!intro.classList.contains("intro-hidden")) closeIntro();
-        }, 7000);
+        }, 5000);
       })();
     </script>
     <noscript><style>#intro-screen{display:none!important}body{opacity:1!important}</style></noscript>
@@ -140,14 +145,7 @@
           </article>
         </section>
 
-        <section class="home-about-grid">
-          <article class="panel creator-intro-card">
-            <p class="eyebrow">About the creator</p>
-            <h2>Built by Harshith Pranav Praveen</h2>
-            <p>Harshith is interested in aerospace engineering, hands-on design, manufacturing, mathematics, 3D modeling, Python, and future work with aerospace companies building flight and space systems.</p>
-            <p>He began engineering coursework at James Clemens High School in 2024, has taken PLTW engineering classes, and earned a Python credential in 2025.</p>
-            <a class="text-link" href="https://www.credly.com/badges/d74e2ecb-c57e-44fd-87ad-6acd2b58008c/public_url" target="_blank" rel="noreferrer">View Python credential</a>
-          </article>
+        <section class="home-workspace-section">
           <article class="panel home-tool-launcher">
             <p class="eyebrow">Use OrbitGuard</p>
             <h2>Choose a workspace</h2>

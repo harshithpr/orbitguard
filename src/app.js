@@ -8210,6 +8210,7 @@ function setSettingsDrawer(open) {
 }
 
 function wireDisplaySettings() {
+  setSettingsDrawer(false);
   elements.settingsToggle.addEventListener("click", () => setSettingsDrawer(true));
   elements.settingsClose.addEventListener("click", () => setSettingsDrawer(false));
   elements.settingsBackdrop.addEventListener("click", () => setSettingsDrawer(false));
@@ -8866,7 +8867,7 @@ function startTrafficAnimationLoop() {
 
 function introSeenThisSession() {
   try {
-    return sessionStorage.getItem("orbitguard-intro-seen") === "true";
+    return sessionStorage.getItem("orbitguard-intro-seen-v2") === "true";
   } catch {
     return false;
   }
@@ -8874,7 +8875,7 @@ function introSeenThisSession() {
 
 function rememberIntroSeen() {
   try {
-    sessionStorage.setItem("orbitguard-intro-seen", "true");
+    sessionStorage.setItem("orbitguard-intro-seen-v2", "true");
   } catch {
     // Storage can be blocked in some privacy modes; the intro still closes normally.
   }
@@ -8886,83 +8887,98 @@ function drawOrbitGuardIntroFrame(now, progress) {
 
   const { context, width, height } = setCanvasSize(canvas);
   const eased = easeInOutCubic(progress);
+  const centerX = width * 0.5;
+  const centerY = height * 0.49;
   context.clearRect(0, 0, width, height);
 
   const backdrop = context.createLinearGradient(0, 0, width, height);
   backdrop.addColorStop(0, "#020617");
-  backdrop.addColorStop(0.48, "#0b1128");
+  backdrop.addColorStop(0.42, "#09142f");
+  backdrop.addColorStop(0.68, "#0b1128");
   backdrop.addColorStop(1, "#020617");
   context.fillStyle = backdrop;
   context.fillRect(0, 0, width, height);
 
   context.save();
   context.globalCompositeOperation = "lighter";
-  const softGlow = context.createRadialGradient(width * 0.5, height * 0.48, 20, width * 0.5, height * 0.48, Math.min(width, height) * 0.46);
-  softGlow.addColorStop(0, `rgb(96 165 250 / ${0.12 + eased * 0.08})`);
-  softGlow.addColorStop(0.55, "rgb(129 140 248 / 0.06)");
+  const softGlow = context.createRadialGradient(centerX, centerY, 10, centerX, centerY, Math.min(width, height) * (0.34 + eased * 0.18));
+  softGlow.addColorStop(0, `rgb(96 165 250 / ${0.18 + eased * 0.16})`);
+  softGlow.addColorStop(0.48, "rgb(129 140 248 / 0.08)");
   softGlow.addColorStop(1, "rgb(2 6 23 / 0)");
   context.fillStyle = softGlow;
   context.fillRect(0, 0, width, height);
   context.restore();
 
-  const starDrift = eased * 18;
-  for (let index = 0; index < 190; index += 1) {
+  for (let index = 0; index < 220; index += 1) {
     const depth = 0.25 + seededUnit(index + 12) * 0.75;
-    const x = (seededUnit(index + 22) * width + starDrift * depth) % width;
-    const y = seededUnit(index + 32) * height;
-    const twinkle = 0.24 + Math.sin(now * 0.0012 + index) * 0.18 + depth * 0.38;
+    const rawX = seededUnit(index + 22) * width;
+    const rawY = seededUnit(index + 32) * height;
+    const parallax = 1 + eased * depth * 0.08;
+    const x = centerX + (rawX - centerX) * parallax + Math.sin(now * 0.00018 + index) * depth * 7;
+    const y = centerY + (rawY - centerY) * parallax + eased * depth * 18;
+    const twinkle = 0.22 + Math.sin(now * 0.0012 + index) * 0.16 + depth * 0.36;
     context.fillStyle = `rgb(226 242 255 / ${clamp(twinkle, 0.12, 0.88)})`;
     context.beginPath();
     context.arc(x, y, 0.45 + depth * 1.15, 0, Math.PI * 2);
     context.fill();
   }
 
-  const earthFade = clamp((progress - 0.18) / 0.24, 0, 1);
+  const earthFade = clamp((progress - 0.06) / 0.18, 0, 1);
   if (earthFade > 0) {
     const earthProgress = easeInOutCubic(earthFade);
-    const earthRadius = Math.min(width, height) * (0.075 + earthProgress * 0.115);
-    const centerX = width * 0.5;
-    const centerY = height * (0.47 + (1 - earthProgress) * 0.05);
+    const cameraPush = easeInOutCubic(clamp(progress / 0.72, 0, 1));
+    const earthRadius = Math.min(width, height) * (0.055 + cameraPush * 0.17);
+    const planetY = height * (0.5 + (1 - cameraPush) * 0.04);
+
     context.save();
     context.globalAlpha = earthFade;
-    context.shadowColor = "rgb(96 165 250 / 0.35)";
-    context.shadowBlur = 38;
-    drawDigitalTwinEarth(context, centerX, centerY, earthRadius, now);
+    context.shadowColor = "rgb(96 165 250 / 0.44)";
+    context.shadowBlur = 44;
+    drawDigitalTwinEarth(context, centerX, planetY, earthRadius, now);
     context.restore();
 
-    const ringProgress = clamp((progress - 0.48) / 0.28, 0, 1);
+    const ringProgress = clamp((progress - 0.25) / 0.22, 0, 1);
     if (ringProgress > 0) {
       const ringLabels = [
-        ["LEO", 1.42, -0.2, "#93c5fd"],
-        ["MEO", 1.86, 0.16, "#c4b5fd"],
-        ["GEO", 2.32, 0.38, "#fbbf24"]
+        ["LEO", 1.4, -0.22, "#93c5fd"],
+        ["MEO", 1.85, 0.14, "#c4b5fd"],
+        ["GEO", 2.34, 0.38, "#fbbf24"]
       ];
 
       context.save();
       context.globalAlpha = ringProgress;
       ringLabels.forEach(([label, scale, rotation, color], index) => {
+        const spin = Math.sin(now * 0.00028 + index) * 0.08;
         context.strokeStyle = hexToRgba(color, 0.34);
         context.lineWidth = 1.4;
         context.beginPath();
-        context.ellipse(centerX, centerY, earthRadius * scale, earthRadius * scale * 0.34, rotation, 0, Math.PI * 2 * ringProgress);
+        context.ellipse(centerX, planetY, earthRadius * scale, earthRadius * scale * 0.34, rotation + spin, 0, Math.PI * 2 * ringProgress);
         context.stroke();
 
         if (ringProgress > 0.72) {
           context.fillStyle = hexToRgba(color, 0.9);
           context.font = "700 11px Space Grotesk, sans-serif";
-          context.fillText(label, centerX + earthRadius * (scale + 0.18), centerY - earthRadius * 0.35 + index * 18);
+          context.fillText(label, centerX + earthRadius * (scale + 0.18), planetY - earthRadius * 0.35 + index * 18);
         }
       });
 
-      const scanAngle = -Math.PI * 0.85 + progress * Math.PI * 2.2;
+      const scanAngle = -Math.PI * 0.85 + progress * Math.PI * 4.2;
       context.strokeStyle = "rgb(56 189 248 / 0.34)";
       context.lineWidth = 2;
       context.beginPath();
-      context.arc(centerX, centerY, earthRadius * 1.18, scanAngle, scanAngle + Math.PI * 0.72);
+      context.arc(centerX, planetY, earthRadius * 1.18, scanAngle, scanAngle + Math.PI * 0.72);
       context.stroke();
+
+      context.strokeStyle = `rgb(147 197 253 / ${0.08 + ringProgress * 0.1})`;
+      context.lineWidth = 1;
+      for (let offset = 0; offset < 3; offset += 1) {
+        context.beginPath();
+        context.arc(centerX, planetY, earthRadius * (2.65 + offset * 0.3), 0, Math.PI * 2);
+        context.stroke();
+      }
       context.restore();
 
-      const pointFade = clamp((progress - 0.63) / 0.2, 0, 1);
+      const pointFade = clamp((progress - 0.42) / 0.2, 0, 1);
       context.save();
       context.globalAlpha = pointFade;
       const colors = ["#93c5fd", "#93c5fd", "#f87171", "#fbbf24", "#a78bfa"];
@@ -8970,7 +8986,7 @@ function drawOrbitGuardIntroFrame(now, progress) {
         const orbitScale = 1.4 + seededUnit(index + 72) * 0.95;
         const angle = seededUnit(index + 82) * Math.PI * 2 + now * 0.00035 * (0.6 + seededUnit(index + 92));
         const x = centerX + Math.cos(angle) * earthRadius * orbitScale;
-        const y = centerY + Math.sin(angle) * earthRadius * orbitScale * 0.34;
+        const y = planetY + Math.sin(angle) * earthRadius * orbitScale * 0.34;
         const color = colors[index % colors.length];
         context.fillStyle = color;
         context.shadowColor = color;
@@ -8981,14 +8997,61 @@ function drawOrbitGuardIntroFrame(now, progress) {
       }
       context.restore();
     }
+
+    const satelliteProgress = clamp((progress - 0.36) / 0.34, 0, 1);
+    if (satelliteProgress > 0 && satelliteProgress < 1) {
+      const satEase = easeInOutCubic(satelliteProgress);
+      const satX = width * (-0.12 + satEase * 1.24);
+      const satY = height * (0.31 + Math.sin(satEase * Math.PI) * 0.12);
+      drawIntroSatellite(context, satX, satY, 0.82 + satEase * 0.18, -0.22);
+    }
   }
+}
+
+function drawIntroSatellite(context, x, y, scale, rotation) {
+  context.save();
+  context.translate(x, y);
+  context.rotate(rotation);
+  context.scale(scale, scale);
+  context.globalCompositeOperation = "lighter";
+
+  const trail = context.createLinearGradient(-120, 0, -16, 0);
+  trail.addColorStop(0, "rgb(96 165 250 / 0)");
+  trail.addColorStop(1, "rgb(96 165 250 / 0.36)");
+  context.strokeStyle = trail;
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(-120, 0);
+  context.lineTo(-16, 0);
+  context.stroke();
+
+  context.fillStyle = "rgb(226 232 240 / 0.95)";
+  context.strokeStyle = "rgb(147 197 253 / 0.65)";
+  context.lineWidth = 1.2;
+  context.beginPath();
+  context.roundRect(-12, -7, 24, 14, 3);
+  context.fill();
+  context.stroke();
+
+  context.fillStyle = "rgb(96 165 250 / 0.72)";
+  context.fillRect(-38, -10, 20, 20);
+  context.fillRect(18, -10, 20, 20);
+  context.strokeRect(-38, -10, 20, 20);
+  context.strokeRect(18, -10, 20, 20);
+
+  context.fillStyle = "rgb(248 250 252 / 0.9)";
+  context.beginPath();
+  context.arc(0, 0, 2.2, 0, Math.PI * 2);
+  context.fill();
+
+  context.restore();
 }
 
 function setupOrbitGuardIntro() {
   const intro = elements.introScreen;
   const skipButton = elements.skipIntro;
   const statusText = elements.introStatusText;
-  const duration = 5200;
+  const duration = 4600;
 
   if (!intro) {
     document.body.classList.remove("intro-active");
@@ -9016,10 +9079,10 @@ function setupOrbitGuardIntro() {
   }
 
   const messages = [
-    "Scanning orbital environment...",
-    "Tracking active payloads...",
-    "Detecting debris fields...",
-    "Calculating sustainability risk...",
+    "Initializing Mission Systems...",
+    "Scanning Orbital Paths...",
+    "Mapping Debris Fields...",
+    "Loading Mission Dashboard...",
     "OrbitGuard online."
   ];
 
@@ -9028,7 +9091,7 @@ function setupOrbitGuardIntro() {
       if (!state.intro.closing && statusText) {
         statusText.textContent = message;
       }
-    }, index * 880);
+    }, index * 760);
   });
 
   const startedAt = performance.now();
