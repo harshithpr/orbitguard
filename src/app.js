@@ -1,7 +1,9 @@
 const DATA_URL = "data/orbitguard-data.json";
+const CATALOG_LIVE_STATUS_URL = "api/v1/catalog/live-status";
 const ENCYCLOPEDIA_TOPICS_URL = "data/encyclopedia-topics.json";
 const THREE_URL = "https://unpkg.com/three@0.165.0/build/three.module.js";
 const ORBIT_CONTROLS_URL = "https://unpkg.com/three@0.165.0/examples/jsm/controls/OrbitControls.js";
+const CATALOG_STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 const CREATOR = {
   name: "Harshith Pranav Praveen",
   bio:
@@ -284,6 +286,13 @@ const state = {
   objects: [],
   filtered: [],
   metadata: null,
+  catalog: {
+    refreshStatus: "loading",
+    liveCheckedAt: null,
+    liveRefreshInFlight: false,
+    liveStatus: null,
+    lastError: ""
+  },
   filters: {
     orbit: "all",
     type: "all",
@@ -1055,6 +1064,139 @@ function scoreObjects(objects) {
 
     return { ...object, riskScore: score };
   });
+}
+
+function applyCatalogPayload(payload) {
+  const generatedDate = new Date(payload.metadata.generatedAt);
+  const currentYear = generatedDate.getUTCFullYear();
+  state.metadata = payload.metadata;
+  state.objects = scoreObjects(payload.objects.map((object) => normalizeObject(object, currentYear)));
+}
+
+function catalogGeneratedDate() {
+  if (!state.metadata?.generatedAt) {
+    return null;
+  }
+
+  const date = new Date(state.metadata.generatedAt);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function catalogDateLabel(date) {
+  if (!date) {
+    return "unknown date";
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
+function catalogIsStale() {
+  const generatedDate = catalogGeneratedDate();
+  return !generatedDate || Date.now() - generatedDate.getTime() > CATALOG_STALE_AFTER_MS;
+}
+
+function renderDataSourceStatus(status = state.catalog.refreshStatus) {
+  if (!elements.dataSource) {
+    return;
+  }
+
+  state.catalog.refreshStatus = status;
+  const generatedDate = catalogGeneratedDate();
+  const dateLabel = catalogDateLabel(generatedDate);
+  const liveDate = state.catalog.liveStatus?.checkedAt ? new Date(state.catalog.liveStatus.checkedAt) : null;
+  const liveCount = state.catalog.liveStatus?.earthOrbitingObjects;
+  const countLabel = Number.isFinite(liveCount) && status === "live"
+    ? numberFormat(liveCount)
+    : state.objects.length ? numberFormat(state.objects.length) : "No";
+  const button = elements.dataSource;
+  button.classList.remove("is-fresh", "is-stale", "is-error");
+  button.disabled = status === "checking";
+  button.setAttribute("aria-busy", status === "checking" ? "true" : "false");
+
+  if (status === "checking") {
+    button.textContent = "Checking CelesTrak...";
+    button.title = "OrbitGuard is checking the public CelesTrak SATCAT feed now.";
+    return;
+  }
+
+  if (status === "live" && state.catalog.liveStatus) {
+    button.classList.add("is-fresh");
+    button.textContent = `${countLabel} live records | checked ${catalogDateLabel(liveDate)}`;
+    button.title = `Live CelesTrak SATCAT check completed. Bundled OrbitGuard data was generated ${dateLabel}.`;
+    return;
+  }
+
+  if (status === "error") {
+    button.classList.add("is-error");
+    button.textContent = `${countLabel} records | live check failed`;
+    button.title = state.catalog.lastError || "Live CelesTrak refresh failed. The daily GitHub update still keeps the deployed dataset current.";
+    return;
+  }
+
+  if (catalogIsStale()) {
+    button.classList.add("is-stale");
+    button.textContent = `${countLabel} records | CelesTrak ${dateLabel}`;
+    button.title = "This bundled catalog is over 24 hours old. Click to check CelesTrak live SATCAT data.";
+    return;
+  }
+
+  button.classList.add("is-fresh");
+  button.textContent = `${countLabel} records | CelesTrak ${dateLabel}`;
+  button.title = "Catalog is fresh. Click to check CelesTrak live SATCAT data again.";
+}
+
+async function refreshCatalogFromCelesTrak({ force = false } = {}) {
+  if (state.catalog.liveRefreshInFlight || (!force && !catalogIsStale())) {
+    renderDataSourceStatus();
+    return;
+  }
+
+  state.catalog.liveRefreshInFlight = true;
+  state.catalog.lastError = "";
+  renderDataSourceStatus("checking");
+
+  try {
+    const response = await fetch(`${CATALOG_LIVE_STATUS_URL}?orbitguard=${Date.now()}`, {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error(`OrbitGuard live catalog check failed with ${response.status}`);
+    }
+
+    const liveStatus = await response.json();
+    if (!liveStatus.ok) {
+      throw new Error(liveStatus.error || "CelesTrak live catalog check failed");
+    }
+
+    state.catalog.liveStatus = liveStatus;
+    state.catalog.liveCheckedAt = new Date(liveStatus.checkedAt);
+    renderDataSourceStatus("live");
+  } catch (error) {
+    state.catalog.lastError = `${error.message}. The GitHub Action updates the bundled catalog every day, and manual refresh can be retried later.`;
+    renderDataSourceStatus("error");
+  } finally {
+    state.catalog.liveRefreshInFlight = false;
+    if (elements.dataSource) {
+      elements.dataSource.disabled = false;
+    }
+  }
+}
+
+function maybeRefreshCatalogInBackground() {
+  if (!catalogIsStale()) {
+    renderDataSourceStatus("fresh");
+    return;
+  }
+
+  renderDataSourceStatus("stale");
+  window.setTimeout(() => {
+    refreshCatalogFromCelesTrak({ force: false });
+  }, 900);
 }
 
 function applyFilters() {
@@ -4145,8 +4287,14 @@ function renderTrafficForecast(shells = buildTrafficHealthShells()) {
   `;
 }
 
-function populateOperatorSelect() {
-  if (!elements.operatorSatelliteSelect || elements.operatorSatelliteSelect.options.length) {
+function populateOperatorSelect({ reset = false } = {}) {
+  if (!elements.operatorSatelliteSelect) {
+    return;
+  }
+
+  if (reset) {
+    elements.operatorSatelliteSelect.replaceChildren();
+  } else if (elements.operatorSatelliteSelect.options.length) {
     return;
   }
 
@@ -8178,6 +8326,11 @@ function updateAll() {
 }
 
 function populateOwners() {
+  if (!elements.ownerFilter) {
+    return;
+  }
+
+  elements.ownerFilter.replaceChildren(new Option("All owners", "all"));
   const topOwners = groupCounts(state.objects, (object) => object.owner || "Unknown").slice(0, 18);
 
   for (const [owner, count] of topOwners) {
@@ -8766,6 +8919,10 @@ function wireControls() {
   wireMissionReplayControls();
   wireTrafficControls();
   wireMissionStudioControls();
+
+  elements.dataSource?.addEventListener("click", () => {
+    refreshCatalogFromCelesTrak({ force: true });
+  });
 
   elements.orbitFilter.addEventListener("change", () => {
     state.filters.orbit = elements.orbitFilter.value;
@@ -9510,12 +9667,9 @@ async function init() {
     }
 
     const payload = await response.json();
-    const generatedDate = new Date(payload.metadata.generatedAt);
-    const currentYear = generatedDate.getUTCFullYear();
-    state.metadata = payload.metadata;
-    state.objects = scoreObjects(payload.objects.map((object) => normalizeObject(object, currentYear)));
+    applyCatalogPayload(payload);
 
-    elements.dataSource.textContent = `${numberFormat(state.objects.length)} CelesTrak records updated ${generatedDate.toLocaleDateString()}`;
+    renderDataSourceStatus();
     configureTimeMachineControls();
     populateOwners();
     await loadEncyclopediaTopics();
@@ -9526,8 +9680,10 @@ async function init() {
     updateAll();
     renderTimeMachine();
     loadWeatherData();
+    maybeRefreshCatalogInBackground();
   } catch (error) {
-    elements.dataSource.textContent = "Dataset unavailable";
+    state.catalog.lastError = error.message;
+    renderDataSourceStatus("error");
     document.querySelector("main").innerHTML = `
       <section class="panel">
         <h2>Dataset unavailable</h2>

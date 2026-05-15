@@ -1,0 +1,47 @@
+name: Update CelesTrak Catalog
+
+on:
+  schedule:
+    - cron: "17 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-catalog:
+    name: Refresh public SATCAT data
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Download latest CelesTrak SATCAT
+        run: npm run update-data
+
+      - name: Validate project
+        run: |
+          npm run check
+          npm run build
+
+      - name: Commit refreshed catalog
+        run: |
+          if git diff --quiet data/orbitguard-data.json; then
+            echo "CelesTrak catalog is already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/orbitguard-data.json
+          git commit -m "Update CelesTrak orbital catalog"
+          git push

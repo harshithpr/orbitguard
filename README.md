@@ -94,6 +94,8 @@ This downloads public CelesTrak SATCAT data, filters usable non-decayed Earth-or
 data/orbitguard-data.json
 ```
 
+OrbitGuard also includes a scheduled GitHub Actions workflow that refreshes this catalog every day and pushes the changed dataset when CelesTrak has new records. The website header includes a CelesTrak status button that checks a lightweight OrbitGuard API endpoint against the live public SATCAT feed when visitors want to verify freshness.
+
 ## API Preview
 
 ```text

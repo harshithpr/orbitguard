@@ -648,10 +648,47 @@ body.settings-drawer-open .topbar {
   padding: 0.55rem 0.75rem;
   border: 1px solid var(--line);
   border-radius: 999px;
+  background: rgb(15 23 42 / 0.42);
   color: var(--muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.source-pill:hover,
+.source-pill:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 68%, transparent);
+  background: rgb(30 41 59 / 0.62);
+  color: var(--text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  outline: none;
+}
+
+.source-pill.is-fresh {
+  border-color: color-mix(in srgb, var(--success) 54%, transparent);
+  color: var(--text);
+}
+
+.source-pill.is-stale {
+  border-color: color-mix(in srgb, var(--warning) 62%, transparent);
+  color: var(--text);
+}
+
+.source-pill.is-error {
+  border-color: color-mix(in srgb, var(--danger) 58%, transparent);
+}
+
+.source-pill:disabled {
+  cursor: progress;
+  opacity: 0.84;
 }
 
 main {

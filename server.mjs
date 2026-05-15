@@ -22,6 +22,7 @@ import {
   getGroundStationWeather,
   getSpaceWeather
 } from "./src/engines/weather-core.js";
+import { buildCatalogStatusFromSatcat, fetchSatcatCsv } from "./src/engines/catalog-core.js";
 
 const root = resolve(fileURLToPath(new URL(".", import.meta.url)));
 const port = Number(process.env.PORT || 4173);
@@ -106,6 +107,13 @@ async function handleApi(req, res) {
   }
 
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+
+  if (url.pathname === "/api/v1/catalog/live-status") {
+    const { csv, sourceLastModified } = await fetchSatcatCsv();
+    sendJson(res, 200, buildCatalogStatusFromSatcat(csv, new Date(), sourceLastModified));
+    return;
+  }
+
   const catalog = await loadCatalog();
 
   if (url.pathname === "/api/v1/health") {
@@ -259,6 +267,7 @@ async function handleApi(req, res) {
     endpoints: [
       "GET /api/v1/health",
       "GET /api/v1/summary",
+      "GET /api/v1/catalog/live-status",
       "GET /api/v1/objects?band=500-600&type=debris",
       "GET /api/v1/bands?size=100",
       "GET /api/v1/time-machine?year=2005",
