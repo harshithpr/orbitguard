@@ -8,8 +8,8 @@
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>OrbitGuard | Space Sustainability Analyzer</title>
-    <link rel="icon" type="image/png" href="/public/favicon.png">
-    <link rel="apple-touch-icon" href="/public/favicon.png">
+    <link rel="icon" type="image/png" href="public/favicon.png">
+    <link rel="apple-touch-icon" href="public/favicon.png">
     <link rel="stylesheet" href="styles.css">
     <script type="importmap">
       {
@@ -24,7 +24,7 @@
       <canvas id="intro-canvas" aria-hidden="true"></canvas>
       <div class="intro-overlay">
         <div class="intro-lockup">
-          <img src="/public/logo.svg" alt="" class="intro-logo-mark">
+          <img src="public/logo.svg" alt="" class="intro-logo-mark">
           <h1>OrbitGuard</h1>
           <p>Space Sustainability Analyzer</p>
           <strong>Tracking the future of Earth orbit.</strong>
@@ -38,6 +38,38 @@
         <button id="skip-intro" type="button">Skip Intro</button>
       </div>
     </div>
+    <script>
+      (() => {
+        const intro = document.getElementById("intro-screen");
+        const skip = document.getElementById("skip-intro");
+        if (!intro) return;
+
+        const closeIntro = () => {
+          intro.classList.add("intro-hidden");
+          document.body.classList.remove("intro-active");
+          try {
+            sessionStorage.setItem("orbitguard-intro-seen", "true");
+          } catch (error) {
+            // If storage is blocked, still let the page continue.
+          }
+        };
+
+        try {
+          if (sessionStorage.getItem("orbitguard-intro-seen") === "true") {
+            closeIntro();
+          }
+        } catch (error) {
+          document.body.classList.remove("intro-active");
+        }
+
+        skip?.addEventListener("click", closeIntro);
+        window.orbitGuardCloseIntro = closeIntro;
+        window.setTimeout(() => {
+          if (!intro.classList.contains("intro-hidden")) closeIntro();
+        }, 7000);
+      })();
+    </script>
+    <noscript><style>#intro-screen{display:none!important}body{opacity:1!important}</style></noscript>
 
     <div class="space-backdrop" aria-hidden="true">
       <canvas id="spaceBackdropCanvas"></canvas>
@@ -46,7 +78,7 @@
 
     <header class="topbar">
       <div class="brand">
-        <img src="/public/logo.svg" alt="OrbitGuard logo" class="logo">
+        <img src="public/logo.svg" alt="OrbitGuard logo" class="logo">
         <div>
           <p class="eyebrow">Space Sustainability Analyzer</p>
           <h1>OrbitGuard</h1>
@@ -122,12 +154,14 @@
             <div class="home-tool-list">
               <button class="mode-jump" type="button" data-mode="studio">Autonomous Mission Design Studio</button>
               <button class="mode-jump" type="button" data-mode="dashboard">Current Orbit Dashboard</button>
+              <button class="mode-jump" type="button" data-mode="simulator">Launch Impact Simulator</button>
               <button class="mode-jump" type="button" data-mode="replay">Mission Replay Mode</button>
               <button class="mode-jump" type="button" data-mode="traffic">Space Traffic Control Center</button>
               <button class="mode-jump" type="button" data-mode="time">Time Machine</button>
               <button class="mode-jump" type="button" data-mode="weather">Weather Ops</button>
               <button class="mode-jump" type="button" data-mode="encyclopedia">Space Encyclopedia</button>
               <button class="mode-jump" type="button" data-mode="report">Sustainability Report</button>
+              <button class="mode-jump" type="button" data-mode="about">About the Creator</button>
             </div>
           </article>
         </section>
@@ -210,15 +244,12 @@
       <button class="settings-backdrop" id="settingsBackdrop" type="button" hidden aria-label="Close display settings"></button>
 
       <nav class="mode-tabs app-mode-nav" aria-label="OrbitGuard workspace navigation">
-        <button class="mode-tab" type="button" data-mode="studio">Design Studio</button>
+        <button class="mode-tab" type="button" data-mode="home">Home</button>
         <button class="mode-tab" type="button" data-mode="dashboard">Dashboard</button>
-        <button class="mode-tab" type="button" data-mode="simulator">Launch Sim</button>
-        <button class="mode-tab" type="button" data-mode="replay">Mission Replay</button>
-        <button class="mode-tab" type="button" data-mode="traffic">Traffic Control</button>
-        <button class="mode-tab" type="button" data-mode="time">Time Machine</button>
-        <button class="mode-tab" type="button" data-mode="weather">Weather Ops</button>
-        <button class="mode-tab" type="button" data-mode="encyclopedia">Encyclopedia</button>
-        <button class="mode-tab" type="button" data-mode="report">Report</button>
+        <button class="mode-tab" type="button" data-mode="studio">Mission Design Studio</button>
+        <button class="mode-tab" type="button" data-mode="simulator">Simulator</button>
+        <button class="mode-tab" type="button" data-mode="report">Reports</button>
+        <button class="mode-tab" type="button" data-mode="about">About</button>
       </nav>
 
       <section class="mode-panel" id="studioMode">
@@ -1593,25 +1624,103 @@
         </section>
       </section>
 
-      <section class="about-creator panel" aria-label="About the creator">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">About the creator</p>
-            <h2>Harshith Pranav Praveen</h2>
-          </div>
-          <a class="top-link" href="https://www.credly.com/badges/d74e2ecb-c57e-44fd-87ad-6acd2b58008c/public_url" target="_blank" rel="noreferrer">Python Certification</a>
-        </div>
-        <div class="about-grid">
-          <p>
-            I am deeply interested in aerospace engineering and excited to explore the field through hands-on engineering, design, manufacturing, and future work with aerospace companies such as Boeing, Lockheed Martin, and other organizations building the next generation of flight and space systems.
-          </p>
-          <p>
-            My engineering path started through James Clemens High School, where I began formal engineering coursework in 2024 and took PLTW classes. After moving from Tucson to Texas and then to Madison, I spent significant time studying mathematics and advanced coursework, which helped me connect engineering with the combination of math, design, modeling, and problem solving that I enjoy most.
-          </p>
-          <p>
-            In my first engineering course, Introduction to Engineering Design, I earned a certification connected to 3D modeling, engineering drawing, and the fundamentals of turning ideas into precise models. During my sophomore year in 2025, I also earned a Python credential after studying programming fundamentals and more advanced topics.
-          </p>
-        </div>
+      <section class="mode-panel" id="aboutMode" aria-label="About OrbitGuard creator">
+        <section class="about-page">
+          <article class="bubble-card about-hero-card">
+            <div class="about-hero-copy">
+              <p class="eyebrow">About the creator</p>
+              <h2>Hi, I’m Harshith.</h2>
+              <p class="about-lead">I’m a high school student interested in aerospace engineering, physics, mathematics, and software development. I created OrbitGuard to explore how satellite launches, space debris, and orbital congestion affect the long-term sustainability of Earth orbit.</p>
+              <p>My background includes AP Physics 1, Calculus, and engineering coursework, which helped me connect math and physics to real aerospace problems. OrbitGuard combines my interests in orbital mechanics, data visualization, mission design, and responsible space exploration.</p>
+              <p>My long-term goal is to study aerospace engineering and contribute to technologies that make spaceflight safer, smarter, and more sustainable.</p>
+            </div>
+            <aside class="founder-card">
+              <span class="founder-orbit" aria-hidden="true"></span>
+              <p class="eyebrow">Founder card</p>
+              <h3>Harshith Pranav Praveen</h3>
+              <p>High School Student • Future Aerospace Engineer</p>
+              <p>Building OrbitGuard to make orbital sustainability understandable.</p>
+              <div class="about-actions">
+                <a class="top-link" href="https://github.com/harshithpr/orbitguard" target="_blank" rel="noreferrer">View GitHub</a>
+                <a class="top-link" href="https://orbitguard.vercel.app" target="_blank" rel="noreferrer">Open Live Demo</a>
+                <a class="top-link" href="docs/ABOUT_CREATOR.md">Read Roadmap</a>
+              </div>
+            </aside>
+          </article>
+
+          <section class="about-skill-strip" aria-label="Creator skills">
+            <span>AP Physics 1</span>
+            <span>Calculus</span>
+            <span>Engineering</span>
+            <span>JavaScript</span>
+            <span>Python</span>
+            <span>Orbital Data</span>
+            <span>3D Modeling</span>
+            <span>Mission Design</span>
+          </section>
+
+          <section class="about-bubble-grid" aria-label="About OrbitGuard purpose">
+            <article class="bubble-card">
+              <p class="eyebrow">Why I built OrbitGuard</p>
+              <h3>Space debris is an engineering problem people can see.</h3>
+              <p>OrbitGuard turns satellite catalogs, launch choices, and sustainability rules into an interactive dashboard so students and visitors can understand why crowded orbits matter.</p>
+            </article>
+            <article class="bubble-card">
+              <p class="eyebrow">Aerospace goals</p>
+              <h3>Build safer, smarter space systems.</h3>
+              <p>I want to study aerospace engineering and work on technologies that connect flight, space operations, simulation, manufacturing, and responsible exploration.</p>
+            </article>
+            <article class="bubble-card">
+              <p class="eyebrow">Project focus</p>
+              <h3>Mission design meets sustainability.</h3>
+              <p>The project combines orbital data, 3D visualization, mission scoring, launch simulation, and report generation into one space sustainability platform.</p>
+            </article>
+          </section>
+
+          <section class="about-detail-grid">
+            <article class="bubble-card timeline-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Project timeline</p>
+                  <h2>How OrbitGuard grew</h2>
+                </div>
+              </div>
+              <div class="timeline-list">
+                <div>
+                  <span>2024</span>
+                  <strong>Engineering foundation</strong>
+                  <p>Started formal engineering coursework and PLTW design work, connecting modeling and math to real systems.</p>
+                </div>
+                <div>
+                  <span>2025</span>
+                  <strong>Programming and aerospace focus</strong>
+                  <p>Earned a Python credential and deepened interest in aerospace engineering, simulation, and orbital mechanics.</p>
+                </div>
+                <div>
+                  <span>2026</span>
+                  <strong>OrbitGuard platform</strong>
+                  <p>Built OrbitGuard as a public web app with mission design, launch impact scoring, traffic control, reports, and a 3D orbital interface.</p>
+                </div>
+              </div>
+            </article>
+
+            <article class="bubble-card contact-card">
+              <p class="eyebrow">Contact and proof</p>
+              <h2>Project links</h2>
+              <p>OrbitGuard is built as a serious aerospace portfolio project: public code, live demo, documentation, and a roadmap for future space-weather and SGP4 upgrades.</p>
+              <div class="project-stat-bubbles">
+                <span><strong>33k+</strong> catalog records</span>
+                <span><strong>3D</strong> orbit preview</span>
+                <span><strong>TXT/JSON</strong> reports</span>
+              </div>
+              <div class="about-actions">
+                <a class="top-link" href="https://github.com/harshithpr/orbitguard" target="_blank" rel="noreferrer">GitHub Repo</a>
+                <a class="top-link" href="https://orbitguard.vercel.app" target="_blank" rel="noreferrer">Live Website</a>
+                <a class="top-link" href="https://www.credly.com/badges/d74e2ecb-c57e-44fd-87ad-6acd2b58008c/public_url" target="_blank" rel="noreferrer">Python Credential</a>
+              </div>
+            </article>
+          </section>
+        </section>
       </section>
     </main>
 

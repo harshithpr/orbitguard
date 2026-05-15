@@ -16,6 +16,8 @@
   --danger: #f87171;
   --border: rgb(203 213 225 / 0.18);
   --shadow-color: rgb(0 0 0 / 0.35);
+  --bubble-radius: 24px;
+  --bubble-radius-lg: 32px;
   --payload-color: #93c5fd;
   --debris-color: #f87171;
   --rocket-color: #fbbf24;
@@ -937,20 +939,20 @@ input[type="color"] {
   margin-bottom: 1rem;
   padding: 0.35rem;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--bubble-radius);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--bg-panel) 90%, transparent), color-mix(in srgb, var(--bg-card) 78%, transparent));
   box-shadow: var(--shadow);
 }
 
 .app-mode-nav {
-  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .mode-tab {
   min-height: 2.65rem;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 18px;
   background: transparent;
   color: var(--muted);
   font-weight: 780;
@@ -1152,24 +1154,298 @@ select:focus-visible {
   grid-template-columns: 1fr;
 }
 
-.about-creator {
-  margin-top: 1rem;
+.bubble-card {
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+  border-radius: var(--bubble-radius-lg);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 18rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--bg-panel) 82%, transparent), color-mix(in srgb, var(--bg-card) 74%, transparent));
+  box-shadow:
+    0 24px 70px rgb(0 0 0 / 0.34),
+    inset 0 1px 0 rgb(255 255 255 / 0.04);
+  backdrop-filter: blur(18px);
+  overflow: hidden;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 
-.about-grid {
+.bubble-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 52%, transparent);
+  box-shadow:
+    0 28px 90px color-mix(in srgb, var(--accent) 16%, rgb(0 0 0 / 0.32)),
+    inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+.panel,
+.metric,
+.home-hero,
+.home-orbit-card,
+.home-orbit-visual,
+.home-feature-card,
+.creator-intro-card,
+.home-tool-launcher,
+.command-hero,
+.studio-builder-panel,
+.studio-option-card,
+.studio-preview-panel,
+.studio-redesign-card,
+.saved-scenario-card,
+.report-card,
+.weather-chip,
+.topic-card,
+.traffic-alert-card,
+.forecast-card,
+.operator-card,
+.autopsy-card,
+.comparison-card,
+.mission-table,
+.settings-drawer {
+  border-radius: var(--bubble-radius);
+}
+
+.panel,
+.metric,
+.home-feature-card,
+.studio-option-card,
+.report-card {
+  box-shadow:
+    0 20px 54px rgb(0 0 0 / 0.28),
+    inset 0 1px 0 rgb(255 255 255 / 0.035);
+}
+
+.top-link,
+button,
+select,
+input[type="number"],
+input[type="text"] {
+  border-radius: 999px;
+}
+
+.about-page {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
 }
 
-.about-grid p {
+.about-hero-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.55fr);
+  gap: clamp(1rem, 3vw, 1.5rem);
+  align-items: stretch;
+  min-height: 30rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  background:
+    radial-gradient(circle at 18% 20%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 26rem),
+    radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--simulated-color) 18%, transparent), transparent 22rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--bg-panel) 84%, transparent), color-mix(in srgb, var(--bg-main) 88%, black));
+}
+
+.about-hero-copy {
+  display: grid;
+  align-content: center;
+  gap: 1rem;
+}
+
+.about-hero-copy h2 {
   margin: 0;
-  padding: 1rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-2);
+  max-width: 12ch;
+  font-size: clamp(3.2rem, 9vw, 7.4rem);
+  line-height: 0.88;
+  letter-spacing: 0;
+}
+
+.about-hero-copy p {
+  max-width: 68rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.about-hero-copy .about-lead {
   color: var(--text);
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+}
+
+.founder-card {
+  position: relative;
+  display: grid;
+  align-content: end;
+  gap: 0.75rem;
+  min-height: 24rem;
+  padding: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+  border-radius: var(--bubble-radius);
+  background:
+    radial-gradient(circle at 50% 28%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 8rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 70%, transparent), color-mix(in srgb, var(--bg-main) 86%, black));
+  overflow: hidden;
+}
+
+.founder-card h3 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.25rem);
+  line-height: 1;
+}
+
+.founder-card p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
   line-height: 1.55;
+}
+
+.founder-orbit {
+  position: absolute;
+  inset: 2rem 1rem auto;
+  height: 13rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  border-radius: 999px;
+  transform: rotate(-16deg);
+  opacity: 0.78;
+}
+
+.founder-orbit::before,
+.founder-orbit::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+}
+
+.founder-orbit::before {
+  left: 50%;
+  top: 50%;
+  width: 5.2rem;
+  height: 5.2rem;
+  background: radial-gradient(circle at 35% 30%, #dbeafe, var(--accent) 46%, #0f172a 100%);
+  box-shadow: 0 0 42px color-mix(in srgb, var(--accent) 42%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+.founder-orbit::after {
+  left: 72%;
+  top: 45%;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: var(--simulated-color);
+  box-shadow: 0 0 18px var(--simulated-color);
+}
+
+.about-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.about-skill-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.about-skill-strip span,
+.project-stat-bubbles span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.45rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-card) 72%, transparent);
+  color: var(--text);
+  font-weight: 740;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035);
+}
+
+.about-bubble-grid,
+.about-detail-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.about-bubble-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.about-detail-grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+}
+
+.about-bubble-grid .bubble-card,
+.timeline-card,
+.contact-card {
+  padding: 1.25rem;
+}
+
+.about-bubble-grid h3,
+.contact-card h2,
+.timeline-card h2 {
+  margin: 0 0 0.6rem;
+}
+
+.about-bubble-grid p:not(.eyebrow),
+.contact-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.timeline-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.timeline-list div {
+  position: relative;
+  margin: 0;
+  padding: 1rem 1rem 1rem 1.2rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--bg-card) 62%, transparent);
+}
+
+.timeline-list div::before {
+  content: "";
+  position: absolute;
+  left: -0.42rem;
+  top: 1.2rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 16px var(--accent);
+}
+
+.timeline-list span {
+  display: inline-flex;
+  margin-bottom: 0.35rem;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.timeline-list strong {
+  display: block;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.timeline-list p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.project-stat-bubbles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.project-stat-bubbles strong {
+  margin-right: 0.4rem;
+  color: var(--accent);
 }
 
 .panel {
@@ -2914,7 +3190,7 @@ td {
 .log-entry {
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 18px;
   background: var(--panel-2);
 }
 
@@ -2933,7 +3209,7 @@ td {
 .studio-options-panel {
   background: color-mix(in srgb, var(--bg-panel) 78%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
-  border-radius: 8px;
+  border-radius: var(--bubble-radius);
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
 }
@@ -2967,7 +3243,7 @@ td {
 .constraint-warning {
   padding: 0.7rem 0.8rem;
   border: 1px solid color-mix(in srgb, var(--warning) 42%, var(--line));
-  border-radius: 8px;
+  border-radius: 18px;
   background: color-mix(in srgb, var(--warning) 12%, var(--panel-2));
   color: var(--text);
   font-size: 0.86rem;
@@ -2977,7 +3253,7 @@ td {
 .studio-philosophy {
   padding: 0.8rem;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 18px;
   background: var(--panel-2);
   color: var(--muted);
   line-height: 1.5;
@@ -2994,7 +3270,7 @@ td {
   gap: 0.8rem;
   padding: 1rem;
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
-  border-radius: 8px;
+  border-radius: 22px;
   background:
     linear-gradient(145deg, color-mix(in srgb, var(--bg-card) 92%, transparent), color-mix(in srgb, var(--bg-panel) 90%, transparent));
   cursor: pointer;
@@ -3107,7 +3383,7 @@ td {
   max-height: 430px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
-  border-radius: 8px;
+  border-radius: var(--bubble-radius);
   background: #020617;
   contain: layout paint size;
 }
@@ -3156,7 +3432,7 @@ td {
 .saved-scenario-card {
   padding: 0.8rem;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 20px;
   background: var(--panel-2);
 }
 
@@ -3177,7 +3453,7 @@ td {
 .studio-report-preview {
   padding: 0.85rem;
   border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
-  border-radius: 8px;
+  border-radius: 20px;
   background: color-mix(in srgb, var(--panel-2) 84%, transparent);
 }
 
@@ -3251,6 +3527,9 @@ footer a {
   .simulator-layout,
   .launch-sequence-grid,
   .about-grid,
+  .about-hero-card,
+  .about-bubble-grid,
+  .about-detail-grid,
   .compare-grid,
   .encyclopedia-shell,
   .weather-detail-grid,
@@ -3350,11 +3629,31 @@ footer a {
   .home-feature-grid,
   .home-preview-metrics,
   .home-tool-list,
+  .about-bubble-grid,
+  .about-detail-grid,
   .autopsy-grid,
   .studio-card-metrics,
   .operator-card dl,
   .maneuver-result dl {
     grid-template-columns: 1fr;
+  }
+
+  .about-hero-card {
+    min-height: auto;
+    padding: 1rem;
+  }
+
+  .about-hero-copy h2 {
+    max-width: 100%;
+    font-size: clamp(2.6rem, 15vw, 4.4rem);
+  }
+
+  .founder-card {
+    min-height: 21rem;
+  }
+
+  .founder-orbit {
+    inset: 1.5rem 0.6rem auto;
   }
 
   .comparison-actions,

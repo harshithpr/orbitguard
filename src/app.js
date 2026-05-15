@@ -8181,6 +8181,8 @@ function setActiveMode(mode) {
     renderMissionReplay();
   } else if (mode === "traffic") {
     renderTrafficControl();
+  } else if (mode === "about") {
+    window.scrollTo({ top: 0, behavior: state.display.reduceMotion ? "auto" : "smooth" });
   } else {
     initOrbitScene().then(() => renderOrbitScene());
   }
