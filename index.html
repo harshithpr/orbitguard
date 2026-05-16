@@ -38,9 +38,9 @@
           <p>Orbital Risk Intelligence Platform</p>
           <strong>Initializing Mission Systems...</strong>
           <div class="intro-mission-steps" aria-hidden="true">
-            <span>Scanning Orbital Paths</span>
-            <span>Mapping Debris Fields</span>
-            <span>Loading Mission Dashboard</span>
+            <span>Scanning Paths</span>
+            <span>Mapping Debris</span>
+            <span>Preparing Dashboard</span>
           </div>
         </div>
         <div class="intro-status">
@@ -91,7 +91,7 @@
         window.orbitGuardCloseIntro = closeIntro;
         fallbackTimer = window.setTimeout(() => {
           if (!intro.classList.contains("intro-hidden")) closeIntro();
-        }, 5000);
+        }, 6000);
       })();
     </script>
     <noscript><style>#intro-screen{display:none!important}body{opacity:1!important}</style></noscript>

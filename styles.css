@@ -264,6 +264,8 @@ body:not(.intro-active) footer {
   inset: 0;
   display: grid;
   place-items: center;
+  justify-content: center;
+  align-content: center;
   text-align: center;
   color: #f8fafc;
   pointer-events: none;
@@ -276,10 +278,12 @@ body:not(.intro-active) footer {
   gap: 0.58rem;
   width: min(680px, 86vw);
   padding: 1.25rem;
+  margin-inline: auto;
   opacity: 0;
   transform: translateY(20px) scale(0.96);
+  transform-origin: center;
   filter: blur(12px);
-  animation: introTitle 1.15s cubic-bezier(.2,.8,.2,1) 2.25s forwards;
+  animation: introTitle 1.35s cubic-bezier(.2,.8,.2,1) 2.15s forwards;
 }
 
 .intro-lockup::before {
@@ -354,12 +358,12 @@ body:not(.intro-active) footer {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
   opacity: 0;
   transform: translateY(6px);
-  animation: introStepReveal 900ms ease forwards;
+  animation: introStepReveal 1s ease forwards;
 }
 
-.intro-mission-steps span:nth-child(1) { animation-delay: 2.8s; }
-.intro-mission-steps span:nth-child(2) { animation-delay: 3.1s; }
-.intro-mission-steps span:nth-child(3) { animation-delay: 3.4s; }
+.intro-mission-steps span:nth-child(1) { animation-delay: 3.1s; }
+.intro-mission-steps span:nth-child(2) { animation-delay: 3.5s; }
+.intro-mission-steps span:nth-child(3) { animation-delay: 3.9s; }
 
 .intro-status {
   position: absolute;
@@ -389,7 +393,7 @@ body:not(.intro-active) footer {
   border-radius: inherit;
   background: linear-gradient(90deg, #38bdf8, #818cf8, #a78bfa);
   box-shadow: 0 0 22px rgb(96 165 250 / 0.48);
-  animation: introProgress 4.45s ease forwards;
+  animation: introProgress 5.35s ease forwards;
 }
 
 #skip-intro {

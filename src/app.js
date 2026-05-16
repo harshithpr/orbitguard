@@ -9224,7 +9224,7 @@ function drawOrbitGuardIntroFrame(now, progress) {
   const { context, width, height } = setCanvasSize(canvas);
   const eased = easeInOutCubic(progress);
   const centerX = width * 0.5;
-  const centerY = height * 0.49;
+  const centerY = height * 0.5;
   context.clearRect(0, 0, width, height);
 
   const backdrop = context.createLinearGradient(0, 0, width, height);
@@ -9245,7 +9245,7 @@ function drawOrbitGuardIntroFrame(now, progress) {
   context.fillRect(0, 0, width, height);
   context.restore();
 
-  for (let index = 0; index < 220; index += 1) {
+  for (let index = 0; index < 140; index += 1) {
     const depth = 0.25 + seededUnit(index + 12) * 0.75;
     const rawX = seededUnit(index + 22) * width;
     const rawY = seededUnit(index + 32) * height;
@@ -9264,7 +9264,7 @@ function drawOrbitGuardIntroFrame(now, progress) {
     const earthProgress = easeInOutCubic(earthFade);
     const cameraPush = easeInOutCubic(clamp(progress / 0.72, 0, 1));
     const earthRadius = Math.min(width, height) * (0.055 + cameraPush * 0.17);
-    const planetY = height * (0.5 + (1 - cameraPush) * 0.04);
+    const planetY = height * (0.5 + (1 - cameraPush) * 0.025);
 
     context.save();
     context.globalAlpha = earthFade;
@@ -9275,27 +9275,21 @@ function drawOrbitGuardIntroFrame(now, progress) {
 
     const ringProgress = clamp((progress - 0.25) / 0.22, 0, 1);
     if (ringProgress > 0) {
-      const ringLabels = [
-        ["LEO", 1.4, -0.22, "#93c5fd"],
-        ["MEO", 1.85, 0.14, "#c4b5fd"],
-        ["GEO", 2.34, 0.38, "#fbbf24"]
+      const orbitRings = [
+        { scale: 1.4, rotation: -0.22, color: "#93c5fd" },
+        { scale: 1.85, rotation: 0.14, color: "#c4b5fd" },
+        { scale: 2.34, rotation: 0.38, color: "#fbbf24" }
       ];
 
       context.save();
       context.globalAlpha = ringProgress;
-      ringLabels.forEach(([label, scale, rotation, color], index) => {
+      orbitRings.forEach(({ scale, rotation, color }, index) => {
         const spin = Math.sin(now * 0.00028 + index) * 0.08;
         context.strokeStyle = hexToRgba(color, 0.34);
         context.lineWidth = 1.4;
         context.beginPath();
         context.ellipse(centerX, planetY, earthRadius * scale, earthRadius * scale * 0.34, rotation + spin, 0, Math.PI * 2 * ringProgress);
         context.stroke();
-
-        if (ringProgress > 0.72) {
-          context.fillStyle = hexToRgba(color, 0.9);
-          context.font = "700 11px Space Grotesk, sans-serif";
-          context.fillText(label, centerX + earthRadius * (scale + 0.18), planetY - earthRadius * 0.35 + index * 18);
-        }
       });
 
       const scanAngle = -Math.PI * 0.85 + progress * Math.PI * 4.2;
@@ -9334,7 +9328,7 @@ function drawOrbitGuardIntroFrame(now, progress) {
       context.restore();
     }
 
-    const satelliteProgress = clamp((progress - 0.36) / 0.34, 0, 1);
+    const satelliteProgress = clamp((progress - 0.34) / 0.42, 0, 1);
     if (satelliteProgress > 0 && satelliteProgress < 1) {
       const satEase = easeInOutCubic(satelliteProgress);
       const satX = width * (-0.12 + satEase * 1.24);
@@ -9387,7 +9381,7 @@ function setupOrbitGuardIntro() {
   const intro = elements.introScreen;
   const skipButton = elements.skipIntro;
   const statusText = elements.introStatusText;
-  const duration = 4600;
+  const duration = 5400;
 
   if (!intro) {
     document.body.classList.remove("intro-active");
@@ -9427,9 +9421,9 @@ function setupOrbitGuardIntro() {
 
   const messages = [
     "Initializing Mission Systems...",
-    "Scanning Orbital Paths...",
-    "Mapping Debris Fields...",
-    "Loading Mission Dashboard...",
+    "Scanning Paths...",
+    "Mapping Debris...",
+    "Preparing Dashboard...",
     "OrbitGuard online."
   ];
 
@@ -9438,7 +9432,7 @@ function setupOrbitGuardIntro() {
       if (!state.intro.closing && statusText) {
         statusText.textContent = message;
       }
-    }, index * 760);
+    }, index * 1000);
     state.intro.timers.push(timer);
   });
 
