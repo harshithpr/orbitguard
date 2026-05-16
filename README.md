@@ -100,6 +100,7 @@ OrbitGuard also includes a scheduled GitHub Actions workflow that refreshes this
 
 ```text
 GET  /api/v1/health
+GET  /api/v1/catalog/live-status
 GET  /api/v1/summary
 GET  /api/v1/objects?band=500-600&type=debris
 GET  /api/v1/bands?size=100
@@ -132,6 +133,20 @@ OrbitGuard was built by **Harshith Pranav Praveen**, a high school student inter
 - Space-weather data: NOAA Space Weather Prediction Center
 - 3D rendering: Three.js
 - Built and maintained by Harshith Pranav Praveen
+
+## Final Testing Checklist
+
+Before sharing a new version publicly:
+
+- Run `npm run update-data` when you want a fresh local CelesTrak snapshot
+- Run `npm run check`
+- Run `npm run build`
+- Open the local site at `http://localhost:4173`
+- Confirm the intro, skip button, navigation tabs, display drawer, About page, 3D previews, and exports work
+- Confirm `/api/v1/health` and `/api/v1/catalog/live-status` return healthy JSON
+- Check desktop and mobile widths for overflow, overlapping text, and oversized controls
+- Check the browser console for new errors
+- Confirm the live Vercel URL updates after pushing to GitHub
 
 ## License
 

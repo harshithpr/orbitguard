@@ -127,14 +127,33 @@ export function buildCatalogStatusFromSatcat(csv, checkedAt = new Date(), source
 
 export async function fetchSatcatCsv({
   fetchImpl = fetch,
-  headers = {}
+  headers = {},
+  timeoutMs = 25_000
 } = {}) {
-  const response = await fetchImpl(SATCAT_URL, {
-    headers: {
-      "User-Agent": "OrbitGuard space-sustainability project",
-      ...headers
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeout = controller
+    ? setTimeout(() => controller.abort(), timeoutMs)
+    : null;
+
+  let response;
+  try {
+    response = await fetchImpl(SATCAT_URL, {
+      headers: {
+        "User-Agent": "OrbitGuard space-sustainability project",
+        ...headers
+      },
+      signal: controller?.signal
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("CelesTrak request timed out");
     }
-  });
+    throw error;
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
 
   if (!response.ok) {
     throw new Error(`CelesTrak request failed with ${response.status}`);

@@ -214,6 +214,7 @@ Open these in the browser:
 
 ```text
 http://localhost:4173/api/v1/health
+http://localhost:4173/api/v1/catalog/live-status
 http://localhost:4173/api/v1/summary
 http://localhost:4173/api/v1/objects?band=500-600&type=debris&limit=5
 http://localhost:4173/api/v1/time-machine?year=2005
@@ -229,6 +230,7 @@ Expected:
 
 - JSON appears in the browser
 - `health.ok` is `true`
+- `catalog/live-status` returns local and live CelesTrak record counts
 - `summary` includes catalog counts
 - `objects` returns matching records
 - `time-machine` returns selected year, current year, and change values
@@ -237,3 +239,16 @@ Expected:
 - `weather/space` returns Kp, F10.7, solar wind, altitude impacts, and solar-cycle fields
 - `weather/ground` returns a station, current conditions, and operations scoring
 - `sustainability` returns an `impact` object
+
+## Polish And Performance Checks
+
+Expected:
+
+- The intro finishes in under five seconds, and `Skip Intro` works immediately
+- Home, Dashboard, Mission Design Studio, Simulator, Reports, and About stay inside the viewport with no horizontal scrolling
+- The Display drawer opens from the right, closes cleanly, and does not permanently cover the main navigation
+- Mission Design Studio's 3D preview remains locked inside its card instead of expanding down the page
+- Switching tabs does not create duplicate canvases or obvious repeated animation loops
+- Background star effects pause when the tab is hidden and resume when it is visible again
+- Desktop, tablet, and phone widths keep text readable without giant controls or overlapping panels
+- Browser console shows no new errors after navigating through all modes

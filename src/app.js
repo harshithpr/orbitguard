@@ -361,6 +361,9 @@ const state = {
     timers: [],
     closing: false
   },
+  spaceEffects: {
+    animationId: null
+  },
   timeMachine: {
     selectedYear: 2010,
     currentYear: new Date().getFullYear(),
@@ -1158,10 +1161,15 @@ async function refreshCatalogFromCelesTrak({ force = false } = {}) {
   state.catalog.liveRefreshInFlight = true;
   state.catalog.lastError = "";
   renderDataSourceStatus("checking");
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeout = controller
+    ? window.setTimeout(() => controller.abort(), 15_000)
+    : null;
 
   try {
     const response = await fetch(`${CATALOG_LIVE_STATUS_URL}?orbitguard=${Date.now()}`, {
-      cache: "no-store"
+      cache: "no-store",
+      signal: controller?.signal
     });
 
     if (!response.ok) {
@@ -1177,9 +1185,15 @@ async function refreshCatalogFromCelesTrak({ force = false } = {}) {
     state.catalog.liveCheckedAt = new Date(liveStatus.checkedAt);
     renderDataSourceStatus("live");
   } catch (error) {
-    state.catalog.lastError = `${error.message}. The GitHub Action updates the bundled catalog every day, and manual refresh can be retried later.`;
+    const reason = error?.name === "AbortError"
+      ? "CelesTrak live check timed out"
+      : error.message;
+    state.catalog.lastError = `${reason}. The GitHub Action updates the bundled catalog every day, and manual refresh can be retried later.`;
     renderDataSourceStatus("error");
   } finally {
+    if (timeout) {
+      window.clearTimeout(timeout);
+    }
     state.catalog.liveRefreshInFlight = false;
     if (elements.dataSource) {
       elements.dataSource.disabled = false;
@@ -6451,7 +6465,7 @@ function createMoonBumpTexture(THREE) {
   ctx.fillStyle = "#7f8792";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  for (let index = 0; index < 220; index += 1) {
+  for (let index = 0; index < 72; index += 1) {
     const x = seededUnit(index + 1901) * canvas.width;
     const y = seededUnit(index + 1903) * canvas.height;
     const radius = 3 + seededUnit(index + 1905) * 38;
@@ -9419,7 +9433,7 @@ function setupInteractiveSpaceEffects() {
   }
 
   function seedStars() {
-    const count = Math.min(620, Math.max(210, Math.floor((width * height) / 4200)));
+    const count = Math.min(84, Math.max(42, Math.floor((width * height) / 24000)));
     stars = Array.from({ length: count }, (_, index) => ({
       x: seededUnit(index + 2401) * width,
       y: seededUnit(index + 2501) * height,
@@ -9564,6 +9578,11 @@ function setupInteractiveSpaceEffects() {
   }
 
   function drawFrame(time = 0) {
+    state.spaceEffects.animationId = null;
+    if (document.hidden) {
+      return;
+    }
+
     const interactive = canUseCursorEffects();
     const renderTime = state.display.reduceMotion ? 0 : time;
     pointer.x += (pointer.targetX - pointer.x) * (interactive ? 0.18 : 0.04);
@@ -9578,7 +9597,20 @@ function setupInteractiveSpaceEffects() {
     drawStars(renderTime, interactive);
     drawSingularityLens(renderTime, interactive);
 
-    requestAnimationFrame(drawFrame);
+    state.spaceEffects.animationId = requestAnimationFrame(drawFrame);
+  }
+
+  function startSpaceEffects() {
+    if (!state.spaceEffects.animationId && !document.hidden) {
+      state.spaceEffects.animationId = requestAnimationFrame(drawFrame);
+    }
+  }
+
+  function stopSpaceEffects() {
+    if (state.spaceEffects.animationId) {
+      cancelAnimationFrame(state.spaceEffects.animationId);
+      state.spaceEffects.animationId = null;
+    }
   }
 
   window.addEventListener("pointermove", (event) => {
@@ -9600,8 +9632,15 @@ function setupInteractiveSpaceEffects() {
     pointerFine.addListener(setCursorState);
   }
   window.addEventListener("resize", resize, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopSpaceEffects();
+    } else {
+      startSpaceEffects();
+    }
+  });
   resize();
-  requestAnimationFrame(drawFrame);
+  startSpaceEffects();
 }
 
 function exportFilteredCsv() {

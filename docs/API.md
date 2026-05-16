@@ -20,6 +20,14 @@ GET /api/v1/health
 
 Returns service status and catalog size.
 
+## Catalog Live Status
+
+```http
+GET /api/v1/catalog/live-status
+```
+
+Checks the deployed OrbitGuard catalog against the current public CelesTrak SATCAT feed and returns whether the local snapshot appears fresh. The response includes local record count, live record count, last local update time, and a short status message. Use this endpoint to verify the header CelesTrak freshness button.
+
 ## Summary
 
 ```http

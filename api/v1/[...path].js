@@ -106,13 +106,28 @@ export default async function handler(req, res) {
   try {
     const url = new URL(req.url || "/", `https://${req.headers?.host || "orbitguard.vercel.app"}`);
 
+    const catalog = await loadCatalog();
+
     if (url.pathname === "/api/v1/catalog/live-status") {
       const { csv, sourceLastModified } = await fetchSatcatCsv();
-      sendJson(res, 200, buildCatalogStatusFromSatcat(csv, new Date(), sourceLastModified));
+      const liveStatus = buildCatalogStatusFromSatcat(csv, new Date(), sourceLastModified);
+      const localCount = catalog.objects.length;
+      const liveCount = liveStatus.earthOrbitingObjects;
+      const countDelta = liveCount - localCount;
+
+      sendJson(res, 200, {
+        ...liveStatus,
+        localGeneratedAt: catalog.metadata.generatedAt,
+        localEarthOrbitingObjects: localCount,
+        liveEarthOrbitingObjects: liveCount,
+        countDelta,
+        freshness: Math.abs(countDelta) <= 5 ? "near-current" : "needs-refresh",
+        message: Math.abs(countDelta) <= 5
+          ? "Bundled OrbitGuard catalog is within five records of the live CelesTrak SATCAT filter."
+          : "Live CelesTrak SATCAT count differs from the bundled OrbitGuard catalog; run the update workflow to refresh the snapshot."
+      });
       return;
     }
-
-    const catalog = await loadCatalog();
 
     if (url.pathname === "/api/v1/health") {
       sendJson(res, 200, {
