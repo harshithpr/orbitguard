@@ -3866,12 +3866,12 @@ function renderMissionAutopsy(scenario = currentReplayScenario(), progress = mis
 
 function setCanvasSize(canvas) {
   const parent = canvas.parentElement;
-  const parentRect = parent?.getBoundingClientRect();
-  const canvasRect = canvas.getBoundingClientRect();
   const useParentRect = parent?.classList.contains("digital-twin-viewport") || parent?.classList.contains("studio-preview-viewport");
-  const rect = useParentRect ? parentRect : canvasRect;
-  const width = Math.max(320, Math.floor(rect.width || 640));
-  const height = Math.max(260, Math.floor(rect.height || 420));
+  const canvasRect = canvas.getBoundingClientRect();
+  const widthSource = useParentRect ? parent?.clientWidth : canvas.clientWidth || canvasRect.width;
+  const heightSource = useParentRect ? parent?.clientHeight : canvas.clientHeight || canvasRect.height;
+  const width = Math.max(320, Math.floor(widthSource || 640));
+  const height = Math.max(260, Math.floor(heightSource || 420));
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
@@ -3937,7 +3937,7 @@ function drawMissionReplayCanvas(scenario = currentReplayScenario(), progress = 
   context.fillStyle = "#020617";
   context.fillRect(0, 0, width, height);
 
-  for (let index = 0; index < 190; index += 1) {
+  for (let index = 0; index < 110; index += 1) {
     const x = seededUnit(index + 801) * width;
     const y = seededUnit(index + 901) * height;
     const alpha = 0.18 + seededUnit(index + 1001) * 0.5;
@@ -4011,7 +4011,7 @@ function drawMissionReplayCanvas(scenario = currentReplayScenario(), progress = 
   }
 
   const visiblePayloads = Math.min(48, Math.max(0, scenario.phaseType === "event" ? Math.min(18, Math.floor(progress.debrisReleased / 90)) : progress.deployed));
-  const visibleDebris = Math.min(100, Math.floor(progress.debrisReleased / Math.max(1, Math.ceil(scenario.debris / 90))));
+  const visibleDebris = Math.min(70, Math.floor(progress.debrisReleased / Math.max(1, Math.ceil(scenario.debris / 70))));
   const totalDots = visiblePayloads + visibleDebris + progress.rocketBodyReleased;
 
   for (let index = 0; index < totalDots; index += 1) {
@@ -4034,7 +4034,7 @@ function drawMissionReplayCanvas(scenario = currentReplayScenario(), progress = 
   context.fillText(`${scenario.band} km risk shell`, centerX - targetRadius * 0.72, centerY - targetRadius * 0.42 - 10);
 }
 
-function renderMissionReplay() {
+function renderMissionReplay({ drawCanvas = true } = {}) {
   if (!elements.missionReplayCanvas) {
     return;
   }
@@ -4072,7 +4072,9 @@ function renderMissionReplay() {
 
   renderMissionReplayTimeline(phases, phase);
   renderMissionAutopsy(scenario, progress);
-  drawMissionReplayCanvas(scenario, progress);
+  if (drawCanvas) {
+    drawMissionReplayCanvas(scenario, progress);
+  }
 }
 
 function buildMissionAutopsyPayload() {
@@ -9086,9 +9088,9 @@ function startMissionReplayLoop() {
     state.missionReplay.lastFrame = now;
     const scenario = currentReplayScenario();
     drawMissionReplayCanvas(scenario, missionReplayProgress(scenario), now);
-    if (now - state.missionReplay.lastDomRender > 120) {
+    if (now - state.missionReplay.lastDomRender > 250) {
       state.missionReplay.lastDomRender = now;
-      renderMissionReplay();
+      renderMissionReplay({ drawCanvas: false });
     }
 
     state.missionReplay.animationId = requestAnimationFrame(frame);
