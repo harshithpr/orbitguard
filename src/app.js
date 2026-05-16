@@ -353,7 +353,8 @@ const state = {
     emergencyActive: false,
     emergencyFragments: 0,
     commandLog: [],
-    animationId: null
+    animationId: null,
+    frameCache: null
   },
   display: { ...DEFAULT_DISPLAY_SETTINGS },
   intro: {
@@ -3865,7 +3866,10 @@ function renderMissionAutopsy(scenario = currentReplayScenario(), progress = mis
 
 function setCanvasSize(canvas) {
   const parent = canvas.parentElement;
-  const rect = parent?.getBoundingClientRect() || canvas.getBoundingClientRect();
+  const parentRect = parent?.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  const useParentRect = parent?.classList.contains("digital-twin-viewport") || parent?.classList.contains("studio-preview-viewport");
+  const rect = useParentRect ? parentRect : canvasRect;
   const width = Math.max(320, Math.floor(rect.width || 640));
   const height = Math.max(260, Math.floor(rect.height || 420));
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -4373,7 +4377,7 @@ function renderTrafficCommandLog() {
   `).join("");
 }
 
-function drawTrafficMap(alerts = buildTrafficAlerts(), shells = buildTrafficHealthShells(), now = performance.now()) {
+function drawTrafficMap(alerts = buildTrafficAlerts(), shells = buildTrafficHealthShells(), now = performance.now(), sample = null) {
   const canvas = elements.trafficMapCanvas;
 
   if (!canvas) {
@@ -4399,9 +4403,9 @@ function drawTrafficMap(alerts = buildTrafficAlerts(), shells = buildTrafficHeal
     context.stroke();
   });
 
-  const sample = representativeObjects(state.objects, [], 170);
-  for (let index = 0; index < sample.length; index += 1) {
-    const object = sample[index];
+  const trafficSample = sample || representativeObjects(state.objects, [], 120);
+  for (let index = 0; index < trafficSample.length; index += 1) {
+    const object = trafficSample[index];
     const radius = fallbackScaleAltitude(object.altitude, earthRadius, Math.min(width, height) * 0.44);
     const angle = seededUnit((object.norad || index) + 63) * Math.PI * 2 + now * 0.00005 * (1 + seededUnit(index + 12));
     const x = centerX + Math.cos(angle) * radius;
@@ -4500,6 +4504,7 @@ function renderTrafficControl() {
   const alerts = buildTrafficAlerts();
   const selected = selectedTrafficAlert(alerts);
   const shells = buildTrafficHealthShells();
+  const sample = representativeObjects(state.objects, [], state.display.reduceMotion ? 80 : 120);
   const highRiskCount = alerts.filter((alert) => ["High", "Critical"].includes(alert.severity)).length;
   const [crowdedBand] = buildHotspots(state.objects);
   const dragLevel = state.weather.space?.drag?.level || state.weather.space?.storm?.label || "Moderate";
@@ -4523,7 +4528,8 @@ function renderTrafficControl() {
   renderTrafficForecast(shells);
   renderOperatorView();
   renderTrafficCommandLog();
-  drawTrafficMap(alerts, shells);
+  state.traffic.frameCache = { alerts, shells, sample };
+  drawTrafficMap(alerts, shells, performance.now(), sample);
   drawTrafficRadar(alerts);
 }
 
@@ -9115,10 +9121,14 @@ function startTrafficAnimationLoop() {
     }
 
     if (state.mode === "traffic") {
-      const alerts = buildTrafficAlerts();
-      const shells = buildTrafficHealthShells();
-      drawTrafficMap(alerts, shells, now);
-      drawTrafficRadar(alerts, now);
+      const cache = state.traffic.frameCache || {
+        alerts: buildTrafficAlerts(),
+        shells: buildTrafficHealthShells(),
+        sample: representativeObjects(state.objects, [], state.display.reduceMotion ? 80 : 120)
+      };
+      state.traffic.frameCache = cache;
+      drawTrafficMap(cache.alerts, cache.shells, now, cache.sample);
+      drawTrafficRadar(cache.alerts, now);
     }
 
     state.traffic.animationId = requestAnimationFrame(frame);
