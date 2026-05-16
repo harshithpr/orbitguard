@@ -248,7 +248,10 @@ Expected:
 - Home, Dashboard, Mission Design Studio, Simulator, Reports, and About stay inside the viewport with no horizontal scrolling
 - The Display drawer opens from the right, closes cleanly, and does not permanently cover the main navigation
 - Mission Design Studio's 3D preview remains locked inside its card instead of expanding down the page
+- Mission Replay and Space Traffic Control canvases keep the same pixel size after 5-10 seconds and after reopening the mode
+- Launch Simulator canvas stays inside its viewport without stretching the page
 - Switching tabs does not create duplicate canvases or obvious repeated animation loops
 - Background star effects pause when the tab is hidden and resume when it is visible again
+- Dashboard, simulator, replay, studio, and traffic animation loops pause when the browser tab is hidden
 - Desktop, tablet, and phone widths keep text readable without giant controls or overlapping panels
 - Browser console shows no new errors after navigating through all modes

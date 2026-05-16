@@ -3877,8 +3877,13 @@ function setCanvasSize(canvas) {
   if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
     canvas.width = Math.floor(width * dpr);
     canvas.height = Math.floor(height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    if (useParentRect) {
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+    } else {
+      canvas.style.removeProperty("width");
+      canvas.style.removeProperty("height");
+    }
   }
 
   const context = canvas.getContext("2d");
@@ -9044,19 +9049,14 @@ function wireControls() {
   elements.downloadSimulationJson.addEventListener("click", exportSimulationJson);
   elements.downloadSimulationCsv.addEventListener("click", exportSimulationCsv);
   elements.downloadReport.addEventListener("click", exportReportJson);
-  window.addEventListener("resize", resizeOrbitScene);
-  window.addEventListener("resize", resizeLaunchSequence);
-  window.addEventListener("resize", () => {
-    if (state.mode === "studio") {
-      renderMissionStudio();
-    }
-
-    if (state.mode === "replay") {
-      renderMissionReplay();
-    }
-
-    if (state.mode === "traffic") {
-      renderTrafficControl();
+  window.addEventListener("resize", resizeOrbitScene, { passive: true });
+  window.addEventListener("resize", resizeLaunchSequence, { passive: true });
+  window.addEventListener("resize", scheduleWorkspaceResizeRender, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      pauseActiveAnimationLoops();
+    } else {
+      resumeActiveAnimationLoops();
     }
   });
 }
@@ -9144,6 +9144,61 @@ function stopTrafficAnimationLoop() {
     cancelAnimationFrame(state.traffic.animationId);
     state.traffic.animationId = null;
   }
+}
+
+function pauseActiveAnimationLoops() {
+  stopOrbitSceneAnimation();
+  stopLaunchSequenceAnimation();
+  stopMissionReplayLoop();
+  stopTrafficAnimationLoop();
+}
+
+function resumeActiveAnimationLoops() {
+  if (document.hidden) {
+    return;
+  }
+
+  if (["dashboard", "time"].includes(state.mode)) {
+    startOrbitSceneAnimation();
+  }
+
+  if (state.mode === "simulator") {
+    state.launchSequence.lastFrame = performance.now();
+    startLaunchSequenceAnimation();
+  }
+
+  if (state.mode === "replay") {
+    state.missionReplay.lastFrame = performance.now();
+    startMissionReplayLoop();
+  }
+
+  if (["studio", "traffic"].includes(state.mode)) {
+    startTrafficAnimationLoop();
+  }
+}
+
+let workspaceResizeFrame = null;
+
+function scheduleWorkspaceResizeRender() {
+  if (workspaceResizeFrame) {
+    cancelAnimationFrame(workspaceResizeFrame);
+  }
+
+  workspaceResizeFrame = requestAnimationFrame(() => {
+    workspaceResizeFrame = null;
+
+    if (state.mode === "studio") {
+      renderMissionStudio();
+    }
+
+    if (state.mode === "replay") {
+      renderMissionReplay();
+    }
+
+    if (state.mode === "traffic") {
+      renderTrafficControl();
+    }
+  });
 }
 
 function introSeenThisSession() {
