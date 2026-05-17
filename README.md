@@ -14,6 +14,13 @@
   · <a href="docs/API.md">API Docs</a>
   · <a href="docs/ROADMAP.md">Roadmap</a>
   · <a href="docs/TESTING.md">Testing</a>
+  · <a href="docs/GITHUB_VISIBILITY.md">Visibility Checklist</a>
+</p>
+
+<p align="center">
+  <a href="https://orbitguard.vercel.app">
+    <img alt="Live Demo" src="https://img.shields.io/badge/Live%20Demo-orbitguard.vercel.app-38bdf8?style=for-the-badge">
+  </a>
 </p>
 
 <p align="center">
@@ -24,7 +31,7 @@
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
-![OrbitGuard homepage](assets/homepage.png)
+![OrbitGuard social preview](assets/social-preview.png)
 
 ## Overview
 
@@ -46,13 +53,31 @@ OrbitGuard is not an operational collision-avoidance product. It is a transparen
 
 ## Screenshots
 
-| Mission Design Studio | Orbit Dashboard |
+| Homepage | Mission Design Studio |
 | --- | --- |
-| ![Mission Design Studio](assets/mission-design-studio.png) | ![Orbit dashboard](assets/dashboard.png) |
+| ![OrbitGuard homepage](assets/homepage.png) | ![Mission Design Studio](assets/mission-design-studio.png) |
 
-| Launch Simulator | Space Traffic Control |
+| Orbit Dashboard | Launch Simulator |
 | --- | --- |
-| ![Launch simulator](assets/launch-simulator.png) | ![Space Traffic Control](assets/traffic-control.png) |
+| ![Orbit dashboard](assets/dashboard.png) | ![Launch simulator](assets/launch-simulator.png) |
+
+| Space Traffic Control | Social Preview |
+| --- | --- |
+| ![Space Traffic Control](assets/traffic-control.png) | ![OrbitGuard social preview](assets/social-preview.png) |
+
+## Social Preview
+
+OrbitGuard includes a ready-to-upload GitHub social preview image:
+
+```text
+assets/social-preview.png
+```
+
+The live site also uses this same branded preview for OpenGraph and Twitter/X cards:
+
+```text
+https://orbitguard.vercel.app/public/og-image.png
+```
 
 ## Tech Stack
 
@@ -147,6 +172,7 @@ Before sharing a new version publicly:
 - Check desktop and mobile widths for overflow, overlapping text, and oversized controls
 - Check the browser console for new errors
 - Confirm the live Vercel URL updates after pushing to GitHub
+- Submit `https://orbitguard.vercel.app/sitemap.xml` in Google Search Console when the site is ready to index
 
 ## License
 

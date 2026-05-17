@@ -20,4 +20,12 @@ try {
   await copyFile("README.md", "dist/README.md");
 } catch {}
 
+try {
+  await copyFile("robots.txt", "dist/robots.txt");
+} catch {}
+
+try {
+  await copyFile("sitemap.xml", "dist/sitemap.xml");
+} catch {}
+
 console.log("Static site copied to dist/");

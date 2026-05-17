@@ -42,9 +42,9 @@
     <ellipse cx="690" cy="324" rx="510" ry="154" stroke="#a78bfa" stroke-width="2" transform="rotate(14 690 324)"/>
     <ellipse cx="690" cy="324" rx="610" ry="190" stroke="#fbbf24" stroke-opacity="0.42" stroke-width="2" transform="rotate(-28 690 324)"/>
   </g>
-  <text x="374" y="258" fill="url(#titleGrad)" font-family="Orbitron, Space Grotesk, Arial, sans-serif" font-size="92" font-weight="900" letter-spacing="8">ORBITGUARD</text>
-  <text x="380" y="318" fill="#dbeafe" font-family="Space Grotesk, Arial, sans-serif" font-size="30" font-weight="700" letter-spacing="7">ORBITAL RISK INTELLIGENCE PLATFORM</text>
-  <text x="382" y="390" fill="#93c5fd" font-family="JetBrains Mono, Menlo, monospace" font-size="24" font-weight="700">Satellite tracking concepts · debris awareness · mission design</text>
+  <text x="360" y="258" fill="url(#titleGrad)" font-family="Orbitron, Space Grotesk, Arial, sans-serif" font-size="86" font-weight="900" letter-spacing="6">ORBITGUARD</text>
+  <text x="366" y="318" fill="#dbeafe" font-family="Space Grotesk, Arial, sans-serif" font-size="25" font-weight="700" letter-spacing="4">ORBITAL RISK INTELLIGENCE PLATFORM</text>
+  <text x="368" y="390" fill="#93c5fd" font-family="JetBrains Mono, Menlo, monospace" font-size="23" font-weight="700">Satellite tracking concepts · debris awareness · mission design</text>
   <rect x="380" y="438" width="510" height="4" rx="2" fill="#1e293b"/>
   <rect x="380" y="438" width="385" height="4" rx="2" fill="#93c5fd"/>
 </svg>

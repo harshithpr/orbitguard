@@ -2,7 +2,7 @@
   "name": "orbitguard",
   "version": "0.2.0",
   "private": true,
-  "description": "Space sustainability analyzer with a dashboard, launch impact simulator, and local API.",
+  "description": "Orbital risk intelligence platform for satellite congestion, launch impact simulation, debris awareness, and space sustainability.",
   "author": "Harshith Pranav Praveen",
   "license": "MIT",
   "type": "module",
